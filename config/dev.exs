@@ -1,4 +1,5 @@
 import Config
+config :ash, policies: [show_policy_breakdowns?: true]
 
 # Configure your database
 config :kirbs, Kirbs.Repo,
@@ -64,7 +65,7 @@ config :kirbs, KirbsWeb.Endpoint,
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :kirbs, dev_routes: true
+config :kirbs, dev_routes: true, token_signing_secret: "2IMARHufXqLx01tukQH6hciclsa3bWFS"
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

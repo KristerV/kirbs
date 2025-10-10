@@ -11,11 +11,17 @@ defmodule Kirbs.Application do
       KirbsWeb.Telemetry,
       Kirbs.Repo,
       {DNSCluster, query: Application.get_env(:kirbs, :dns_cluster_query) || :ignore},
+      {Oban,
+       AshOban.config(
+         Application.fetch_env!(:kirbs, :ash_domains),
+         Application.fetch_env!(:kirbs, Oban)
+       )},
       {Phoenix.PubSub, name: Kirbs.PubSub},
       # Start a worker by calling: Kirbs.Worker.start_link(arg)
       # {Kirbs.Worker, arg},
       # Start to serve requests, typically the last entry
-      KirbsWeb.Endpoint
+      KirbsWeb.Endpoint,
+      {AshAuthentication.Supervisor, [otp_app: :kirbs]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
