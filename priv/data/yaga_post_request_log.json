@@ -1,0 +1,253 @@
+[
+  {
+    "body": "{}",
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA1NywiZXhwIjoxNzYzNzM3MDU3fQ.AdFeQc5pjS0mNtoRN9C8Lvk9FAZyHZk7HkeKam5JDYQubOKDwWZQV3f3Erh9p6D8nC9cTLbJvzTtSd3sBF4kXg9DAD7Pt_hxzq07wLv8PhsTekgnItt7n4bNfZqp6g7kVKgwZnXQssH2NZv8rQx0W0o81LQv-ZBK6EbjVDrVIh5Ph12P",
+      "Content-Type": "application/json",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "POST",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":{\"user\":{\"id\":6756411,\"mongo_id\":null,\"mongoId\":null,\"email\":\"mara.viirsaar@gmail.com\",\"first_name\":\"Mara\",\"firstName\":\"Mara\",\"last_name\":\"Viirsaar\",\"lastName\":\"Viirsaar\",\"status\":null,\"active\":true,\"role\":\"user\",\"bio\":null,\"picture\":\"https://images.yaga.ee/_user_profile_pictures/6756411-42b3d38cdf0a6c5e40cb826cf430ea4f.jpeg?s=300\",\"profile_picture\":{\"url\":\"https://images.yaga.ee/_user_profile_pictures/6756411-42b3d38cdf0a6c5e40cb826cf430ea4f.jpeg?s=300\"},\"profilePicture\":{\"url\":\"https://images.yaga.ee/_user_profile_pictures/6756411-42b3d38cdf0a6c5e40cb826cf430ea4f.jpeg?s=300\"},\"phone\":\"+37255507339\",\"address_street_name\":null,\"addressStreetName\":null,\"address_city\":null,\"addressCity\":null,\"address_county\":null,\"addressCounty\":null,\"address_zip\":null,\"addressZip\":null,\"address_country\":null,\"addressCountry\":null,\"bank_account\":{\"account_number\":\"EE297700771004449420\",\"accountNumber\":\"EE297700771004449420\",\"account_name\":\"Mara Viirsaar\",\"accountName\":\"Mara Viirsaar\",\"bank_name\":null,\"bankName\":null,\"branch_code\":null,\"branchCode\":null,\"bank_extra\":null,\"bankExtra\":null},\"bankAccount\":{\"account_number\":\"EE297700771004449420\",\"accountNumber\":\"EE297700771004449420\",\"account_name\":\"Mara Viirsaar\",\"accountName\":\"Mara Viirsaar\",\"bank_name\":null,\"bankName\":null,\"branch_code\":null,\"branchCode\":null,\"bank_extra\":null,\"bankExtra\":null},\"social\":{\"google\":{\"id\":\"115792789847819212609\",\"photo_url\":\"https://lh3.googleusercontent.com/a/ACg8ocKUUwXFYHVhCGtqoqXSJ9185FXLB81aOm-5XEepegQo_0_Le0s=s96-c\",\"photoUrl\":\"https://lh3.googleusercontent.com/a/ACg8ocKUUwXFYHVhCGtqoqXSJ9185FXLB81aOm-5XEepegQo_0_Le0s=s96-c\"}},\"google_id\":\"115792789847819212609\",\"googleId\":\"115792789847819212609\",\"facebook_id\":null,\"facebookId\":null,\"email_notifications\":true,\"emailNotifications\":true,\"is_seller\":true,\"isSeller\":true,\"include_in_search\":true,\"includeInSearch\":true,\"email_confirmed_at\":\"2025-10-22T12:52:10.354Z\",\"emailConfirmedAt\":\"2025-10-22T12:52:10.354Z\",\"last_logged_in\":\"2025-10-22T12:52:09.254Z\",\"lastLoggedIn\":\"2025-10-22T12:52:09.254Z\",\"featured_score\":18,\"featuredScore\":18,\"created_at\":\"2022-01-09T11:25:06.044Z\",\"createdAt\":\"2022-01-09T11:25:06.044Z\",\"updated_at\":\"2025-10-22T12:52:10.354Z\",\"updatedAt\":\"2025-10-22T12:52:10.354Z\",\"bank_account_name\":\"Mara Viirsaar\",\"bankAccountName\":\"Mara Viirsaar\",\"bank_name\":null,\"bankName\":null,\"bank_branch_code\":null,\"bankBranchCode\":null,\"order_push_notifications\":true,\"orderPushNotifications\":true,\"message_push_notifications\":true,\"messagePushNotifications\":true,\"apple_id\":null,\"appleId\":null,\"banned_by\":null,\"bannedBy\":null,\"banned_at\":null,\"bannedAt\":null,\"bank_extra\":null,\"bankExtra\":null,\"delete_reason\":null,\"deleteReason\":null,\"delete_comment\":null,\"deleteComment\":null,\"marketing_email_notifications\":false,\"marketingEmailNotifications\":false,\"is_admin\":false,\"isAdmin\":false,\"banned\":false,\"inactivity_notification_sent\":false,\"inactivityNotificationSent\":false,\"shipping_prefill_info\":{\"dpd\":{\"phone\":\"+37255507339\",\"method\":\"dpd\",\"address\":\"SAUE Automaat Saue Rimi\",\"terminal_id\":\"EE90210\",\"terminalId\":\"EE90210\",\"delivery_method\":\"dpd\",\"deliveryMethod\":\"dpd\"},\"smartpost\":{\"phone\":\"+37255507339\",\"method\":\"smartpost\",\"address\":\"Harjumaa Saue Rimi\",\"doorcode\":7951271,\"province_id\":1,\"provinceId\":1,\"terminal_id\":\"253\",\"terminalId\":\"253\",\"parcel_size\":\"S\",\"with_doorcode\":true,\"delivery_method\":\"smartpost\",\"deliveryMethod\":\"smartpost\"},\"last_order_shipping_method\":\"dpd\",\"lastOrderShippingMethod\":\"dpd\"},\"shippingPrefillInfo\":{\"dpd\":{\"phone\":\"+37255507339\",\"method\":\"dpd\",\"address\":\"SAUE Automaat Saue Rimi\",\"terminal_id\":\"EE90210\",\"terminalId\":\"EE90210\",\"delivery_method\":\"dpd\",\"deliveryMethod\":\"dpd\"},\"smartpost\":{\"phone\":\"+37255507339\",\"method\":\"smartpost\",\"address\":\"Harjumaa Saue Rimi\",\"doorcode\":7951271,\"province_id\":1,\"provinceId\":1,\"terminal_id\":\"253\",\"terminalId\":\"253\",\"parcel_size\":\"S\",\"with_doorcode\":true,\"delivery_method\":\"smartpost\",\"deliveryMethod\":\"smartpost\"},\"last_order_shipping_method\":\"dpd\",\"lastOrderShippingMethod\":\"dpd\"},\"address_suburb\":null,\"addressSuburb\":null,\"address_postal_code\":null,\"addressPostalCode\":null,\"address_street_no\":null,\"addressStreetNo\":null,\"referral_code\":\"R0729C\",\"referralCode\":\"R0729C\",\"referred_by\":null,\"referredBy\":null,\"referred_at\":null,\"referredAt\":null,\"register_ip\":null,\"registerIp\":null,\"dac7_information\":null,\"dac7Information\":null,\"dac7_required\":false,\"dac7Required\":false,\"dac7_required_at\":null,\"dac7RequiredAt\":null,\"dac7_filled\":false,\"dac7Filled\":false,\"dac7_filled_at\":null,\"dac7FilledAt\":null,\"dac7_last_notification_at\":null,\"dac7LastNotificationAt\":null,\"price_drop_push_notifications\":true,\"priceDropPushNotifications\":true,\"saved_search_new_products_notifications\":true,\"savedSearchNewProductsNotifications\":true,\"has_used_saved_search\":false,\"hasUsedSavedSearch\":false,\"muted\":false,\"muted_by\":null,\"mutedBy\":null,\"muted_at\":null,\"mutedAt\":null,\"terms_accepted\":true,\"termsAccepted\":true,\"onboarding_web_completed\":true,\"onboardingWebCompleted\":true,\"onboarding_mobile_completed\":true,\"onboardingMobileCompleted\":true,\"meta\":{},\"wallet_frozen\":false,\"walletFrozen\":false,\"wallet_frozen_by\":null,\"walletFrozenBy\":null,\"wallet_frozen_at\":null,\"walletFrozenAt\":null,\"price_offer_notifications\":true,\"priceOfferNotifications\":true,\"ban_reason\":null,\"banReason\":null,\"ban_comment\":null,\"banComment\":null,\"re_consent\":false,\"reConsent\":false,\"re_consent_at\":\"2025-09-01T10:56:49.059Z\",\"reConsentAt\":\"2025-09-01T10:56:49.059Z\",\"terms_accepted_at\":\"2025-09-01T13:15:39.957Z\",\"termsAcceptedAt\":\"2025-09-01T13:15:39.957Z\",\"marketing_email_notifications_at\":null,\"marketingEmailNotificationsAt\":null,\"language\":\"et\",\"country\":\"EE\",\"register_ip_country\":null,\"registerIpCountry\":null,\"register_app_instance_country\":null,\"registerAppInstanceCountry\":null,\"address\":{\"city\":null,\"suburb\":null,\"postal_code\":null,\"postalCode\":null,\"street_number\":null,\"streetNumber\":null,\"street_name\":null,\"streetName\":null,\"county\":null,\"zip\":null,\"country\":null},\"flags\":{\"otp_enabled\":false,\"dpd_enabled\":true,\"pargo_enabled\":true,\"apple_google_pay_enabled\":false,\"peach_native_pay_ios\":false,\"peach_native_pay_android\":false,\"peach_new_eft\":false,\"multilang_search_enabled\":false,\"multilang_descriptions_enabled\":true,\"can_change_language\":true,\"use_peach_embedded_checkout\":true},\"like_count\":18,\"likeCount\":18,\"shop\":{\"id\":6750465,\"mongo_id\":null,\"mongoId\":null,\"owner_id\":6756411,\"ownerId\":6756411,\"name\":\"kirbs.ee\",\"active_slug\":\"kirbs-ee\",\"activeSlug\":\"kirbs-ee\",\"active\":true,\"slugs\":[\"mara-viirsaar\",\"kirbs-ee\"],\"description\":\"Laste riidet, jalatsid ja tarvikud \",\"default_shipping_options\":{\"dpd\":{\"enabled\":true,\"selected_price\":\"small\",\"selectedPrice\":\"small\"},\"omniva\":{\"enabled\":true,\"selected_price\":\"small\",\"selectedPrice\":\"small\"},\"bundling\":{\"enabled\":true,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"smartpost\":{\"enabled\":true,\"selected_price\":\"small\",\"selectedPrice\":\"small\"},\"upon_agreement\":{\"enabled\":false,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"uponAgreement\":{\"enabled\":false,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"from_hand_to_hand\":{\"enabled\":true,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"fromHandToHand\":{\"enabled\":true,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"}},\"defaultShippingOptions\":{\"dpd\":{\"enabled\":true,\"selected_price\":\"small\",\"selectedPrice\":\"small\"},\"omniva\":{\"enabled\":true,\"selected_price\":\"small\",\"selectedPrice\":\"small\"},\"bundling\":{\"enabled\":true,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"smartpost\":{\"enabled\":true,\"selected_price\":\"small\",\"selectedPrice\":\"small\"},\"upon_agreement\":{\"enabled\":false,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"uponAgreement\":{\"enabled\":false,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"from_hand_to_hand\":{\"enabled\":true,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"},\"fromHandToHand\":{\"enabled\":true,\"selected_price\":\"zero\",\"selectedPrice\":\"zero\"}},\"include_in_search\":true,\"includeInSearch\":true,\"is_influencer_shop\":false,\"isInfluencerShop\":false,\"featured_score\":0,\"featuredScore\":0,\"created_at\":\"2022-01-09T11:25:06.052Z\",\"createdAt\":\"2022-01-09T11:25:06.052Z\",\"updated_at\":\"2025-10-22T08:07:01.008Z\",\"updatedAt\":\"2025-10-22T08:07:01.008Z\",\"desc_tsv\":null,\"descTsv\":null,\"province\":null,\"location\":\"Saue vald\",\"instagram_tag\":null,\"instagramTag\":null,\"order_processing_time\":19,\"orderProcessingTime\":19,\"order_processing_time_updated_at\":\"2025-10-22T08:07:01.008Z\",\"orderProcessingTimeUpdatedAt\":\"2025-10-22T08:07:01.008Z\",\"appropriate_products\":true,\"appropriateProducts\":true,\"holiday_mode\":false,\"holidayMode\":false,\"holiday_mode_started_at\":null,\"holidayModeStartedAt\":null,\"holiday_mode_ended_at\":null,\"holidayModeEndedAt\":null,\"first_product_published_at\":\"2025-08-21T07:26:56.813Z\",\"firstProductPublishedAt\":\"2025-08-21T07:26:56.813Z\",\"active_slug_updated_at\":\"2025-09-29T08:50:35.569Z\",\"activeSlugUpdatedAt\":\"2025-09-29T08:50:35.569Z\",\"formatted_order_processing_time\":\"Tavaliselt postitab |24 tunniga\",\"formattedOrderProcessingTime\":\"Tavaliselt postitab |24 tunniga\"},\"is_phone_verified\":false,\"isPhoneVerified\":false,\"liked_products\":{\"11360585\":true,\"11815625\":true,\"11940691\":true,\"11956153\":true,\"11956623\":true,\"12723356\":true,\"13629314\":true,\"19863673\":true,\"20673915\":true,\"21202251\":true,\"21218788\":true,\"21315341\":true,\"21431351\":true,\"21431605\":true,\"21512982\":true,\"21525365\":true},\"likedProducts\":{\"11360585\":true,\"11815625\":true,\"11940691\":true,\"11956153\":true,\"11956623\":true,\"12723356\":true,\"13629314\":true,\"19863673\":true,\"20673915\":true,\"21202251\":true,\"21218788\":true,\"21315341\":true,\"21431351\":true,\"21431605\":true,\"21512982\":true,\"21525365\":true},\"user_promo_codes\":[],\"userPromoCodes\":[],\"is_app_user\":false,\"isAppUser\":false},\"token\":\"Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU\"}}",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/auth/token/refresh"
+  },
+  {
+    "body": "{\"currency\":\"€\"}",
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "Content-Type": "application/json",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "POST",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":{\"id\":21589468,\"mongo_id\":null,\"mongoId\":null,\"shop_id\":6750465,\"shopId\":6750465,\"name\":null,\"slug\":\"gq450umilmg\",\"description\":null,\"price\":null,\"currency\":\"€\",\"status\":\"draft\",\"quantity\":1,\"images\":null,\"shipping\":{\"dpd\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"omniva\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"bundling\":{\"enabled\":true,\"selectedPrice\":\"zero\"},\"smartpost\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"uponAgreement\":{\"enabled\":false,\"selectedPrice\":\"zero\"},\"fromHandToHand\":{\"enabled\":true,\"selectedPrice\":\"zero\"}},\"size\":null,\"tags\":[],\"location\":null,\"address\":null,\"deleted_by\":null,\"deletedBy\":null,\"pinned_at\":null,\"pinnedAt\":null,\"featured_score\":0,\"featuredScore\":0,\"created_at\":\"2025-10-22T14:57:53.867Z\",\"createdAt\":\"2025-10-22T14:57:53.867Z\",\"updated_at\":\"2025-10-22T14:57:53.867Z\",\"updatedAt\":\"2025-10-22T14:57:53.867Z\",\"desc_tsv\":\"\",\"descTsv\":\"\",\"views\":0,\"included_shipping_price\":\"0.00\",\"includedShippingPrice\":\"0.00\",\"reserved_to\":null,\"reservedTo\":null,\"reserved_until\":null,\"reservedUntil\":null,\"brand_id\":null,\"brandId\":null,\"hidden_at\":null,\"hiddenAt\":null,\"hidden_by\":null,\"hiddenBy\":null,\"colors_id_map\":null,\"colorsIdMap\":null,\"category_id\":null,\"categoryId\":null,\"categories_map\":null,\"categoriesMap\":null,\"condition_id\":null,\"conditionId\":null,\"sources_id_map\":null,\"sourcesIdMap\":null,\"listed_at\":\"2025-10-22T14:57:53.867Z\",\"listedAt\":\"2025-10-22T14:57:53.867Z\",\"listed_at_counter\":0,\"listedAtCounter\":0,\"deleted_at\":null,\"deletedAt\":null,\"materials_id_map\":null,\"materialsIdMap\":null,\"draft_revision_count\":0,\"draftRevisionCount\":0,\"delete_reason\":null,\"deleteReason\":null,\"delete_comment\":null,\"deleteComment\":null,\"lowest_price\":\"0.00\",\"lowestPrice\":\"0.00\",\"first_published_at\":null,\"firstPublishedAt\":null,\"ai_tags\":null,\"aiTags\":null,\"ai_tagged_at\":null,\"aiTaggedAt\":null,\"hide_reason\":null,\"hideReason\":null,\"hide_comment\":null,\"hideComment\":null,\"descriptions_multilang\":null,\"descriptionsMultilang\":null,\"desc_tsv_multilang\":\"\",\"descTsvMultilang\":\"\",\"skip_updated_at_index\":null,\"skipUpdatedAtIndex\":null,\"first_published_user_country\":null,\"firstPublishedUserCountry\":null,\"_id\":21589468,\"attributes\":{},\"buyer_protection_fee_enabled\":true,\"buyerProtectionFeeEnabled\":true}}",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/product"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":[]}",
+      "status": 304
+    },
+    "url": "https://www.yaga.ee/api/saved-search/"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/category"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/shipping/options"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/brand/?groupedFlat=true&sortOtherAlphabetically=true"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/color"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/material"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/condition"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/product/sizes/Lastele"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "<PUBLIC_ENDPOINT: Response can be fetched by making GET request to the URL>",
+      "status": 304
+    },
+    "url": "https://www.yaga.ee/api/translation"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":{\"emailConfirmed\":true}}",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/user/email-confirmed"
+  },
+  {
+    "body": null,
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "GET",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":{\"url\":\"https://ee-prod-yaga-product-images.s3.eu-north-1.amazonaws.com/upload/gq450umilmg/1c9678.jpeg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAYL4AIYN3MN2PIDDB%2F20251022%2Feu-north-1%2Fs3%2Faws4_request&X-Amz-Date=20251022T150306Z&X-Amz-Expires=1800&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEHcaCmV1LW5vcnRoLTEiRzBFAiEAxZRsbvL7K11l0yp55mjbBpSspv6GS7xVHeEXLjvPDc8CIGfYEwHDqR9dMxSkxj7uQA7jucZa5l%2Bw3evBukIb1tTlKoMFCDAQAxoMNTc1MjU3NzU2NTM0IgwtKMnsPTtLiq%2FpD4Uq4ASCyHBhjQu%2FR3OVREku9i5eDKau5xeQkTgvHqrpNzYpUvMirRW0qGfNEBwyyRLrO5Er1hS0inyIH0ZpmOBFs3sYToY41%2FAKpU9rH0fcELRp0Zlyqt21GIDfXNeu23%2BeCyfuZJHA4m5853WUqk4AW%2FEMTfRDZq0FE6XIVeeEI8NzvnrhD2kT60%2Fr9v3WY2Wou%2BHcrSA6OrY3UkR2hXItfPjIewfY137UAgcyZh%2BcCe1UQrQQZdX45BM0fU1nNKnN6dOV0u2fHEqggtvWZwt0PWTZVYdiJ%2BeP9XfpmALpc5mDZwzLXU3RMAundTQKnq4uWVMAC%2F3I%2FbvJnlmv8xndqlbrIapbQrTTcj68j0hzazSVmbVfQBlUd6nCcfCy%2FMz8RJauVaPcsLMlBnXkZp%2FEttvc%2BVrEDhGNwdPrlOa%2FXYcE85k4KH4OTFCUjZGb8KlCo2oYoresf1pXH0GXWeshFeu31K%2B5b1cFkOO0wYjVMUQiNengGIX1OzRWAqcYt%2Ba2Zt4koxaamb4W%2BO7j2ijiXpTOh8bmnEUWdLihTfOz3n1T3BmxThie1oXEMDRCAFDx6aUM5TFFjGhUuDpwfGRt2vFZd6sIF5d2PxreKfsFzFRAHKlDOblYoDURhrLU4bVYu08wENz%2BJQNE5q5QabFcEeUW%2BV9h3L%2BJFT6fnQrJbws%2FGf6dnnJMIwOMuMm4PT6%2FfxS55SZIFAT2OwcJT2vO7%2BMQUbZG%2BC1wYh2qX3jb4oD4usC5b%2B%2F9hBNhdg8VvhVp7NdI9uLHnw9qB6ftX4qMBt%2FvjZXkdwDOJ4KJFk162V0xSjCq5OPHBjqaARXBP%2Fm0rwpjov%2BffCYf3K7YrHUYz6qdZKYVycoK9wHyxuUl26RxateQUVDsEXpoXxbkUFlVGVIt7FlP9fJCaXYMPYZOvNktTglSbbhxCg3aOCl2%2FDaJcUUqFwFNCBORmBHUsSH8%2Fvu9FF6Ks3i3pKwSN8Ekycl94bGB16OV7y0nBaeTv2mwf306hZufvLYo3ga%2F5GRcaWTHF9g%3D&X-Amz-Signature=fd4dd45d3a7942423bfa0f6e90584dd88ed83430b64d07c71e9522003f8b8c8a&X-Amz-SignedHeaders=host&x-amz-user-agent=aws-sdk-js%2F3.651.1&x-id=PutObject\",\"fileName\":\"1c9678.jpeg\"}}",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/product/uploadurl/?slug=gq450umilmg&type=jpeg&timestamp=50309"
+  },
+  {
+    "body": "<BINARY_IMAGE_DATA: JPEG file contents go here>",
+    "headers": {
+      "Content-Type": "image/jpeg"
+    },
+    "method": "PUT",
+    "response": {
+      "body": "",
+      "status": 200
+    },
+    "url": "https://ee-prod-yaga-product-images.s3.eu-north-1.amazonaws.com/upload/gq450umilmg/1c9678.jpeg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAYL4AIYN3MN2PIDDB%2F20251022%2Feu-north-1%2Fs3%2Faws4_request&X-Amz-Date=20251022T150306Z&X-Amz-Expires=1800&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEHcaCmV1LW5vcnRoLTEiRzBFAiEAxZRsbvL7K11l0yp55mjbBpSspv6GS7xVHeEXLjvPDc8CIGfYEwHDqR9dMxSkxj7uQA7jucZa5l%2Bw3evBukIb1tTlKoMFCDAQAxoMNTc1MjU3NzU2NTM0IgwtKMnsPTtLiq%2FpD4Uq4ASCyHBhjQu%2FR3OVREku9i5eDKau5xeQkTgvHqrpNzYpUvMirRW0qGfNEBwyyRLrO5Er1hS0inyIH0ZpmOBFs3sYToY41%2FAKpU9rH0fcELRp0Zlyqt21GIDfXNeu23%2BeCyfuZJHA4m5853WUqk4AW%2FEMTfRDZq0FE6XIVeeEI8NzvnrhD2kT60%2Fr9v3WY2Wou%2BHcrSA6OrY3UkR2hXItfPjIewfY137UAgcyZh%2BcCe1UQrQQZdX45BM0fU1nNKnN6dOV0u2fHEqggtvWZwt0PWTZVYdiJ%2BeP9XfpmALpc5mDZwzLXU3RMAundTQKnq4uWVMAC%2F3I%2FbvJnlmv8xndqlbrIapbQrTTcj68j0hzazSVmbVfQBlUd6nCcfCy%2FMz8RJauVaPcsLMlBnXkZp%2FEttvc%2BVrEDhGNwdPrlOa%2FXYcE85k4KH4OTFCUjZGb8KlCo2oYoresf1pXH0GXWeshFeu31K%2B5b1cFkOO0wYjVMUQiNengGIX1OzRWAqcYt%2Ba2Zt4koxaamb4W%2BO7j2ijiXpTOh8bmnEUWdLihTfOz3n1T3BmxThie1oXEMDRCAFDx6aUM5TFFjGhUuDpwfGRt2vFZd6sIF5d2PxreKfsFzFRAHKlDOblYoDURhrLU4bVYu08wENz%2BJQNE5q5QabFcEeUW%2BV9h3L%2BJFT6fnQrJbws%2FGf6dnnJMIwOMuMm4PT6%2FfxS55SZIFAT2OwcJT2vO7%2BMQUbZG%2BC1wYh2qX3jb4oD4usC5b%2B%2F9hBNhdg8VvhVp7NdI9uLHnw9qB6ftX4qMBt%2FvjZXkdwDOJ4KJFk162V0xSjCq5OPHBjqaARXBP%2Fm0rwpjov%2BffCYf3K7YrHUYz6qdZKYVycoK9wHyxuUl26RxateQUVDsEXpoXxbkUFlVGVIt7FlP9fJCaXYMPYZOvNktTglSbbhxCg3aOCl2%2FDaJcUUqFwFNCBORmBHUsSH8%2Fvu9FF6Ks3i3pKwSN8Ekycl94bGB16OV7y0nBaeTv2mwf306hZufvLYo3ga%2F5GRcaWTHF9g%3D&X-Amz-Signature=fd4dd45d3a7942423bfa0f6e90584dd88ed83430b64d07c71e9522003f8b8c8a&X-Amz-SignedHeaders=host&x-amz-user-agent=aws-sdk-js%2F3.651.1&x-id=PutObject"
+  },
+  {
+    "body": null,
+    "headers": {},
+    "method": "OPTIONS",
+    "response": {
+      "body": "",
+      "status": 200
+    },
+    "url": "https://ee-prod-yaga-product-images.s3.eu-north-1.amazonaws.com/upload/gq450umilmg/1c9678.jpeg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAYL4AIYN3MN2PIDDB%2F20251022%2Feu-north-1%2Fs3%2Faws4_request&X-Amz-Date=20251022T150306Z&X-Amz-Expires=1800&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEHcaCmV1LW5vcnRoLTEiRzBFAiEAxZRsbvL7K11l0yp55mjbBpSspv6GS7xVHeEXLjvPDc8CIGfYEwHDqR9dMxSkxj7uQA7jucZa5l%2Bw3evBukIb1tTlKoMFCDAQAxoMNTc1MjU3NzU2NTM0IgwtKMnsPTtLiq%2FpD4Uq4ASCyHBhjQu%2FR3OVREku9i5eDKau5xeQkTgvHqrpNzYpUvMirRW0qGfNEBwyyRLrO5Er1hS0inyIH0ZpmOBFs3sYToY41%2FAKpU9rH0fcELRp0Zlyqt21GIDfXNeu23%2BeCyfuZJHA4m5853WUqk4AW%2FEMTfRDZq0FE6XIVeeEI8NzvnrhD2kT60%2Fr9v3WY2Wou%2BHcrSA6OrY3UkR2hXItfPjIewfY137UAgcyZh%2BcCe1UQrQQZdX45BM0fU1nNKnN6dOV0u2fHEqggtvWZwt0PWTZVYdiJ%2BeP9XfpmALpc5mDZwzLXU3RMAundTQKnq4uWVMAC%2F3I%2FbvJnlmv8xndqlbrIapbQrTTcj68j0hzazSVmbVfQBlUd6nCcfCy%2FMz8RJauVaPcsLMlBnXkZp%2FEttvc%2BVrEDhGNwdPrlOa%2FXYcE85k4KH4OTFCUjZGb8KlCo2oYoresf1pXH0GXWeshFeu31K%2B5b1cFkOO0wYjVMUQiNengGIX1OzRWAqcYt%2Ba2Zt4koxaamb4W%2BO7j2ijiXpTOh8bmnEUWdLihTfOz3n1T3BmxThie1oXEMDRCAFDx6aUM5TFFjGhUuDpwfGRt2vFZd6sIF5d2PxreKfsFzFRAHKlDOblYoDURhrLU4bVYu08wENz%2BJQNE5q5QabFcEeUW%2BV9h3L%2BJFT6fnQrJbws%2FGf6dnnJMIwOMuMm4PT6%2FfxS55SZIFAT2OwcJT2vO7%2BMQUbZG%2BC1wYh2qX3jb4oD4usC5b%2B%2F9hBNhdg8VvhVp7NdI9uLHnw9qB6ftX4qMBt%2FvjZXkdwDOJ4KJFk162V0xSjCq5OPHBjqaARXBP%2Fm0rwpjov%2BffCYf3K7YrHUYz6qdZKYVycoK9wHyxuUl26RxateQUVDsEXpoXxbkUFlVGVIt7FlP9fJCaXYMPYZOvNktTglSbbhxCg3aOCl2%2FDaJcUUqFwFNCBORmBHUsSH8%2Fvu9FF6Ks3i3pKwSN8Ekycl94bGB16OV7y0nBaeTv2mwf306hZufvLYo3ga%2F5GRcaWTHF9g%3D&X-Amz-Signature=fd4dd45d3a7942423bfa0f6e90584dd88ed83430b64d07c71e9522003f8b8c8a&X-Amz-SignedHeaders=host&x-amz-user-agent=aws-sdk-js%2F3.651.1&x-id=PutObject"
+  },
+  {
+    "body": "{\"images\":[{\"fileName\":\"1c9678.jpeg\"}]}",
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "Content-Type": "application/json",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "POST",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":[{\"id\":\"1c9678\",\"fileName\":\"1c9678.jpeg\",\"thumbnail\":\"https://images.yaga.ee/gq450umilmg/1c9678.jpeg?s=300\",\"gallery\":\"https://images.yaga.ee/gq450umilmg/1c9678.jpeg?s=600\",\"original\":\"https://images.yaga.ee/gq450umilmg/1c9678.jpeg\"}]}",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/product/21589468/images"
+  },
+  {
+    "body": "{\"province\":\"Tallinn/Harjumaa\",\"location\":\"Saue vald\"}",
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "Content-Type": "application/json",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "PATCH",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":{\"province\":\"Tallinn/Harjumaa\",\"location\":\"Saue vald\"}}",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/shop/6750465"
+  },
+  {
+    "body": "{\"price\":10,\"quantity\":1,\"colors_id_map\":[3,2],\"materials_id_map\":[5,13],\"category_id\":438,\"condition_id\":2,\"attributes\":{\"size\":\"6-9 kuud\"},\"description\":\"test\",\"location\":\"Tallinn/Harjumaa\",\"address\":\"Saue vald\",\"brand_id\":69,\"shipping\":{\"dpd\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"omniva\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"bundling\":{\"enabled\":true,\"selectedPrice\":\"zero\"},\"smartpost\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"uponAgreement\":{\"enabled\":false,\"selectedPrice\":\"zero\"},\"fromHandToHand\":{\"enabled\":false,\"selectedPrice\":\"zero\"}},\"status\":\"published\"}",
+    "headers": {
+      "Authorization": "Bearer eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6Njc1NjQxMSwicm9sZSI6InVzZXIiLCJhY3RpdmUiOnRydWUsImlhdCI6MTc2MTE0NTA3MywiZXhwIjoxNzYzNzM3MDczfQ.ARut4lej5GkyEMwMQlFzau2BxoSGpWfkUxHQebLmHdv2CkNIjAGX4MjJDf2ofWM1L3LcYERhe0fbbNkRNudkWhIEAaUsvDd8eKoVa-ntZ9xB3C3D3pRfqjaSOcZI91FpFDE8T7oj1qmy0OEzELtVpoaON-e8j1fj2GANfL4VHySG7iOU",
+      "Content-Type": "application/json",
+      "x-country": "EE",
+      "x-language": "et"
+    },
+    "method": "PATCH",
+    "response": {
+      "body": "{\"status\":\"success\",\"data\":{\"id\":21589468,\"mongo_id\":null,\"mongoId\":null,\"shop_id\":6750465,\"shopId\":6750465,\"name\":null,\"slug\":\"gq450umilmg\",\"description\":\"test\",\"price\":10,\"currency\":\"€\",\"status\":\"published\",\"quantity\":1,\"images\":[{\"id\":\"1c9678\",\"gallery\":\"https://images.yaga.ee/gq450umilmg/1c9678.jpeg?s=600\",\"file_name\":\"1c9678.jpeg\",\"fileName\":\"1c9678.jpeg\",\"original\":\"https://images.yaga.ee/gq450umilmg/1c9678.jpeg\",\"thumbnail\":\"https://images.yaga.ee/gq450umilmg/1c9678.jpeg?s=300\"}],\"shipping\":{\"dpd\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"omniva\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"bundling\":{\"enabled\":true,\"selectedPrice\":\"zero\"},\"smartpost\":{\"enabled\":true,\"selectedPrice\":\"small\"},\"uponAgreement\":{\"enabled\":false,\"selectedPrice\":\"zero\"},\"fromHandToHand\":{\"enabled\":false,\"selectedPrice\":\"zero\"}},\"size\":\"6-9 kuud\",\"tags\":[],\"location\":\"Tallinn/Harjumaa\",\"address\":\"Saue vald\",\"deleted_by\":null,\"deletedBy\":null,\"pinned_at\":null,\"pinnedAt\":null,\"featured_score\":0,\"featuredScore\":0,\"created_at\":\"2025-10-22T14:57:53.867Z\",\"createdAt\":\"2025-10-22T14:57:53.867Z\",\"updated_at\":\"2025-10-22T15:03:08.216Z\",\"updatedAt\":\"2025-10-22T15:03:08.216Z\",\"desc_tsv\":\"'kunstnahk':5 'polüester':6 'punane':3 'reserved':2 'riided':1 'sinine':4 'test':8 'uueväärne':7\",\"descTsv\":\"'kunstnahk':5 'polüester':6 'punane':3 'reserved':2 'riided':1 'sinine':4 'test':8 'uueväärne':7\",\"views\":0,\"included_shipping_price\":\"0.00\",\"includedShippingPrice\":\"0.00\",\"reserved_to\":null,\"reservedTo\":null,\"reserved_until\":null,\"reservedUntil\":null,\"brand_id\":69,\"brandId\":69,\"hidden_at\":null,\"hiddenAt\":null,\"hidden_by\":null,\"hiddenBy\":null,\"colors_id_map\":[3,2],\"colorsIdMap\":[3,2],\"category_id\":438,\"categoryId\":438,\"categories_map\":[3,438],\"categoriesMap\":[3,438],\"condition_id\":2,\"conditionId\":2,\"sources_id_map\":null,\"sourcesIdMap\":null,\"listed_at\":\"2025-10-22T14:57:53.867Z\",\"listedAt\":\"2025-10-22T14:57:53.867Z\",\"listed_at_counter\":0,\"listedAtCounter\":0,\"deleted_at\":null,\"deletedAt\":null,\"materials_id_map\":[5,13],\"materialsIdMap\":[5,13],\"draft_revision_count\":0,\"draftRevisionCount\":0,\"delete_reason\":null,\"deleteReason\":null,\"delete_comment\":null,\"deleteComment\":null,\"lowest_price\":\"10.00\",\"lowestPrice\":\"10.00\",\"first_published_at\":\"2025-10-22T15:03:08.213Z\",\"firstPublishedAt\":\"2025-10-22T15:03:08.213Z\",\"ai_tags\":null,\"aiTags\":null,\"ai_tagged_at\":null,\"aiTaggedAt\":null,\"hide_reason\":null,\"hideReason\":null,\"hide_comment\":null,\"hideComment\":null,\"descriptions_multilang\":null,\"descriptionsMultilang\":null,\"desc_tsv_multilang\":\"'ada':33 'apgerbi':1 'berniem':2 'blue':15 'clothes':3 'faux':27 'for':4 'jauns':25 'ka':24 'kids':5 'kunstnahk':26,29,30,31 'leather':28 'like':21 'maksliga':32 'new':22 'poliesters':35 'poluester':34,36,37,38 'polyester':39 'punane':8,9,10,12 'red':11 'reserved':7 'riided':6 'sarkans':13 'sinine':14,16,17,18 'test':40 'uuevaarne':20,23 'zils':19\",\"descTsvMultilang\":\"'ada':33 'apgerbi':1 'berniem':2 'blue':15 'clothes':3 'faux':27 'for':4 'jauns':25 'ka':24 'kids':5 'kunstnahk':26,29,30,31 'leather':28 'like':21 'maksliga':32 'new':22 'poliesters':35 'poluester':34,36,37,38 'polyester':39 'punane':8,9,10,12 'red':11 'reserved':7 'riided':6 'sarkans':13 'sinine':14,16,17,18 'test':40 'uuevaarne':20,23 'zils':19\",\"skip_updated_at_index\":null,\"skipUpdatedAtIndex\":null,\"first_published_user_country\":\"EE\",\"firstPublishedUserCountry\":\"EE\",\"_id\":21589468,\"attributes\":{\"size\":\"6-9 kuud\"},\"isFirstListing\":false}}",
+      "status": 200
+    },
+    "url": "https://www.yaga.ee/api/product/21589468"
+  }
+]
