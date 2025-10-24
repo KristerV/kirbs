@@ -12,7 +12,8 @@ defmodule KirbsWeb.BagLive.Capture do
      |> assign(:current_item, nil)
      |> assign(:current_item_photos, [])
      |> assign(:all_items, [])
-     |> assign(:camera_ready, false)}
+     |> assign(:camera_ready, false)
+     |> assign(:camera_error, nil)}
   end
 
   @impl true
@@ -98,9 +99,26 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   @impl true
+  def handle_event("camera_error", %{"error" => error}, socket) do
+    {:noreply, assign(socket, :camera_error, error)}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gray-900 text-white">
+      <%= if @camera_error do %>
+        <div class="bg-red-600 text-white p-4 mb-4">
+          <div class="container mx-auto">
+            <p class="font-bold">Camera Access Error</p>
+            <p class="text-sm">
+              Unable to access your camera. Please make sure you've granted camera permissions to this site, and that no other application is using the camera.
+            </p>
+            <p class="text-xs mt-2 text-red-100">Technical details: <%= @camera_error %></p>
+          </div>
+        </div>
+      <% end %>
+
       <%= if @phase == :bag_photos do %>
         <div class="container mx-auto p-4">
           <h1 class="text-2xl font-bold mb-4">
