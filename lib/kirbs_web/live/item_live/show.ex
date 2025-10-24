@@ -34,6 +34,15 @@ defmodule KirbsWeb.ItemLive.Show do
     yaga_colors_id_map = parse_integer_array(params["yaga_colors_id_map"])
     yaga_materials_id_map = parse_integer_array(params["yaga_materials_id_map"])
 
+    # Check if item is complete (all required fields filled + has images)
+    has_images = socket.assigns.images != []
+    yaga_category_filled = params["yaga_category_id"] not in [nil, ""]
+    yaga_condition_filled = params["yaga_condition_id"] not in [nil, ""]
+    listed_price_filled = params["listed_price"] not in [nil, ""]
+
+    is_complete = has_images && yaga_category_filled && yaga_condition_filled && listed_price_filled
+    new_status = if is_complete, do: "reviewed", else: "pending"
+
     update_params =
       params
       |> Map.take([
@@ -51,18 +60,14 @@ defmodule KirbsWeb.ItemLive.Show do
       |> Map.put("materials", materials)
       |> Map.put("yaga_colors_id_map", yaga_colors_id_map)
       |> Map.put("yaga_materials_id_map", yaga_materials_id_map)
+      |> Map.put("status", new_status)
       |> convert_to_atoms()
       |> convert_integers()
       |> convert_decimal()
 
     case Item.update(socket.assigns.item, update_params) do
       {:ok, item} ->
-        item = Ash.load!(item, [:bag])
-
-        {:noreply,
-         socket
-         |> assign(:item, item)
-         |> put_flash(:info, "Item saved successfully")}
+        {:noreply, push_navigate(socket, to: ~p"/bags/#{item.bag_id}")}
 
       {:error, error} ->
         {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
@@ -120,7 +125,7 @@ defmodule KirbsWeb.ItemLive.Show do
 
   defp convert_to_atoms(params) do
     params
-    |> Enum.map(fn {k, v} -> {String.to_existing_atom(k), v} end)
+    |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
     |> Enum.into(%{})
   end
 
