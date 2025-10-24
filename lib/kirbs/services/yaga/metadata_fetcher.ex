@@ -136,21 +136,17 @@ defmodule Kirbs.Services.Yaga.MetadataFetcher do
   end
 
   defp parse_brands(body) when is_map(body) do
-    # Brands API returns nested structure with groups
+    # Brands API returns flat array
     brands =
       body
       |> Map.get("data", [])
-      |> Enum.flat_map(fn group ->
-        group
-        |> Map.get("brands", [])
-        |> Enum.map(fn brand ->
-          %{
-            id: brand["id"],
-            name: brand["name"],
-            name_en: brand["nameEn"],
-            raw: brand
-          }
-        end)
+      |> Enum.map(fn brand ->
+        %{
+          id: brand["id"],
+          name: brand["name"],
+          name_en: brand["nameEn"] || brand["name_en"],
+          raw: brand
+        }
       end)
 
     {:ok, brands}
@@ -159,23 +155,33 @@ defmodule Kirbs.Services.Yaga.MetadataFetcher do
   defp parse_brands(_), do: {:error, "Invalid brands response"}
 
   defp parse_categories(body) when is_map(body) do
+    # Categories are nested hierarchically - need to flatten recursively
     categories =
       body
       |> Map.get("data", [])
-      |> Enum.map(fn cat ->
-        %{
-          id: cat["id"],
-          name: cat["name"],
-          name_en: cat["nameEn"],
-          parent_id: cat["parentId"],
-          raw: cat
-        }
-      end)
+      |> flatten_categories([])
 
     {:ok, categories}
   end
 
   defp parse_categories(_), do: {:error, "Invalid categories response"}
+
+  defp flatten_categories([], acc), do: acc
+
+  defp flatten_categories([cat | rest], acc) do
+    current = %{
+      id: cat["id"],
+      name: cat["title"],
+      name_en: cat["title"],
+      parent_id: cat["parent"],
+      raw: cat
+    }
+
+    # Recursively flatten subcategories
+    subcategories = flatten_categories(cat["categories"] || [], [])
+
+    flatten_categories(rest, [current | subcategories] ++ acc)
+  end
 
   defp parse_generic(body) when is_map(body) do
     items =
