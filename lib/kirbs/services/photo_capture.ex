@@ -43,12 +43,12 @@ defmodule Kirbs.Services.PhotoCapture do
     end
   end
 
-  defp save_photo(record, type, photo, index, upload_dir) do
+  defp save_photo(record, type, photo_binary, index, upload_dir) do
     timestamp = System.system_time(:millisecond)
     filename = "#{record.id}_#{timestamp}_#{index}.jpg"
     file_path = Path.join(upload_dir, filename)
 
-    case File.write(file_path, photo.binary) do
+    case File.write(file_path, photo_binary) do
       :ok ->
         params = %{
           path: filename,

@@ -7,6 +7,10 @@ import Config
 # any compile-time configuration in here, as it won't be applied.
 # The block below contains prod specific runtime configuration.
 
+# Image upload directory for all environments
+config :kirbs,
+  image_upload_dir: System.get_env("IMAGE_UPLOAD_DIR") || "/tmp/kirbs_uploads"
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server

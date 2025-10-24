@@ -11,23 +11,45 @@ defmodule KirbsWeb.BagLive.Capture do
      |> assign(:current_bag, nil)
      |> assign(:current_item, nil)
      |> assign(:current_item_photos, [])
-     |> assign(:all_items, [])}
+     |> assign(:all_items, [])
+     |> assign(:camera_ready, false)}
   end
 
   @impl true
-  def handle_event("capture_bag_photo", %{"photo" => photo}, socket) do
-    bag_photos = socket.assigns.bag_photos ++ [photo]
+  def handle_event("request_capture", _params, socket) do
+    {:noreply, push_event(socket, "capture_photo", %{})}
+  end
+
+  @impl true
+  def handle_event("photo_captured", %{"data" => data_url}, socket) do
+    # Extract base64 data from data URL
+    photo_data = extract_photo_data(data_url)
+
+    case socket.assigns.phase do
+      :bag_photos -> handle_bag_photo(socket, photo_data)
+      :item_photos -> handle_item_photo(socket, photo_data)
+    end
+  end
+
+  defp handle_bag_photo(socket, photo_data) do
+    bag_photos = socket.assigns.bag_photos ++ [photo_data]
     bag_step = socket.assigns.bag_step + 1
 
     socket =
       if bag_step > 3 do
         # All 3 bag photos captured, create bag and move to item phase
-        {:ok, bag} = create_bag_with_photos(bag_photos)
+        case create_bag_with_photos(bag_photos) do
+          {:ok, bag} ->
+            socket
+            |> assign(:phase, :item_photos)
+            |> assign(:current_bag, bag)
+            |> assign(:bag_photos, [])
+            |> create_new_item()
 
-        socket
-        |> assign(:phase, :item_photos)
-        |> assign(:current_bag, bag)
-        |> create_new_item()
+          {:error, _reason} ->
+            socket
+            |> put_flash(:error, "Failed to create bag")
+        end
       else
         socket
         |> assign(:bag_photos, bag_photos)
@@ -37,9 +59,8 @@ defmodule KirbsWeb.BagLive.Capture do
     {:noreply, socket}
   end
 
-  @impl true
-  def handle_event("capture_item_photo", %{"photo" => photo}, socket) do
-    current_item_photos = socket.assigns.current_item_photos ++ [photo]
+  defp handle_item_photo(socket, photo_data) do
+    current_item_photos = socket.assigns.current_item_photos ++ [photo_data]
 
     {:noreply, assign(socket, :current_item_photos, current_item_photos)}
   end
@@ -91,16 +112,12 @@ defmodule KirbsWeb.BagLive.Capture do
           </div>
 
           <div class="space-y-4">
-            <div class="bg-gray-800 p-8 rounded-lg">
-              <p class="text-center text-gray-400">Camera view would go here</p>
-              <p class="text-center text-sm text-gray-500 mt-2">
-                (Will implement camera capture component)
-              </p>
+            <div class="bg-black rounded-lg overflow-hidden" id="bag-camera" phx-hook="Camera">
+              <video class="w-full" autoplay playsinline></video>
             </div>
 
             <button
-              phx-click="capture_bag_photo"
-              phx-value-photo="dummy_photo_data"
+              phx-click="request_capture"
               class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
             >
               Capture
@@ -131,36 +148,32 @@ defmodule KirbsWeb.BagLive.Capture do
           </div>
 
           <div class="space-y-4">
-            <div class="bg-gray-800 p-8 rounded-lg">
-              <p class="text-center text-gray-400">Camera view would go here</p>
-              <p class="text-center text-sm text-gray-500 mt-2">
-                (Will implement camera capture component)
-              </p>
+            <div class="bg-black rounded-lg overflow-hidden" id="item-camera" phx-hook="Camera">
+              <video class="w-full" autoplay playsinline></video>
             </div>
 
-            <button
-              phx-click="capture_item_photo"
-              phx-value-photo="dummy_photo_data"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-            >
-              Capture
-            </button>
-
             <div class="grid grid-cols-2 gap-4">
-              <button
-                phx-click="next_item"
-                class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-              >
-                Next Item
-              </button>
-
               <button
                 phx-click="end_bag"
                 class="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
               >
                 End Bag
               </button>
+
+              <button
+                phx-click="next_item"
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+              >
+                Next Item
+              </button>
             </div>
+
+            <button
+              phx-click="request_capture"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+            >
+              Capture
+            </button>
           </div>
 
           <%= if length(@current_item_photos) > 0 do %>
@@ -185,10 +198,14 @@ defmodule KirbsWeb.BagLive.Capture do
   defp bag_step_title(2), do: "Take Layout Photo"
   defp bag_step_title(3), do: "Take Info Photo"
 
+  defp extract_photo_data(data_url) do
+    # Extract base64 data from "data:image/jpeg;base64,..." format
+    [_prefix, base64_data] = String.split(data_url, ",", parts: 2)
+    Base.decode64!(base64_data)
+  end
+
   defp create_bag_with_photos(photos) do
-    # TODO: Use PhotoCapture service
-    # For now, just create a bag
-    Kirbs.Resources.Bag.create(%{})
+    Kirbs.Services.PhotoCapture.run(%{type: :bag, photos: photos})
   end
 
   defp create_new_item(socket) do
@@ -197,8 +214,9 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   defp save_current_item(socket) do
-    # TODO: Use PhotoCapture service
-    # For now, just create an item
-    Kirbs.Resources.Item.create(%{bag_id: socket.assigns.current_bag.id})
+    photos = socket.assigns.current_item_photos
+    bag_id = socket.assigns.current_bag.id
+
+    Kirbs.Services.PhotoCapture.run(%{type: :item, bag_id: bag_id, photos: photos})
   end
 end
