@@ -27,15 +27,20 @@ defmodule KirbsWeb.Router do
 
     ash_authentication_live_session :authenticated_routes,
       on_mount: {KirbsWeb.LiveUserAuth, :live_user_required} do
+      live "/", DashboardLive.Index, :index
       live "/bags", BagLive.Index, :index
       live "/bags/capture", BagLive.Capture, :capture
+      live "/bags/:id", BagLive.Show, :show
+      live "/items/:id", ItemLive.Show, :show
+      live "/review", ReviewLive.Index, :index
+      live "/settings", SettingsLive.Index, :index
     end
   end
 
   scope "/", KirbsWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    get "/uploads/:filename", PageController, :serve_upload
     auth_routes AuthController, Kirbs.Accounts.User, path: "/auth"
     sign_out_route AuthController
 
