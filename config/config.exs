@@ -65,7 +65,7 @@ config :spark,
 config :kirbs,
   ecto_repos: [Kirbs.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Kirbs.Accounts]
+  ash_domains: [Kirbs.Accounts, Kirbs]
 
 # Configures the endpoint
 config :kirbs, KirbsWeb.Endpoint,

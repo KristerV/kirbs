@@ -1,9 +1,14 @@
 defmodule Kirbs do
-  @moduledoc """
-  Kirbs keeps the contexts that define your domain
-  and business logic.
+  use Ash.Domain, otp_app: :kirbs, extensions: [AshAdmin.Domain]
 
-  Contexts are also responsible for managing your data, regardless
-  if it comes from the database, an external API or others.
-  """
+  admin do
+    show? true
+  end
+
+  resources do
+    resource Kirbs.Resources.Client
+    resource Kirbs.Resources.Bag
+    resource Kirbs.Resources.Item
+    resource Kirbs.Resources.Image
+  end
 end

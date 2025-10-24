@@ -41,7 +41,6 @@ defmodule Kirbs.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:langgchain, "0.4.0"},
       {:ex_money_sql, "~> 1.0"},
       {:ex_cldr, "~> 2.0"},
       {:bcrypt_elixir, "~> 3.0"},
