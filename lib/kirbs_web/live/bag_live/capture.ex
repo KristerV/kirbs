@@ -150,9 +150,9 @@ defmodule KirbsWeb.BagLive.Capture do
         opacity: 0.2;
       }
     </style>
-    <div class="min-h-screen bg-gray-900 text-white">
+    <div class="h-[calc(100vh-4rem)] flex flex-col bg-gray-900 text-white overflow-hidden">
       <%= if @camera_error do %>
-        <div class="bg-red-600 text-white p-4 mb-4">
+        <div class="bg-red-600 text-white p-4">
           <div class="container mx-auto">
             <p class="font-bold">Camera Access Error</p>
             <p class="text-sm">
@@ -164,25 +164,16 @@ defmodule KirbsWeb.BagLive.Capture do
       <% end %>
 
       <%= if @phase == :bag_photos do %>
-        <div class="container mx-auto p-4">
-          <h1 class="text-2xl font-bold mb-4">
-            {bag_step_title(@bag_step)}
-          </h1>
-
-          <div class="mb-4 bg-blue-900 border border-blue-500 rounded-lg p-4">
-            <p class="text-lg font-semibold mb-2">Step {@bag_step} of 3</p>
-            <p class="text-base">{bag_step_instruction(@bag_step)}</p>
+        <div class="flex-1 flex flex-col min-h-0">
+          <div class="flex-1 bg-black relative min-h-0" id="bag-camera" phx-hook="Camera">
+            <video class="w-full h-full object-contain" autoplay playsinline></video>
+            <div class="camera-flash"></div>
+            <div class="absolute top-4 left-4 text-white text-9xl font-bold">
+              {@bag_step}/3
+            </div>
           </div>
 
-          <div class="space-y-4">
-            <div class="bg-black rounded-lg overflow-hidden relative" id="bag-camera" phx-hook="Camera">
-              <video class="w-full" autoplay playsinline></video>
-              <div class="camera-flash"></div>
-              <div class="absolute top-4 left-4 text-white text-9xl font-bold">
-                {@bag_step}/3
-              </div>
-            </div>
-
+          <div class="p-4 space-y-4">
             <button
               phx-click="request_capture"
               class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
@@ -190,39 +181,18 @@ defmodule KirbsWeb.BagLive.Capture do
               Capture
             </button>
           </div>
-
-          <%= if length(@bag_photos) > 0 do %>
-            <div class="mt-4 grid grid-cols-3 gap-2">
-              <%= for {_photo, idx} <- Enum.with_index(@bag_photos) do %>
-                <div class="bg-gray-700 p-2 rounded">
-                  <p class="text-xs text-center">Photo {idx + 1}</p>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
         </div>
       <% else %>
-        <div class="container mx-auto p-4">
-          <h1 class="text-2xl font-bold mb-4">
-            Item {length(@all_items) + 1} - Take Photos
-          </h1>
-
-          <div class="mb-4">
-            <p class="text-sm text-gray-400">
-              Current item: {length(@current_item_photos)} photo(s)
-            </p>
-            <p class="text-sm text-gray-400">Total items: {length(@all_items)}</p>
+        <div class="flex-1 flex flex-col min-h-0">
+          <div class="flex-1 bg-black relative min-h-0" id="item-camera" phx-hook="Camera">
+            <video class="w-full h-full object-contain" autoplay playsinline></video>
+            <div class="camera-flash"></div>
+            <div class="absolute top-4 left-4 text-white text-9xl font-bold">
+              {length(@current_item_photos)}
+            </div>
           </div>
 
-          <div class="space-y-4">
-            <div class="bg-black rounded-lg overflow-hidden relative" id="item-camera" phx-hook="Camera">
-              <video class="w-full" autoplay playsinline></video>
-              <div class="camera-flash"></div>
-              <div class="absolute top-4 left-4 text-white text-9xl font-bold">
-                {length(@current_item_photos)}
-              </div>
-            </div>
-
+          <div class="p-4 space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <button
                 phx-click="end_bag"
@@ -246,19 +216,6 @@ defmodule KirbsWeb.BagLive.Capture do
               Capture
             </button>
           </div>
-
-          <%= if length(@current_item_photos) > 0 do %>
-            <div class="mt-4">
-              <p class="text-sm mb-2">Current item photos:</p>
-              <div class="grid grid-cols-4 gap-2">
-                <%= for {_photo, idx} <- Enum.with_index(@current_item_photos) do %>
-                  <div class="bg-gray-700 p-2 rounded">
-                    <p class="text-xs text-center">Photo {idx + 1}</p>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
         </div>
       <% end %>
     </div>
