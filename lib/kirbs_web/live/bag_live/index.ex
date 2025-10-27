@@ -29,6 +29,7 @@ defmodule KirbsWeb.BagLive.Index do
                 <table class="table">
                   <thead>
                     <tr>
+                      <th>Number</th>
                       <th>ID</th>
                       <th>Created At</th>
                       <th>Actions</th>
@@ -37,6 +38,7 @@ defmodule KirbsWeb.BagLive.Index do
                   <tbody>
                     <%= for bag <- @bags do %>
                       <tr>
+                        <td><%= bag.number %></td>
                         <td><%= String.slice(bag.id, 0..7) %></td>
                         <td><%= Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M") %></td>
                         <td>

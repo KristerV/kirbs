@@ -11,6 +11,11 @@ defmodule Kirbs.Resources.Bag do
   attributes do
     uuid_primary_key :id
 
+    attribute :number, :integer do
+      allow_nil? false
+      generated? true
+    end
+
     create_timestamp :created_at
     update_timestamp :updated_at
   end

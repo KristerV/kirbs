@@ -83,7 +83,7 @@ defmodule KirbsWeb.BagLive.Show do
     <div class="bg-base-300 min-h-screen">
       <div class="max-w-6xl mx-auto p-6">
         <div class="flex justify-between items-center mb-6">
-          <h1 class="text-3xl font-bold">Bag Details</h1>
+          <h1 class="text-3xl font-bold">Bag #<%= @bag.number %></h1>
           <.link navigate="/review" class="btn btn-ghost">
             Back to Review Queue
           </.link>
