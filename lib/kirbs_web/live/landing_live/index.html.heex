@@ -359,6 +359,96 @@
         font-weight: bold;
     }
 
+    .modal-link {
+        color: white;
+        text-decoration: underline;
+        font-weight: bold;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+
+    .modal-link:hover {
+        opacity: 0.8;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modal-appear 0.3s ease-out;
+    }
+
+    @keyframes modal-appear {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        font-size: 2em;
+        cursor: pointer;
+        color: #999;
+        line-height: 1;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        background: #f0f0f0;
+        color: #333;
+    }
+
+    .modal-content h3 {
+        color: #FF7F3F;
+        font-size: 1.8em;
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+
+    .modal-content p {
+        color: #555;
+        line-height: 1.8;
+        margin-bottom: 15px;
+    }
+
+    .modal-content strong {
+        color: #FF7F3F;
+        font-weight: 700;
+    }
+
     @media (max-width: 768px) {
         h1 { font-size: 2.2em; }
         .landing-steps { grid-template-columns: 1fr; }
@@ -367,6 +457,7 @@
         .sorting-boxes { flex-direction: column; }
         .guide li { padding-left: 70px; font-size: 1.1em; }
         .guide li::before { width: 35px; height: 35px; left: 15px; }
+        .modal-content { padding: 30px 20px; }
     }
 </style>
 
@@ -456,8 +547,7 @@
             <ol>
                 <li>Pakenda riided ära</li>
                 <li>Lisa sisse paber oma nime, kontaktandmete ja pangakontoga</li>
-                <li>Mine Omniva, DPD või SmartPost pakiautomaati</li>
-                <li>Saada pakk <strong>Saue</strong> pakiautomaati ja telefoninumbriks lisa <strong>5635 5555</strong>. Rimi ja Kaubamajakas on parim, aga ükskõik milline on okei.</li>
+                <li>Saada pakk <a href="#" phx-click="show_modal" phx-value-type="parcel" class="modal-link">pakiautomaadi kaudu</a> või <a href="#" phx-click="show_modal" phx-value-type="bringin" class="modal-link">too see meile ära</a></li>
             </ol>
             <p style="text-align: center; margin-top: 30px; font-style: italic;">
                 ✅ Valmis! Kui saame paki kätte, anname sulle teada, mis läks müüki ja mis mitte.
@@ -490,6 +580,30 @@
     </section>
 
 </div>
+
+<%= if @show_modal == "parcel" do %>
+<div class="modal-overlay" phx-click="close_modal">
+    <div class="modal-content" phx-click="ignore">
+        <button class="modal-close" phx-click="close_modal">&times;</button>
+        <h3>📦 Pakiautomaadiga saatmine</h3>
+        <p>Mine <strong>Omniva, DPD või SmartPost</strong> pakiautomaati.</p>
+        <p>Saada pakk <strong>Saue</strong> pakiautomaati ja telefoninumbriks lisa <strong>5635 5555</strong>.</p>
+        <p>Rimi ja Kaubamajakas on parim, aga ükskõik milline Saue pakiautomaat on okei.</p>
+    </div>
+</div>
+<% end %>
+
+<%= if @show_modal == "bringin" do %>
+<div class="modal-overlay" phx-click="close_modal">
+    <div class="modal-content" phx-click="ignore">
+        <button class="modal-close" phx-click="close_modal">&times;</button>
+        <h3>🚗 Too riided ise kohale</h3>
+        <p>Me asume aadressil <strong>Kuuseheki 50-9, Saue linn</strong>.</p>
+        <p>Pargi uusehitise kõrvale - keegi märgi all liiga ei tee!</p>
+        <p>Ma tulen võtan pakid käest ära. Tasub enne tulemist helistada: <strong>5635 5555</strong>.</p>
+    </div>
+</div>
+<% end %>
 
 <footer>
     <div class="footer-content" style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 40px; max-width: 800px;">
