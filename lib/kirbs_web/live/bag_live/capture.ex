@@ -16,6 +16,7 @@ defmodule KirbsWeb.BagLive.Capture do
           |> assign(:current_bag, bag)
           |> assign(:current_item, nil)
           |> assign(:current_item_photos, [])
+          |> assign(:current_item_label_photos, [])
           |> assign(:all_items, [])
           |> assign(:camera_ready, false)
           |> assign(:camera_error, nil)
@@ -28,6 +29,7 @@ defmodule KirbsWeb.BagLive.Capture do
           |> assign(:current_bag, nil)
           |> assign(:current_item, nil)
           |> assign(:current_item_photos, [])
+          |> assign(:current_item_label_photos, [])
           |> assign(:all_items, [])
           |> assign(:camera_ready, false)
           |> assign(:camera_error, nil)
@@ -41,15 +43,68 @@ defmodule KirbsWeb.BagLive.Capture do
     {:noreply, push_event(socket, "capture_photo", %{})}
   end
 
-  @impl true
+  def handle_event("request_label_capture", _params, socket) do
+    {:noreply, push_event(socket, "capture_photo", %{is_label: true})}
+  end
+
+  def handle_event("photo_captured", %{"data" => data_url, "is_label" => is_label}, socket) do
+    # Extract base64 data from data URL
+    photo_data = extract_photo_data(data_url)
+
+    case socket.assigns.phase do
+      :bag_photos -> handle_bag_photo(socket, photo_data)
+      :item_photos -> handle_item_photo(socket, photo_data, is_label)
+    end
+  end
+
   def handle_event("photo_captured", %{"data" => data_url}, socket) do
     # Extract base64 data from data URL
     photo_data = extract_photo_data(data_url)
 
     case socket.assigns.phase do
       :bag_photos -> handle_bag_photo(socket, photo_data)
-      :item_photos -> handle_item_photo(socket, photo_data)
+      :item_photos -> handle_item_photo(socket, photo_data, false)
     end
+  end
+
+  def handle_event("next_item", _params, socket) do
+    socket =
+      with true <- length(socket.assigns.current_item_photos) > 0,
+           {:ok, item} <- save_current_item(socket) do
+        all_items = socket.assigns.all_items ++ [item]
+
+        socket
+        |> assign(:all_items, all_items)
+        |> create_new_item()
+      else
+        _ -> socket
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("end_bag", _params, socket) do
+    socket =
+      if length(socket.assigns.current_item_photos) > 0 do
+        {:ok, item} = save_current_item(socket)
+        assign(socket, :all_items, socket.assigns.all_items ++ [item])
+      else
+        socket
+      end
+
+    # If we started with an existing bag, redirect back to it
+    redirect_path =
+      if socket.assigns.bag_step == 4 do
+        ~p"/bags/#{socket.assigns.current_bag.id}"
+      else
+        ~p"/bags"
+      end
+
+    {:noreply, redirect(socket, to: redirect_path)}
+  end
+
+  def handle_event("camera_error", %{"error" => error}, socket) do
+    {:noreply, assign(socket, :camera_error, error)}
   end
 
   defp handle_bag_photo(socket, photo_data) do
@@ -61,6 +116,9 @@ defmodule KirbsWeb.BagLive.Capture do
         # All 3 bag photos captured, create bag and move to item phase
         case create_bag_with_photos(bag_photos) do
           {:ok, bag} ->
+            # Schedule AI processing for bag
+            schedule_bag_processing(bag.id)
+
             socket
             |> assign(:phase, :item_photos)
             |> assign(:current_bag, bag)
@@ -80,55 +138,14 @@ defmodule KirbsWeb.BagLive.Capture do
     {:noreply, socket}
   end
 
-  defp handle_item_photo(socket, photo_data) do
-    current_item_photos = socket.assigns.current_item_photos ++ [photo_data]
-
-    {:noreply, assign(socket, :current_item_photos, current_item_photos)}
-  end
-
-  @impl true
-  def handle_event("next_item", _params, socket) do
-    socket =
-      with true <- length(socket.assigns.current_item_photos) > 0,
-           {:ok, item} <- save_current_item(socket) do
-        all_items = socket.assigns.all_items ++ [item]
-
-        socket
-        |> assign(:all_items, all_items)
-        |> create_new_item()
-      else
-        _ -> socket
-      end
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event("end_bag", _params, socket) do
-    socket =
-      if length(socket.assigns.current_item_photos) > 0 do
-        {:ok, item} = save_current_item(socket)
-        assign(socket, :all_items, socket.assigns.all_items ++ [item])
-      else
-        socket
-      end
-
-    # TODO: Trigger AI processing jobs here
-
-    # If we started with an existing bag, redirect back to it
-    redirect_path =
-      if socket.assigns.bag_step == 4 do
-        ~p"/bags/#{socket.assigns.current_bag.id}"
-      else
-        ~p"/bags"
-      end
-
-    {:noreply, redirect(socket, to: redirect_path)}
-  end
-
-  @impl true
-  def handle_event("camera_error", %{"error" => error}, socket) do
-    {:noreply, assign(socket, :camera_error, error)}
+  defp handle_item_photo(socket, photo_data, is_label) do
+    if is_label do
+      current_item_label_photos = socket.assigns.current_item_label_photos ++ [photo_data]
+      {:noreply, assign(socket, :current_item_label_photos, current_item_label_photos)}
+    else
+      current_item_photos = socket.assigns.current_item_photos ++ [photo_data]
+      {:noreply, assign(socket, :current_item_photos, current_item_photos)}
+    end
   end
 
   @impl true
@@ -209,26 +226,33 @@ defmodule KirbsWeb.BagLive.Capture do
               </button>
             </div>
 
-            <button
-              phx-click="request_capture"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-            >
-              Capture
-            </button>
+            <div class="grid grid-cols-2 gap-4">
+              <button
+                phx-click="request_capture"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+              >
+                Capture
+              </button>
+
+              <button
+                phx-click="request_label_capture"
+                class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+              >
+                Capture Label
+              </button>
+            </div>
+
+            <div class="text-sm text-gray-400 text-center">
+              <div>
+                Regular: {length(@current_item_photos)} | Labels: {length(@current_item_label_photos)}
+              </div>
+            </div>
           </div>
         </div>
       <% end %>
     </div>
     """
   end
-
-  defp bag_step_title(1), do: "Take Bag Photo"
-  defp bag_step_title(2), do: "Take Layout Photo"
-  defp bag_step_title(3), do: "Take Info Photo"
-
-  defp bag_step_instruction(1), do: "Bag"
-  defp bag_step_instruction(2), do: "All items"
-  defp bag_step_instruction(3), do: "Info paper"
 
   defp extract_photo_data(data_url) do
     # Extract base64 data from "data:image/jpeg;base64,..." format
@@ -243,12 +267,39 @@ defmodule KirbsWeb.BagLive.Capture do
   defp create_new_item(socket) do
     socket
     |> assign(:current_item_photos, [])
+    |> assign(:current_item_label_photos, [])
   end
 
   defp save_current_item(socket) do
     photos = socket.assigns.current_item_photos
+    label_photos = socket.assigns.current_item_label_photos
     bag_id = socket.assigns.current_bag.id
 
-    Kirbs.Services.PhotoCapture.run(%{type: :item, bag_id: bag_id, photos: photos})
+    case Kirbs.Services.PhotoCapture.run(%{
+           type: :item,
+           bag_id: bag_id,
+           photos: photos,
+           label_photos: label_photos
+         }) do
+      {:ok, item} ->
+        # Schedule AI processing for item
+        schedule_item_processing(item.id)
+        {:ok, item}
+
+      error ->
+        error
+    end
+  end
+
+  defp schedule_bag_processing(bag_id) do
+    %{bag_id: bag_id}
+    |> Kirbs.Jobs.ProcessBagJob.new()
+    |> Oban.insert()
+  end
+
+  defp schedule_item_processing(item_id) do
+    %{item_id: item_id}
+    |> Kirbs.Jobs.ProcessItemJob.new()
+    |> Oban.insert()
   end
 end

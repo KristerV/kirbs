@@ -8,8 +8,8 @@ export const Camera = {
     this.startCamera()
 
     // Handle capture button clicks
-    this.handleEvent("capture_photo", () => {
-      this.capturePhoto()
+    this.handleEvent("capture_photo", (payload) => {
+      this.capturePhoto(payload.is_label || false)
     })
   },
 
@@ -48,7 +48,7 @@ export const Camera = {
     }
   },
 
-  capturePhoto() {
+  capturePhoto(isLabel = false) {
     if (!this.video || !this.video.videoWidth) {
       console.error("Video not ready")
       return
@@ -69,7 +69,8 @@ export const Camera = {
         this.pushEvent("photo_captured", {
           data: reader.result,
           width: this.canvas.width,
-          height: this.canvas.height
+          height: this.canvas.height,
+          is_label: isLabel
         })
       }
       reader.readAsDataURL(blob)

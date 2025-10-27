@@ -35,3 +35,6 @@ kirbs-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Secret configuration
+/config/dev.secret.exs
+

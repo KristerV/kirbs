@@ -11,6 +11,10 @@ import Config
 config :kirbs,
   image_upload_dir: System.get_env("IMAGE_UPLOAD_DIR") || "/tmp/kirbs_uploads"
 
+# LangChain Anthropic API key
+config :langchain,
+  anthropic_key: System.get_env("ANTHROPIC_API_KEY")
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server

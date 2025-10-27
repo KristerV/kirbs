@@ -17,16 +17,16 @@ defmodule Kirbs.Resources.Image do
   end
 
   actions do
-    default_accept [:path, :order, :bag_id, :item_id]
+    default_accept [:path, :order, :bag_id, :item_id, :is_label]
 
     defaults [:read, :destroy]
 
     create :create do
-      accept [:path, :order, :bag_id, :item_id]
+      accept [:path, :order, :bag_id, :item_id, :is_label]
     end
 
     update :update do
-      accept [:path, :order, :bag_id, :item_id]
+      accept [:path, :order, :bag_id, :item_id, :is_label]
     end
 
     read :get do
@@ -46,6 +46,11 @@ defmodule Kirbs.Resources.Image do
     attribute :order, :integer do
       allow_nil? false
       default 0
+    end
+
+    attribute :is_label, :boolean do
+      allow_nil? false
+      default false
     end
 
     create_timestamp :created_at

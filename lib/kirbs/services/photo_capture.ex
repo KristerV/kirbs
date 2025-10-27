@@ -6,14 +6,15 @@ defmodule Kirbs.Services.PhotoCapture do
 
   def run(%{type: :bag, photos: photos}) do
     with {:ok, bag} <- create_bag(),
-         {:ok, bag} <- save_photos(bag, :bag, photos) do
+         {:ok, bag} <- save_photos(bag, :bag, photos, false) do
       {:ok, bag}
     end
   end
 
-  def run(%{type: :item, bag_id: bag_id, photos: photos}) do
+  def run(%{type: :item, bag_id: bag_id, photos: photos, label_photos: label_photos}) do
     with {:ok, item} <- create_item(bag_id),
-         {:ok, item} <- save_photos(item, :item, photos) do
+         {:ok, item} <- save_photos(item, :item, photos, false),
+         {:ok, item} <- save_photos(item, :item, label_photos, true) do
       {:ok, item}
     end
   end
@@ -26,24 +27,46 @@ defmodule Kirbs.Services.PhotoCapture do
     Kirbs.Resources.Item.create(%{bag_id: bag_id})
   end
 
-  defp save_photos(record, type, photos) do
-    upload_dir = get_upload_dir()
-    File.mkdir_p!(upload_dir)
+  defp save_photos(record, type, photos, is_label) do
+    # Skip if no photos
+    if Enum.empty?(photos) do
+      {:ok, record}
+    else
+      upload_dir = get_upload_dir()
+      File.mkdir_p!(upload_dir)
 
-    photo_results =
-      photos
-      |> Enum.with_index()
-      |> Enum.map(fn {photo, index} ->
-        save_photo(record, type, photo, index, upload_dir)
-      end)
+      # Get current max order for this record
+      base_order = get_max_order(record, type)
 
-    case Enum.find(photo_results, &match?({:error, _}, &1)) do
-      {:error, reason} -> {:error, reason}
-      nil -> {:ok, record}
+      photo_results =
+        photos
+        |> Enum.with_index()
+        |> Enum.map(fn {photo, index} ->
+          save_photo(record, type, photo, base_order + index, upload_dir, is_label)
+        end)
+
+      case Enum.find(photo_results, &match?({:error, _}, &1)) do
+        {:error, reason} -> {:error, reason}
+        nil -> {:ok, record}
+      end
     end
   end
 
-  defp save_photo(record, type, photo_binary, index, upload_dir) do
+  defp get_max_order(record, :bag) do
+    case Ash.load(record, :images) do
+      {:ok, loaded} -> length(loaded.images)
+      _ -> 0
+    end
+  end
+
+  defp get_max_order(record, :item) do
+    case Ash.load(record, :images) do
+      {:ok, loaded} -> length(loaded.images)
+      _ -> 0
+    end
+  end
+
+  defp save_photo(record, type, photo_binary, index, upload_dir, is_label) do
     timestamp = System.system_time(:millisecond)
     filename = "#{record.id}_#{timestamp}_#{index}.jpg"
     file_path = Path.join(upload_dir, filename)
@@ -52,7 +75,8 @@ defmodule Kirbs.Services.PhotoCapture do
       :ok ->
         params = %{
           path: filename,
-          order: index
+          order: index,
+          is_label: is_label
         }
 
         params =

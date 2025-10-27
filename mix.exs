@@ -41,6 +41,7 @@ defmodule Kirbs.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:langchain, "== 0.4.0"},
       {:live_select, "~> 1.0"},
       {:git_hooks, "~> 0.8"},
       {:ex_money_sql, "~> 1.0"},
