@@ -43,7 +43,7 @@ defmodule Kirbs.MixProject do
     [
       {:langchain, "== 0.4.0"},
       {:live_select, "~> 1.0"},
-      {:git_hooks, "~> 0.8"},
+      {:git_hooks, "~> 0.8", only: [:dev]},
       {:ex_money_sql, "~> 1.0"},
       {:ex_cldr, "~> 2.0"},
       {:bcrypt_elixir, "~> 3.0"},
