@@ -18,7 +18,7 @@ defmodule KirbsWeb.ItemLive.Show do
     conditions = YagaTaxonomy.all_conditions() |> Enum.sort_by(& &1.name)
 
     # Prepare form changeset
-    form = AshPhoenix.Form.for_update(item, :update)
+    form = AshPhoenix.Form.for_update(item, :update, as: "item")
 
     # Build category lookup map
     category_map = Map.new(categories, &{&1.yaga_id, &1})
@@ -56,16 +56,16 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
-  def handle_event("save_item", params, socket) do
+  def handle_event("save_item", %{"item" => item_params}, socket) do
     # Parse array fields (colors and materials are submitted as arrays from live_select tags mode)
-    colors = parse_live_select_array(params["colors"])
-    materials = parse_live_select_array(params["materials"])
+    colors = parse_live_select_array(item_params["colors"])
+    materials = parse_live_select_array(item_params["materials"])
 
     # Check if item is complete (all required fields filled + has images)
     has_images = socket.assigns.images != []
-    category_filled = params["suggested_category"] not in [nil, ""]
-    quality_filled = params["quality"] not in [nil, ""]
-    listed_price_filled = params["listed_price"] not in [nil, ""]
+    category_filled = item_params["suggested_category"] not in [nil, ""]
+    quality_filled = item_params["quality"] not in [nil, ""]
+    listed_price_filled = item_params["listed_price"] not in [nil, ""]
 
     is_complete =
       has_images && category_filled && quality_filled && listed_price_filled
@@ -73,7 +73,7 @@ defmodule KirbsWeb.ItemLive.Show do
     new_status = if is_complete, do: "reviewed", else: "pending"
 
     update_params =
-      params
+      item_params
       |> Map.take([
         "brand",
         "size",
@@ -313,7 +313,7 @@ defmodule KirbsWeb.ItemLive.Show do
                   </label>
                   <input
                     type="text"
-                    name="size"
+                    name="item[size]"
                     class="input input-bordered w-full"
                     value={@item.size}
                     placeholder="6-9 kuud, 110"
@@ -396,7 +396,7 @@ defmodule KirbsWeb.ItemLive.Show do
                     <span class="label-text font-semibold">Description</span>
                   </label>
                   <textarea
-                    name="description"
+                    name="item[description]"
                     class="textarea textarea-bordered h-24 w-full"
                     placeholder="Describe the item..."
                   ><%= @item.description %></textarea>
@@ -434,7 +434,7 @@ defmodule KirbsWeb.ItemLive.Show do
                   <input
                     type="number"
                     step="0.01"
-                    name="listed_price"
+                    name="item[listed_price]"
                     class="input input-bordered"
                     value={@item.listed_price}
                     placeholder="10.00"
