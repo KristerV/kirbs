@@ -142,7 +142,7 @@ defmodule KirbsWeb.BagLive.Capture do
             <p class="text-sm">
               Unable to access your camera. Please make sure you've granted camera permissions to this site, and that no other application is using the camera.
             </p>
-            <p class="text-xs mt-2 text-red-100">Technical details: <%= @camera_error %></p>
+            <p class="text-xs mt-2 text-red-100">Technical details: {@camera_error}</p>
           </div>
         </div>
       <% end %>
@@ -150,12 +150,12 @@ defmodule KirbsWeb.BagLive.Capture do
       <%= if @phase == :bag_photos do %>
         <div class="container mx-auto p-4">
           <h1 class="text-2xl font-bold mb-4">
-            <%= bag_step_title(@bag_step) %>
+            {bag_step_title(@bag_step)}
           </h1>
 
           <div class="mb-4 bg-blue-900 border border-blue-500 rounded-lg p-4">
             <p class="text-lg font-semibold mb-2">Step {@bag_step} of 3</p>
-            <p class="text-base"><%= bag_step_instruction(@bag_step) %></p>
+            <p class="text-base">{bag_step_instruction(@bag_step)}</p>
           </div>
 
           <div class="space-y-4">
@@ -184,14 +184,14 @@ defmodule KirbsWeb.BagLive.Capture do
       <% else %>
         <div class="container mx-auto p-4">
           <h1 class="text-2xl font-bold mb-4">
-            Item <%= length(@all_items) + 1 %> - Take Photos
+            Item {length(@all_items) + 1} - Take Photos
           </h1>
 
           <div class="mb-4">
             <p class="text-sm text-gray-400">
-              Current item: <%= length(@current_item_photos) %> photo(s)
+              Current item: {length(@current_item_photos)} photo(s)
             </p>
-            <p class="text-sm text-gray-400">Total items: <%= length(@all_items) %></p>
+            <p class="text-sm text-gray-400">Total items: {length(@all_items)}</p>
           </div>
 
           <div class="space-y-4">

@@ -8,25 +8,11 @@ defmodule Kirbs.Resources.Bag do
     repo Kirbs.Repo
   end
 
-  attributes do
-    uuid_primary_key :id
-
-    attribute :number, :integer do
-      allow_nil? false
-      generated? true
-    end
-
-    create_timestamp :created_at
-    update_timestamp :updated_at
-  end
-
-  relationships do
-    belongs_to :client, Kirbs.Resources.Client do
-      allow_nil? true
-    end
-
-    has_many :items, Kirbs.Resources.Item
-    has_many :images, Kirbs.Resources.Image
+  code_interface do
+    define :get, args: [:id]
+    define :list
+    define :create
+    define :update
   end
 
   actions do
@@ -49,10 +35,24 @@ defmodule Kirbs.Resources.Bag do
     read :list
   end
 
-  code_interface do
-    define :get, args: [:id]
-    define :list
-    define :create
-    define :update
+  attributes do
+    uuid_primary_key :id
+
+    attribute :number, :integer do
+      allow_nil? false
+      generated? true
+    end
+
+    create_timestamp :created_at
+    update_timestamp :updated_at
+  end
+
+  relationships do
+    belongs_to :client, Kirbs.Resources.Client do
+      allow_nil? true
+    end
+
+    has_many :items, Kirbs.Resources.Item
+    has_many :images, Kirbs.Resources.Image
   end
 end

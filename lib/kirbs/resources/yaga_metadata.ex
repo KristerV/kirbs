@@ -8,45 +8,13 @@ defmodule Kirbs.Resources.YagaMetadata do
     repo Kirbs.Repo
   end
 
-  attributes do
-    uuid_primary_key :id
-
-    attribute :metadata_type, :atom do
-      allow_nil? false
-      public? true
-      constraints one_of: [:brand, :category, :color, :material, :condition]
-    end
-
-    attribute :yaga_id, :integer do
-      allow_nil? false
-      public? true
-    end
-
-    attribute :name, :string do
-      allow_nil? false
-      public? true
-    end
-
-    attribute :name_en, :string do
-      allow_nil? true
-      public? true
-    end
-
-    attribute :parent_id, :integer do
-      allow_nil? true
-      public? true
-    end
-
-    attribute :metadata_json, :map do
-      allow_nil? true
-      public? true
-    end
-
-    update_timestamp :updated_at
-  end
-
-  identities do
-    identity :unique_metadata, [:metadata_type, :yaga_id]
+  code_interface do
+    define :create
+    define :update
+    define :get, args: [:id]
+    define :list
+    define :list_by_type, args: [:metadata_type]
+    define :destroy
   end
 
   actions do
@@ -86,12 +54,44 @@ defmodule Kirbs.Resources.YagaMetadata do
     end
   end
 
-  code_interface do
-    define :create
-    define :update
-    define :get, args: [:id]
-    define :list
-    define :list_by_type, args: [:metadata_type]
-    define :destroy
+  attributes do
+    uuid_primary_key :id
+
+    attribute :metadata_type, :atom do
+      allow_nil? false
+      public? true
+      constraints one_of: [:brand, :category, :color, :material, :condition]
+    end
+
+    attribute :yaga_id, :integer do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :name, :string do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :name_en, :string do
+      allow_nil? true
+      public? true
+    end
+
+    attribute :parent_id, :integer do
+      allow_nil? true
+      public? true
+    end
+
+    attribute :metadata_json, :map do
+      allow_nil? true
+      public? true
+    end
+
+    update_timestamp :updated_at
+  end
+
+  identities do
+    identity :unique_metadata, [:metadata_type, :yaga_id]
   end
 end

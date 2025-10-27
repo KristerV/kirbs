@@ -8,6 +8,34 @@ defmodule Kirbs.Resources.Image do
     repo Kirbs.Repo
   end
 
+  code_interface do
+    define :get, args: [:id]
+    define :list
+    define :create
+    define :update
+    define :destroy
+  end
+
+  actions do
+    default_accept [:path, :order, :bag_id, :item_id]
+
+    defaults [:read, :destroy]
+
+    create :create do
+      accept [:path, :order, :bag_id, :item_id]
+    end
+
+    update :update do
+      accept [:path, :order, :bag_id, :item_id]
+    end
+
+    read :get do
+      get_by [:id]
+    end
+
+    read :list
+  end
+
   attributes do
     uuid_primary_key :id
 
@@ -31,33 +59,5 @@ defmodule Kirbs.Resources.Image do
     belongs_to :item, Kirbs.Resources.Item do
       allow_nil? true
     end
-  end
-
-  actions do
-    default_accept [:path, :order, :bag_id, :item_id]
-
-    defaults [:read, :destroy]
-
-    create :create do
-      accept [:path, :order, :bag_id, :item_id]
-    end
-
-    update :update do
-      accept [:path, :order, :bag_id, :item_id]
-    end
-
-    read :get do
-      get_by [:id]
-    end
-
-    read :list
-  end
-
-  code_interface do
-    define :get, args: [:id]
-    define :list
-    define :create
-    define :update
-    define :destroy
   end
 end

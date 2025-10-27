@@ -8,6 +8,38 @@ defmodule Kirbs.Resources.Client do
     repo Kirbs.Repo
   end
 
+  code_interface do
+    define :get, args: [:id]
+    define :list
+    define :find_by_phone, args: [:phone]
+    define :create
+    define :update
+  end
+
+  actions do
+    default_accept [:name, :phone, :email, :iban]
+
+    defaults [:read, :destroy]
+
+    create :create do
+      accept [:name, :phone, :email, :iban]
+    end
+
+    update :update do
+      accept [:name, :phone, :email, :iban]
+    end
+
+    read :get do
+      get_by [:id]
+    end
+
+    read :list
+
+    read :find_by_phone do
+      get_by [:phone]
+    end
+  end
+
   attributes do
     uuid_primary_key :id
 
@@ -37,37 +69,5 @@ defmodule Kirbs.Resources.Client do
 
   identities do
     identity :unique_phone, [:phone]
-  end
-
-  actions do
-    default_accept [:name, :phone, :email, :iban]
-
-    defaults [:read, :destroy]
-
-    create :create do
-      accept [:name, :phone, :email, :iban]
-    end
-
-    update :update do
-      accept [:name, :phone, :email, :iban]
-    end
-
-    read :get do
-      get_by [:id]
-    end
-
-    read :list
-
-    read :find_by_phone do
-      get_by [:phone]
-    end
-  end
-
-  code_interface do
-    define :get, args: [:id]
-    define :list
-    define :find_by_phone, args: [:phone]
-    define :create
-    define :update
   end
 end

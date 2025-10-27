@@ -8,25 +8,13 @@ defmodule Kirbs.Resources.Settings do
     repo Kirbs.Repo
   end
 
-  attributes do
-    uuid_primary_key :id
-
-    attribute :key, :string do
-      allow_nil? false
-      public? true
-    end
-
-    attribute :value, :string do
-      allow_nil? true
-      public? true
-    end
-
-    create_timestamp :created_at
-    update_timestamp :updated_at
-  end
-
-  identities do
-    identity :unique_key, [:key]
+  code_interface do
+    define :create
+    define :update
+    define :get, args: [:id]
+    define :list
+    define :get_by_key, args: [:key]
+    define :destroy
   end
 
   actions do
@@ -66,12 +54,24 @@ defmodule Kirbs.Resources.Settings do
     end
   end
 
-  code_interface do
-    define :create
-    define :update
-    define :get, args: [:id]
-    define :list
-    define :get_by_key, args: [:key]
-    define :destroy
+  attributes do
+    uuid_primary_key :id
+
+    attribute :key, :string do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :value, :string do
+      allow_nil? true
+      public? true
+    end
+
+    create_timestamp :created_at
+    update_timestamp :updated_at
+  end
+
+  identities do
+    identity :unique_key, [:key]
   end
 end

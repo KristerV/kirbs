@@ -40,7 +40,9 @@ defmodule KirbsWeb.ItemLive.Show do
     yaga_condition_filled = params["yaga_condition_id"] not in [nil, ""]
     listed_price_filled = params["listed_price"] not in [nil, ""]
 
-    is_complete = has_images && yaga_category_filled && yaga_condition_filled && listed_price_filled
+    is_complete =
+      has_images && yaga_category_filled && yaga_condition_filled && listed_price_filled
+
     new_status = if is_complete, do: "reviewed", else: "pending"
 
     update_params =
@@ -86,7 +88,9 @@ defmodule KirbsWeb.ItemLive.Show do
             File.rm(file_path)
 
             images =
-              Image.list!() |> Enum.filter(&(&1.item_id == socket.assigns.item.id)) |> Enum.sort_by(& &1.order)
+              Image.list!()
+              |> Enum.filter(&(&1.item_id == socket.assigns.item.id))
+              |> Enum.sort_by(& &1.order)
 
             {:noreply,
              socket
@@ -132,7 +136,9 @@ defmodule KirbsWeb.ItemLive.Show do
   defp convert_integers(params) do
     params
     |> Enum.map(fn
-      {k, v} when k in [:yaga_brand_id, :yaga_category_id, :yaga_condition_id] and is_binary(v) and v != "" ->
+      {k, v}
+      when k in [:yaga_brand_id, :yaga_category_id, :yaga_condition_id] and is_binary(v) and
+             v != "" ->
         {k, String.to_integer(v)}
 
       {k, v} when k in [:yaga_brand_id, :yaga_category_id, :yaga_condition_id] and v == "" ->
@@ -171,321 +177,329 @@ defmodule KirbsWeb.ItemLive.Show do
             Back to Bag
           </.link>
         </div>
-
-      <!-- Image Gallery -->
-      <div class="card bg-base-100 shadow-xl mb-6">
-        <div class="card-body">
-          <h2 class="card-title">Photos (<%= length(@images) %>)</h2>
-          <%= if @images == [] do %>
-            <div class="alert alert-warning">
-              <span>No photos for this item</span>
-            </div>
-          <% else %>
-            <div class="grid grid-cols-4 gap-4">
-              <%= for image <- @images do %>
-                <div class="relative group">
-                  <div class="aspect-square bg-base-200 rounded-lg overflow-hidden">
-                    <img
-                      src={"/uploads/#{image.path}"}
-                      alt="Item photo"
-                      class="w-full h-full object-cover"
-                    />
+        
+    <!-- Image Gallery -->
+        <div class="card bg-base-100 shadow-xl mb-6">
+          <div class="card-body">
+            <h2 class="card-title">Photos ({length(@images)})</h2>
+            <%= if @images == [] do %>
+              <div class="alert alert-warning">
+                <span>No photos for this item</span>
+              </div>
+            <% else %>
+              <div class="grid grid-cols-4 gap-4">
+                <%= for image <- @images do %>
+                  <div class="relative group">
+                    <div class="aspect-square bg-base-200 rounded-lg overflow-hidden">
+                      <img
+                        src={"/uploads/#{image.path}"}
+                        alt="Item photo"
+                        class="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-error btn-xs absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      phx-click="delete_image"
+                      phx-value-image_id={image.id}
+                      data-confirm="Are you sure you want to delete this image?"
+                    >
+                      Delete
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    class="btn btn-error btn-xs absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    phx-click="delete_image"
-                    phx-value-image_id={image.id}
-                    data-confirm="Are you sure you want to delete this image?"
-                  >
-                    Delete
-                  </button>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-
-      <!-- Item Data Form -->
-      <form phx-submit="save_item">
-        <div class="card bg-base-100 shadow-xl mb-6">
-          <div class="card-body">
-            <h2 class="card-title mb-4">Basic Information</h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Brand</span>
-                </label>
-                <input
-                  type="text"
-                  name="brand"
-                  class="input input-bordered w-full"
-                  value={@item.brand}
-                  placeholder="H&M, Zara"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Size</span>
-                </label>
-                <input
-                  type="text"
-                  name="size"
-                  class="input input-bordered w-full"
-                  value={@item.size}
-                  placeholder="6-9 kuud, 110"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Quality</span>
-                </label>
-                <input
-                  type="text"
-                  name="quality"
-                  class="input input-bordered w-full"
-                  value={@item.quality}
-                  placeholder="like new, used, worn"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Suggested Category</span>
-                </label>
-                <input
-                  type="text"
-                  name="suggested_category"
-                  class="input input-bordered w-full"
-                  value={@item.suggested_category}
-                  placeholder="Pluus, Püksid"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Colors</span>
-                </label>
-                <input
-                  type="text"
-                  name="colors"
-                  class="input input-bordered w-full"
-                  value={if @item.colors, do: Enum.join(@item.colors, ", "), else: ""}
-                  placeholder="red, blue, green"
-                />
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Materials</span>
-                </label>
-                <input
-                  type="text"
-                  name="materials"
-                  class="input input-bordered w-full"
-                  value={if @item.materials, do: Enum.join(@item.materials, ", "), else: ""}
-                  placeholder="cotton, polyester"
-                />
-              </div>
-
-              <div class="form-control md:col-span-2">
-                <label class="label">
-                  <span class="label-text font-semibold">Description</span>
-                </label>
-                <textarea
-                  name="description"
-                  class="textarea textarea-bordered h-24 w-full"
-                  placeholder="Describe the item..."
-                ><%= @item.description %></textarea>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow-xl mb-6">
-          <div class="card-body">
-            <h2 class="card-title mb-4">Yaga Integration</h2>
-
-            <%= if @brands == [] do %>
-              <div class="alert alert-warning mb-4">
-                <span>
-                  No Yaga metadata found. Please go to
-                  <.link navigate="/settings" class="link">Settings</.link>
-                  and refresh metadata.
-                </span>
-              </div>
-            <% end %>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Yaga Brand</span>
-                </label>
-                <select name="yaga_brand_id" class="select select-bordered w-full">
-                  <option value="">-- Select Brand --</option>
-                  <%= for brand <- @brands do %>
-                    <option value={brand.yaga_id} selected={@item.yaga_brand_id == brand.yaga_id}>
-                      <%= brand.name %>
-                    </option>
-                  <% end %>
-                </select>
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Yaga Category *</span>
-                </label>
-                <select name="yaga_category_id" class="select select-bordered w-full">
-                  <option value="">-- Select Category --</option>
-                  <%= for category <- @categories do %>
-                    <option
-                      value={category.yaga_id}
-                      selected={@item.yaga_category_id == category.yaga_id}
-                    >
-                      <%= category.name %>
-                    </option>
-                  <% end %>
-                </select>
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Yaga Condition *</span>
-                </label>
-                <select name="yaga_condition_id" class="select select-bordered w-full">
-                  <option value="">-- Select Condition --</option>
-                  <%= for condition <- @conditions do %>
-                    <option
-                      value={condition.yaga_id}
-                      selected={@item.yaga_condition_id == condition.yaga_id}
-                    >
-                      <%= condition.name %>
-                    </option>
-                  <% end %>
-                </select>
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Yaga Colors (IDs)</span>
-                </label>
-                <input
-                  type="text"
-                  name="yaga_colors_id_map"
-                  class="input input-bordered w-full"
-                  value={if @item.yaga_colors_id_map, do: Enum.join(@item.yaga_colors_id_map, ", "), else: ""}
-                  placeholder="1, 3, 5"
-                />
-                <label class="label">
-                  <span class="label-text-alt">
-                    <%= for color <- Enum.take(@colors, 5) do %>
-                      <span class="badge badge-sm mr-1">
-                        <%= color.yaga_id %>:<%= color.name %>
-                      </span>
-                    <% end %>
-                    ...
-                  </span>
-                </label>
-              </div>
-
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text font-semibold">Yaga Materials (IDs)</span>
-                </label>
-                <input
-                  type="text"
-                  name="yaga_materials_id_map"
-                  class="input input-bordered w-full"
-                  value={if @item.yaga_materials_id_map, do: Enum.join(@item.yaga_materials_id_map, ", "), else: ""}
-                  placeholder="2, 4"
-                />
-                <label class="label">
-                  <span class="label-text-alt">
-                    <%= for material <- Enum.take(@materials, 5) do %>
-                      <span class="badge badge-sm mr-1">
-                        <%= material.yaga_id %>:<%= material.name %>
-                      </span>
-                    <% end %>
-                    ...
-                  </span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow-xl mb-6">
-          <div class="card-body">
-            <h2 class="card-title mb-4">Pricing</h2>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">AI Suggested Price</span>
-                </label>
-                <input
-                  type="text"
-                  class="input input-bordered"
-                  value={@item.ai_suggested_price}
-                  disabled
-                />
-                <%= if @item.ai_price_explanation do %>
-                  <label class="label">
-                    <span class="label-text-alt"><%= @item.ai_price_explanation %></span>
-                  </label>
                 <% end %>
               </div>
+            <% end %>
+          </div>
+        </div>
+        
+    <!-- Item Data Form -->
+        <form phx-submit="save_item">
+          <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+              <h2 class="card-title mb-4">Basic Information</h2>
 
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Listed Price *</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="listed_price"
-                  class="input input-bordered"
-                  value={@item.listed_price}
-                  placeholder="10.00"
-                />
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Brand</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="brand"
+                    class="input input-bordered w-full"
+                    value={@item.brand}
+                    placeholder="H&M, Zara"
+                  />
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Size</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="size"
+                    class="input input-bordered w-full"
+                    value={@item.size}
+                    placeholder="6-9 kuud, 110"
+                  />
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Quality</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="quality"
+                    class="input input-bordered w-full"
+                    value={@item.quality}
+                    placeholder="like new, used, worn"
+                  />
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Suggested Category</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="suggested_category"
+                    class="input input-bordered w-full"
+                    value={@item.suggested_category}
+                    placeholder="Pluus, Püksid"
+                  />
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Colors</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="colors"
+                    class="input input-bordered w-full"
+                    value={if @item.colors, do: Enum.join(@item.colors, ", "), else: ""}
+                    placeholder="red, blue, green"
+                  />
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Materials</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="materials"
+                    class="input input-bordered w-full"
+                    value={if @item.materials, do: Enum.join(@item.materials, ", "), else: ""}
+                    placeholder="cotton, polyester"
+                  />
+                </div>
+
+                <div class="form-control md:col-span-2">
+                  <label class="label">
+                    <span class="label-text font-semibold">Description</span>
+                  </label>
+                  <textarea
+                    name="description"
+                    class="textarea textarea-bordered h-24 w-full"
+                    placeholder="Describe the item..."
+                  ><%= @item.description %></textarea>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="card bg-base-100 shadow-xl mb-6">
-          <div class="card-body">
-            <h2 class="card-title mb-4">Status</h2>
+          <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+              <h2 class="card-title mb-4">Yaga Integration</h2>
 
-            <div class="flex items-center gap-4">
-              <div class="badge badge-lg"><%= @item.status %></div>
-
-              <%= if @item.yaga_id do %>
-                <div class="text-sm">
-                  <span class="font-semibold">Yaga ID:</span>
-                  <%= @item.yaga_id %>
+              <%= if @brands == [] do %>
+                <div class="alert alert-warning mb-4">
+                  <span>
+                    No Yaga metadata found. Please go to
+                    <.link navigate="/settings" class="link">Settings</.link>
+                    and refresh metadata.
+                  </span>
                 </div>
               <% end %>
 
-              <%= if @item.upload_error do %>
-                <div class="alert alert-error">
-                  <span><%= @item.upload_error %></span>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Yaga Brand</span>
+                  </label>
+                  <select name="yaga_brand_id" class="select select-bordered w-full">
+                    <option value="">-- Select Brand --</option>
+                    <%= for brand <- @brands do %>
+                      <option value={brand.yaga_id} selected={@item.yaga_brand_id == brand.yaga_id}>
+                        {brand.name}
+                      </option>
+                    <% end %>
+                  </select>
                 </div>
-              <% end %>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Yaga Category *</span>
+                  </label>
+                  <select name="yaga_category_id" class="select select-bordered w-full">
+                    <option value="">-- Select Category --</option>
+                    <%= for category <- @categories do %>
+                      <option
+                        value={category.yaga_id}
+                        selected={@item.yaga_category_id == category.yaga_id}
+                      >
+                        {category.name}
+                      </option>
+                    <% end %>
+                  </select>
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Yaga Condition *</span>
+                  </label>
+                  <select name="yaga_condition_id" class="select select-bordered w-full">
+                    <option value="">-- Select Condition --</option>
+                    <%= for condition <- @conditions do %>
+                      <option
+                        value={condition.yaga_id}
+                        selected={@item.yaga_condition_id == condition.yaga_id}
+                      >
+                        {condition.name}
+                      </option>
+                    <% end %>
+                  </select>
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Yaga Colors (IDs)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="yaga_colors_id_map"
+                    class="input input-bordered w-full"
+                    value={
+                      if @item.yaga_colors_id_map,
+                        do: Enum.join(@item.yaga_colors_id_map, ", "),
+                        else: ""
+                    }
+                    placeholder="1, 3, 5"
+                  />
+                  <label class="label">
+                    <span class="label-text-alt">
+                      <%= for color <- Enum.take(@colors, 5) do %>
+                        <span class="badge badge-sm mr-1">
+                          {color.yaga_id}:{color.name}
+                        </span>
+                      <% end %>
+                      ...
+                    </span>
+                  </label>
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">Yaga Materials (IDs)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="yaga_materials_id_map"
+                    class="input input-bordered w-full"
+                    value={
+                      if @item.yaga_materials_id_map,
+                        do: Enum.join(@item.yaga_materials_id_map, ", "),
+                        else: ""
+                    }
+                    placeholder="2, 4"
+                  />
+                  <label class="label">
+                    <span class="label-text-alt">
+                      <%= for material <- Enum.take(@materials, 5) do %>
+                        <span class="badge badge-sm mr-1">
+                          {material.yaga_id}:{material.name}
+                        </span>
+                      <% end %>
+                      ...
+                    </span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="flex justify-end gap-2">
-          <button type="submit" class="btn btn-primary">
-            Save Item
-          </button>
-        </div>
-      </form>
+          <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+              <h2 class="card-title mb-4">Pricing</h2>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">AI Suggested Price</span>
+                  </label>
+                  <input
+                    type="text"
+                    class="input input-bordered"
+                    value={@item.ai_suggested_price}
+                    disabled
+                  />
+                  <%= if @item.ai_price_explanation do %>
+                    <label class="label">
+                      <span class="label-text-alt">{@item.ai_price_explanation}</span>
+                    </label>
+                  <% end %>
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Listed Price *</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="listed_price"
+                    class="input input-bordered"
+                    value={@item.listed_price}
+                    placeholder="10.00"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+              <h2 class="card-title mb-4">Status</h2>
+
+              <div class="flex items-center gap-4">
+                <div class="badge badge-lg">{@item.status}</div>
+
+                <%= if @item.yaga_id do %>
+                  <div class="text-sm">
+                    <span class="font-semibold">Yaga ID:</span>
+                    {@item.yaga_id}
+                  </div>
+                <% end %>
+
+                <%= if @item.upload_error do %>
+                  <div class="alert alert-error">
+                    <span>{@item.upload_error}</span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button type="submit" class="btn btn-primary">
+              Save Item
+            </button>
+          </div>
+        </form>
       </div>
     </div>
     """

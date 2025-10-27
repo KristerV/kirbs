@@ -38,9 +38,9 @@ defmodule KirbsWeb.BagLive.Index do
                   <tbody>
                     <%= for bag <- @bags do %>
                       <tr>
-                        <td><%= bag.number %></td>
-                        <td><%= String.slice(bag.id, 0..7) %></td>
-                        <td><%= Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M") %></td>
+                        <td>{bag.number}</td>
+                        <td>{String.slice(bag.id, 0..7)}</td>
+                        <td>{Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M")}</td>
                         <td>
                           <.link navigate={~p"/bags/#{bag.id}"} class="btn btn-primary btn-sm">
                             View

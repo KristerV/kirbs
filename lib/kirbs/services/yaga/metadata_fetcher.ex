@@ -22,18 +22,19 @@ defmodule Kirbs.Services.Yaga.MetadataFetcher do
   defp fetch_brands do
     with {:ok, response} <- http_get("/brand/?groupedFlat=true&sortOtherAlphabetically=true"),
          {:ok, brands} <- parse_brands(response) do
-      count = Enum.reduce(brands, 0, fn brand, acc ->
-        case YagaMetadata.create(%{
-               metadata_type: :brand,
-               yaga_id: brand.id,
-               name: brand.name,
-               name_en: brand.name_en,
-               metadata_json: brand.raw
-             }) do
-          {:ok, _} -> acc + 1
-          {:error, _} -> acc
-        end
-      end)
+      count =
+        Enum.reduce(brands, 0, fn brand, acc ->
+          case YagaMetadata.create(%{
+                 metadata_type: :brand,
+                 yaga_id: brand.id,
+                 name: brand.name,
+                 name_en: brand.name_en,
+                 metadata_json: brand.raw
+               }) do
+            {:ok, _} -> acc + 1
+            {:error, _} -> acc
+          end
+        end)
 
       {:ok, count}
     end
@@ -42,19 +43,20 @@ defmodule Kirbs.Services.Yaga.MetadataFetcher do
   defp fetch_categories do
     with {:ok, response} <- http_get("/category"),
          {:ok, categories} <- parse_categories(response) do
-      count = Enum.reduce(categories, 0, fn category, acc ->
-        case YagaMetadata.create(%{
-               metadata_type: :category,
-               yaga_id: category.id,
-               name: category.name,
-               name_en: category.name_en,
-               parent_id: category.parent_id,
-               metadata_json: category.raw
-             }) do
-          {:ok, _} -> acc + 1
-          {:error, _} -> acc
-        end
-      end)
+      count =
+        Enum.reduce(categories, 0, fn category, acc ->
+          case YagaMetadata.create(%{
+                 metadata_type: :category,
+                 yaga_id: category.id,
+                 name: category.name,
+                 name_en: category.name_en,
+                 parent_id: category.parent_id,
+                 metadata_json: category.raw
+               }) do
+            {:ok, _} -> acc + 1
+            {:error, _} -> acc
+          end
+        end)
 
       {:ok, count}
     end
@@ -63,18 +65,19 @@ defmodule Kirbs.Services.Yaga.MetadataFetcher do
   defp fetch_colors do
     with {:ok, response} <- http_get("/color"),
          {:ok, colors} <- parse_generic(response) do
-      count = Enum.reduce(colors, 0, fn color, acc ->
-        case YagaMetadata.create(%{
-               metadata_type: :color,
-               yaga_id: color.id,
-               name: color.name,
-               name_en: color.name_en,
-               metadata_json: color.raw
-             }) do
-          {:ok, _} -> acc + 1
-          {:error, _} -> acc
-        end
-      end)
+      count =
+        Enum.reduce(colors, 0, fn color, acc ->
+          case YagaMetadata.create(%{
+                 metadata_type: :color,
+                 yaga_id: color.id,
+                 name: color.name,
+                 name_en: color.name_en,
+                 metadata_json: color.raw
+               }) do
+            {:ok, _} -> acc + 1
+            {:error, _} -> acc
+          end
+        end)
 
       {:ok, count}
     end
@@ -83,18 +86,19 @@ defmodule Kirbs.Services.Yaga.MetadataFetcher do
   defp fetch_materials do
     with {:ok, response} <- http_get("/material"),
          {:ok, materials} <- parse_generic(response) do
-      count = Enum.reduce(materials, 0, fn material, acc ->
-        case YagaMetadata.create(%{
-               metadata_type: :material,
-               yaga_id: material.id,
-               name: material.name,
-               name_en: material.name_en,
-               metadata_json: material.raw
-             }) do
-          {:ok, _} -> acc + 1
-          {:error, _} -> acc
-        end
-      end)
+      count =
+        Enum.reduce(materials, 0, fn material, acc ->
+          case YagaMetadata.create(%{
+                 metadata_type: :material,
+                 yaga_id: material.id,
+                 name: material.name,
+                 name_en: material.name_en,
+                 metadata_json: material.raw
+               }) do
+            {:ok, _} -> acc + 1
+            {:error, _} -> acc
+          end
+        end)
 
       {:ok, count}
     end
@@ -103,18 +107,19 @@ defmodule Kirbs.Services.Yaga.MetadataFetcher do
   defp fetch_conditions do
     with {:ok, response} <- http_get("/condition"),
          {:ok, conditions} <- parse_generic(response) do
-      count = Enum.reduce(conditions, 0, fn condition, acc ->
-        case YagaMetadata.create(%{
-               metadata_type: :condition,
-               yaga_id: condition.id,
-               name: condition.name,
-               name_en: condition.name_en,
-               metadata_json: condition.raw
-             }) do
-          {:ok, _} -> acc + 1
-          {:error, _} -> acc
-        end
-      end)
+      count =
+        Enum.reduce(conditions, 0, fn condition, acc ->
+          case YagaMetadata.create(%{
+                 metadata_type: :condition,
+                 yaga_id: condition.id,
+                 name: condition.name,
+                 name_en: condition.name_en,
+                 metadata_json: condition.raw
+               }) do
+            {:ok, _} -> acc + 1
+            {:error, _} -> acc
+          end
+        end)
 
       {:ok, count}
     end
