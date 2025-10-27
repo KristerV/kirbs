@@ -2,18 +2,38 @@ defmodule KirbsWeb.BagLive.Capture do
   use KirbsWeb, :live_view
 
   @impl true
-  def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:phase, :bag_photos)
-     |> assign(:bag_step, 1)
-     |> assign(:bag_photos, [])
-     |> assign(:current_bag, nil)
-     |> assign(:current_item, nil)
-     |> assign(:current_item_photos, [])
-     |> assign(:all_items, [])
-     |> assign(:camera_ready, false)
-     |> assign(:camera_error, nil)}
+  def mount(params, _session, socket) do
+    # If bag_id is provided, skip bag photos and start adding items to existing bag
+    socket =
+      case params do
+        %{"bag_id" => bag_id} ->
+          bag = Kirbs.Resources.Bag.get!(bag_id)
+
+          socket
+          |> assign(:phase, :item_photos)
+          |> assign(:bag_step, 4)
+          |> assign(:bag_photos, [])
+          |> assign(:current_bag, bag)
+          |> assign(:current_item, nil)
+          |> assign(:current_item_photos, [])
+          |> assign(:all_items, [])
+          |> assign(:camera_ready, false)
+          |> assign(:camera_error, nil)
+
+        _ ->
+          socket
+          |> assign(:phase, :bag_photos)
+          |> assign(:bag_step, 1)
+          |> assign(:bag_photos, [])
+          |> assign(:current_bag, nil)
+          |> assign(:current_item, nil)
+          |> assign(:current_item_photos, [])
+          |> assign(:all_items, [])
+          |> assign(:camera_ready, false)
+          |> assign(:camera_error, nil)
+      end
+
+    {:ok, socket}
   end
 
   @impl true
@@ -95,7 +115,15 @@ defmodule KirbsWeb.BagLive.Capture do
 
     # TODO: Trigger AI processing jobs here
 
-    {:noreply, redirect(socket, to: ~p"/bags")}
+    # If we started with an existing bag, redirect back to it
+    redirect_path =
+      if socket.assigns.bag_step == 4 do
+        ~p"/bags/#{socket.assigns.current_bag.id}"
+      else
+        ~p"/bags"
+      end
+
+    {:noreply, redirect(socket, to: redirect_path)}
   end
 
   @impl true

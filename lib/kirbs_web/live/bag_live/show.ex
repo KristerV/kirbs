@@ -147,7 +147,12 @@ defmodule KirbsWeb.BagLive.Show do
       <!-- Items List -->
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-          <h2 class="card-title">Items (<%= length(@bag.items) %>)</h2>
+          <div class="flex justify-between items-center">
+            <h2 class="card-title">Items (<%= length(@bag.items) %>)</h2>
+            <.link navigate={~p"/bags/capture?bag_id=#{@bag.id}"} class="btn btn-primary btn-sm">
+              + Add More Items
+            </.link>
+          </div>
 
           <%= if @bag.items == [] do %>
             <div class="alert alert-info mt-4">
