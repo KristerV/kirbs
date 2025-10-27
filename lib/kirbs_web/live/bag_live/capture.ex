@@ -134,6 +134,22 @@ defmodule KirbsWeb.BagLive.Capture do
   @impl true
   def render(assigns) do
     ~H"""
+    <style>
+      .camera-flash {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: white;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+      .camera-flash.active {
+        opacity: 0.2;
+      }
+    </style>
     <div class="min-h-screen bg-gray-900 text-white">
       <%= if @camera_error do %>
         <div class="bg-red-600 text-white p-4 mb-4">
@@ -159,8 +175,12 @@ defmodule KirbsWeb.BagLive.Capture do
           </div>
 
           <div class="space-y-4">
-            <div class="bg-black rounded-lg overflow-hidden" id="bag-camera" phx-hook="Camera">
+            <div class="bg-black rounded-lg overflow-hidden relative" id="bag-camera" phx-hook="Camera">
               <video class="w-full" autoplay playsinline></video>
+              <div class="camera-flash"></div>
+              <div class="absolute top-4 left-4 text-white text-9xl font-bold">
+                {@bag_step}/3
+              </div>
             </div>
 
             <button
@@ -195,8 +215,12 @@ defmodule KirbsWeb.BagLive.Capture do
           </div>
 
           <div class="space-y-4">
-            <div class="bg-black rounded-lg overflow-hidden" id="item-camera" phx-hook="Camera">
+            <div class="bg-black rounded-lg overflow-hidden relative" id="item-camera" phx-hook="Camera">
               <video class="w-full" autoplay playsinline></video>
+              <div class="camera-flash"></div>
+              <div class="absolute top-4 left-4 text-white text-9xl font-bold">
+                {length(@current_item_photos)}
+              </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">

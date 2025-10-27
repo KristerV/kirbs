@@ -54,6 +54,9 @@ export const Camera = {
       return
     }
 
+    // Trigger flash effect
+    this.showFlash()
+
     // Draw current video frame to canvas
     const context = this.canvas.getContext("2d")
     context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height)
@@ -71,5 +74,15 @@ export const Camera = {
       }
       reader.readAsDataURL(blob)
     }, "image/jpeg", 0.9)
+  },
+
+  showFlash() {
+    const flash = this.el.querySelector(".camera-flash")
+    if (flash) {
+      flash.classList.add("active")
+      setTimeout(() => {
+        flash.classList.remove("active")
+      }, 300)
+    }
   }
 }
