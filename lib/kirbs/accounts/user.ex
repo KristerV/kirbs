@@ -12,15 +12,15 @@ defmodule Kirbs.Accounts.User do
         apply_on_password_change? true
       end
 
-      confirmation :confirm_new_user do
-        monitor_fields [:email]
-        confirm_on_create? true
-        confirm_on_update? false
-        require_interaction? true
-        confirmed_at_field :confirmed_at
-        auto_confirm_actions [:sign_in_with_magic_link, :reset_password_with_token]
-        sender Kirbs.Accounts.User.Senders.SendNewUserConfirmationEmail
-      end
+      # confirmation :confirm_new_user do
+      #   monitor_fields [:email]
+      #   confirm_on_create? true
+      #   confirm_on_update? false
+      #   require_interaction? true
+      #   confirmed_at_field :confirmed_at
+      #   auto_confirm_actions [:sign_in_with_magic_link, :reset_password_with_token]
+      #   sender Kirbs.Accounts.User.Senders.SendNewUserConfirmationEmail
+      # end
     end
 
     tokens do
