@@ -22,8 +22,6 @@ export const Camera = {
       const constraints = {
         video: {
           facingMode: "environment", // Use back camera on mobile
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
         },
         audio: false
       }
