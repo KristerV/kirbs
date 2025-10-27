@@ -1,5 +1,6 @@
 defmodule KirbsWeb.ItemLive.Show do
   use KirbsWeb, :live_view
+  import LiveSelect
 
   alias Kirbs.Resources.{Item, Image, YagaMetadata}
 
@@ -10,10 +11,30 @@ defmodule KirbsWeb.ItemLive.Show do
 
     # Load Yaga metadata for dropdowns
     brands = YagaMetadata.list_by_type!(:brand) |> Enum.sort_by(& &1.name)
-    categories = YagaMetadata.list_by_type!(:category) |> Enum.sort_by(& &1.name)
+    categories = YagaMetadata.list_by_type!(:category)
     colors = YagaMetadata.list_by_type!(:color) |> Enum.sort_by(& &1.name)
     materials = YagaMetadata.list_by_type!(:material) |> Enum.sort_by(& &1.name)
     conditions = YagaMetadata.list_by_type!(:condition) |> Enum.sort_by(& &1.name)
+
+    # Prepare form changeset
+    form = AshPhoenix.Form.for_update(item, :update)
+
+    # Build category lookup map
+    category_map = Map.new(categories, &{&1.yaga_id, &1})
+
+    # Prepare options for live_select with full paths
+    category_options =
+      categories
+      |> Enum.map(fn cat ->
+        path = build_category_path(cat, category_map)
+        {path, cat.yaga_id}
+      end)
+      |> Enum.sort_by(&elem(&1, 0))
+
+    brand_options = Enum.map(brands, &{&1.name, &1.yaga_id})
+    condition_options = Enum.map(conditions, &{&1.name, &1.yaga_id})
+    color_options = Enum.map(colors, &{&1.name, &1.yaga_id})
+    material_options = Enum.map(materials, &{&1.name, &1.yaga_id})
 
     {:ok,
      socket
@@ -23,7 +44,14 @@ defmodule KirbsWeb.ItemLive.Show do
      |> assign(:categories, categories)
      |> assign(:colors, colors)
      |> assign(:materials, materials)
-     |> assign(:conditions, conditions)}
+     |> assign(:conditions, conditions)
+     |> assign(:form, to_form(form))
+     |> assign(:category_options, category_options)
+     |> assign(:category_map, category_map)
+     |> assign(:brand_options, brand_options)
+     |> assign(:condition_options, condition_options)
+     |> assign(:color_options, color_options)
+     |> assign(:material_options, material_options)}
   end
 
   @impl true
@@ -31,8 +59,8 @@ defmodule KirbsWeb.ItemLive.Show do
     # Parse array fields
     colors = parse_array(params["colors"])
     materials = parse_array(params["materials"])
-    yaga_colors_id_map = parse_integer_array(params["yaga_colors_id_map"])
-    yaga_materials_id_map = parse_integer_array(params["yaga_materials_id_map"])
+    yaga_colors_id_map = parse_live_select_array(params["yaga_colors_id_map"])
+    yaga_materials_id_map = parse_live_select_array(params["yaga_materials_id_map"])
 
     # Check if item is complete (all required fields filled + has images)
     has_images = socket.assigns.images != []
@@ -77,6 +105,67 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
+  def handle_event("form_change", _params, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("save_and_upload", _params, socket) do
+    # TODO: Implement Yaga upload service
+    # For now, just show a message that this functionality needs to be implemented
+    {:noreply,
+     socket
+     |> put_flash(
+       :info,
+       "Save and upload functionality will be implemented. Please use the form to save first, then upload from bag view."
+     )}
+  end
+
+  @impl true
+  def handle_event("live_select_change", %{"text" => text, "id" => live_select_id}, socket) do
+    search_text = String.downcase(text)
+
+    options =
+      cond do
+        String.contains?(live_select_id, "yaga_brand_id") ->
+          socket.assigns.brands
+          |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
+          |> Enum.map(&{&1.name, &1.yaga_id})
+          |> Enum.sort_by(&elem(&1, 0))
+
+        String.contains?(live_select_id, "yaga_category_id") ->
+          socket.assigns.categories
+          |> Enum.map(fn cat ->
+            path = build_category_path(cat, socket.assigns.category_map)
+            {path, cat.yaga_id}
+          end)
+          |> Enum.filter(fn {path, _} -> String.contains?(String.downcase(path), search_text) end)
+          |> Enum.sort_by(&elem(&1, 0))
+
+        String.contains?(live_select_id, "yaga_condition_id") ->
+          socket.assigns.conditions
+          |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
+          |> Enum.map(&{&1.name, &1.yaga_id})
+
+        String.contains?(live_select_id, "yaga_colors_id_map") ->
+          socket.assigns.colors
+          |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
+          |> Enum.map(&{&1.name, &1.yaga_id})
+
+        String.contains?(live_select_id, "yaga_materials_id_map") ->
+          socket.assigns.materials
+          |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
+          |> Enum.map(&{&1.name, &1.yaga_id})
+
+        true ->
+          []
+      end
+
+    send_update(LiveSelect.Component, id: live_select_id, options: options)
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("delete_image", %{"image_id" => image_id}, socket) do
     case Image.get(image_id) do
       {:ok, image} ->
@@ -116,16 +205,18 @@ defmodule KirbsWeb.ItemLive.Show do
     |> Enum.reject(&(&1 == ""))
   end
 
-  defp parse_integer_array(nil), do: []
-  defp parse_integer_array(""), do: []
+  defp parse_live_select_array(nil), do: []
+  defp parse_live_select_array([]), do: []
 
-  defp parse_integer_array(str) when is_binary(str) do
-    str
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.map(&String.to_integer/1)
+  defp parse_live_select_array(list) when is_list(list) do
+    list
+    |> Enum.map(fn
+      val when is_integer(val) -> val
+      val when is_binary(val) -> String.to_integer(val)
+    end)
   end
+
+  defp parse_live_select_array(_), do: []
 
   defp convert_to_atoms(params) do
     params
@@ -163,6 +254,27 @@ defmodule KirbsWeb.ItemLive.Show do
 
       _ ->
         params
+    end
+  end
+
+  defp build_category_path(category, category_map) do
+    build_path_recursive(category, category_map, [])
+    |> Enum.reverse()
+    |> Enum.join(" > ")
+  end
+
+  defp build_path_recursive(category, category_map, acc) do
+    acc = [category.name | acc]
+
+    case category.parent_id do
+      nil ->
+        acc
+
+      parent_id ->
+        case Map.get(category_map, parent_id) do
+          nil -> acc
+          parent -> build_path_recursive(parent, category_map, acc)
+        end
     end
   end
 
@@ -214,7 +326,7 @@ defmodule KirbsWeb.ItemLive.Show do
         </div>
         
     <!-- Item Data Form -->
-        <form phx-submit="save_item">
+        <form phx-submit="save_item" phx-change="form_change">
           <div class="card bg-base-100 shadow-xl mb-6">
             <div class="card-body">
               <h2 class="card-title mb-4">Basic Information</h2>
@@ -331,102 +443,88 @@ defmodule KirbsWeb.ItemLive.Show do
                   <label class="label">
                     <span class="label-text font-semibold">Yaga Brand</span>
                   </label>
-                  <select name="yaga_brand_id" class="select select-bordered w-full">
-                    <option value="">-- Select Brand --</option>
-                    <%= for brand <- @brands do %>
-                      <option value={brand.yaga_id} selected={@item.yaga_brand_id == brand.yaga_id}>
-                        {brand.name}
-                      </option>
-                    <% end %>
-                  </select>
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:yaga_brand_id]}
+                      mode={:single}
+                      style={:daisyui}
+                      placeholder="Search brands..."
+                      value={@item.yaga_brand_id}
+                      options={@brand_options}
+                      update_min_len={0}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text font-semibold">Yaga Category *</span>
                   </label>
-                  <select name="yaga_category_id" class="select select-bordered w-full">
-                    <option value="">-- Select Category --</option>
-                    <%= for category <- @categories do %>
-                      <option
-                        value={category.yaga_id}
-                        selected={@item.yaga_category_id == category.yaga_id}
-                      >
-                        {category.name}
-                      </option>
-                    <% end %>
-                  </select>
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:yaga_category_id]}
+                      mode={:single}
+                      style={:daisyui}
+                      placeholder="Search categories..."
+                      value={@item.yaga_category_id}
+                      options={@category_options}
+                      update_min_len={0}
+                      dropdown_class="bg-base-200 dropdown-content menu menu-compact p-1 rounded-box shadow z-[1] min-w-[800px]"
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text font-semibold">Yaga Condition *</span>
                   </label>
-                  <select name="yaga_condition_id" class="select select-bordered w-full">
-                    <option value="">-- Select Condition --</option>
-                    <%= for condition <- @conditions do %>
-                      <option
-                        value={condition.yaga_id}
-                        selected={@item.yaga_condition_id == condition.yaga_id}
-                      >
-                        {condition.name}
-                      </option>
-                    <% end %>
-                  </select>
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:yaga_condition_id]}
+                      mode={:single}
+                      style={:daisyui}
+                      placeholder="Search conditions..."
+                      value={@item.yaga_condition_id}
+                      options={@condition_options}
+                      update_min_len={0}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
                   <label class="label">
-                    <span class="label-text font-semibold">Yaga Colors (IDs)</span>
+                    <span class="label-text font-semibold">Yaga Colors</span>
                   </label>
-                  <input
-                    type="text"
-                    name="yaga_colors_id_map"
-                    class="input input-bordered w-full"
-                    value={
-                      if @item.yaga_colors_id_map,
-                        do: Enum.join(@item.yaga_colors_id_map, ", "),
-                        else: ""
-                    }
-                    placeholder="1, 3, 5"
-                  />
-                  <label class="label">
-                    <span class="label-text-alt">
-                      <%= for color <- Enum.take(@colors, 5) do %>
-                        <span class="badge badge-sm mr-1">
-                          {color.yaga_id}:{color.name}
-                        </span>
-                      <% end %>
-                      ...
-                    </span>
-                  </label>
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:yaga_colors_id_map]}
+                      mode={:tags}
+                      style={:daisyui}
+                      placeholder="Search colors..."
+                      value={@item.yaga_colors_id_map || []}
+                      options={@color_options}
+                      update_min_len={0}
+                      keep_options_on_select={true}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
                   <label class="label">
-                    <span class="label-text font-semibold">Yaga Materials (IDs)</span>
+                    <span class="label-text font-semibold">Yaga Materials</span>
                   </label>
-                  <input
-                    type="text"
-                    name="yaga_materials_id_map"
-                    class="input input-bordered w-full"
-                    value={
-                      if @item.yaga_materials_id_map,
-                        do: Enum.join(@item.yaga_materials_id_map, ", "),
-                        else: ""
-                    }
-                    placeholder="2, 4"
-                  />
-                  <label class="label">
-                    <span class="label-text-alt">
-                      <%= for material <- Enum.take(@materials, 5) do %>
-                        <span class="badge badge-sm mr-1">
-                          {material.yaga_id}:{material.name}
-                        </span>
-                      <% end %>
-                      ...
-                    </span>
-                  </label>
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:yaga_materials_id_map]}
+                      mode={:tags}
+                      style={:daisyui}
+                      placeholder="Search materials..."
+                      value={@item.yaga_materials_id_map || []}
+                      options={@material_options}
+                      update_min_len={0}
+                      keep_options_on_select={true}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -497,6 +595,14 @@ defmodule KirbsWeb.ItemLive.Show do
           <div class="flex justify-end gap-2">
             <button type="submit" class="btn btn-primary">
               Save Item
+            </button>
+            <button
+              type="button"
+              class="btn btn-success"
+              phx-click="save_and_upload"
+              disabled={@item.status == :uploaded_to_yaga}
+            >
+              Save and Upload to Yaga
             </button>
           </div>
         </form>

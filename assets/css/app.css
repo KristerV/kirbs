@@ -3,6 +3,7 @@
 
 @import "tailwindcss" source(none);
 @source "../../deps/ash_authentication_phoenix";
+@source "../../deps/live_select";
 @source "../css";
 @source "../js";
 @source "../../lib/kirbs_web";

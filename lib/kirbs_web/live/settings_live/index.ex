@@ -2,6 +2,7 @@ defmodule KirbsWeb.SettingsLive.Index do
   use KirbsWeb, :live_view
 
   alias Kirbs.Resources.Settings
+  alias Kirbs.Resources.YagaMetadata
   alias Kirbs.Services.Yaga.MetadataFetcher
 
   @impl true
@@ -13,11 +14,18 @@ defmodule KirbsWeb.SettingsLive.Index do
         {:error, _} -> ""
       end
 
+    yaga_metadata =
+      case YagaMetadata.list() do
+        {:ok, metadata} -> metadata
+        {:error, _} -> []
+      end
+
     {:ok,
      socket
      |> assign(:jwt_token, jwt_setting)
      |> assign(:loading, false)
-     |> assign(:message, nil)}
+     |> assign(:message, nil)
+     |> assign(:yaga_metadata, yaga_metadata)}
   end
 
   @impl true
@@ -46,9 +54,16 @@ defmodule KirbsWeb.SettingsLive.Index do
   def handle_info(:do_refresh_metadata, socket) do
     case MetadataFetcher.run() do
       {:ok, count} ->
+        yaga_metadata =
+          case YagaMetadata.list() do
+            {:ok, metadata} -> metadata
+            {:error, _} -> []
+          end
+
         {:noreply,
          socket
          |> assign(:loading, false)
+         |> assign(:yaga_metadata, yaga_metadata)
          |> put_flash(:info, "Successfully fetched #{count} metadata records from Yaga")}
 
       {:error, reason} ->
@@ -99,7 +114,7 @@ defmodule KirbsWeb.SettingsLive.Index do
               Fetch brands, categories, colors, materials, and conditions from Yaga.ee
             </p>
 
-            <div class="card-actions justify-end">
+            <div class="card-actions justify-end mb-4">
               <button
                 type="button"
                 phx-click="refresh_metadata"
@@ -112,6 +127,18 @@ defmodule KirbsWeb.SettingsLive.Index do
                   Refresh Metadata
                 <% end %>
               </button>
+            </div>
+
+            <div class="collapse collapse-arrow bg-base-200">
+              <input type="checkbox" />
+              <div class="collapse-title text-xl font-medium">
+                View Raw Database Data ({length(@yaga_metadata)} records)
+              </div>
+              <div class="collapse-content">
+                <div class="overflow-x-auto">
+                  <pre class="bg-base-300 p-4 rounded-lg text-xs overflow-auto max-h-96"><%= inspect(@yaga_metadata, pretty: true) %></pre>
+                </div>
+              </div>
             </div>
           </div>
         </div>
