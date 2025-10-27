@@ -455,14 +455,30 @@ defmodule KirbsWeb.CoreComponents do
   def status_badge(assigns) do
     {label, color} =
       case assigns.status do
-        :empty -> {"Empty", "badge-ghost"}
-        :needs_review -> {"Needs Review", "badge-warning"}
-        :ready_to_upload -> {"Ready to Upload", "badge-info"}
-        :uploaded -> {"Uploaded", "badge-success"}
-        :completed -> {"Completed", "badge-success"}
-        :has_failures -> {"Has Failures", "badge-error"}
-        :mixed -> {"Mixed", "badge-neutral"}
-        _ -> {assigns.status |> to_string() |> String.replace("_", " ") |> String.capitalize(), "badge-neutral"}
+        :empty ->
+          {"Empty", "badge-ghost"}
+
+        :needs_review ->
+          {"Needs Review", "badge-warning"}
+
+        :ready_to_upload ->
+          {"Ready to Upload", "badge-info"}
+
+        :uploaded ->
+          {"Uploaded", "badge-success"}
+
+        :completed ->
+          {"Completed", "badge-success"}
+
+        :has_failures ->
+          {"Has Failures", "badge-error"}
+
+        :mixed ->
+          {"Mixed", "badge-neutral"}
+
+        _ ->
+          {assigns.status |> to_string() |> String.replace("_", " ") |> String.capitalize(),
+           "badge-neutral"}
       end
 
     assigns = assign(assigns, label: label, color: color)

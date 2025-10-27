@@ -56,13 +56,11 @@ defmodule Kirbs.Resources.Bag do
     has_many :images, Kirbs.Resources.Image
   end
 
-  aggregates do
-    count :item_count, :items
+  calculations do
+    calculate :needs_review, :boolean, expr(exists(items, status in [:pending, :ai_processed]))
   end
 
-  calculations do
-    calculate :needs_review, :boolean, expr(
-      exists(items, status in [:pending, :ai_processed])
-    )
+  aggregates do
+    count :item_count, :items
   end
 end
