@@ -125,8 +125,9 @@ defmodule KirbsWeb.BagLive.Capture do
             <%= bag_step_title(@bag_step) %>
           </h1>
 
-          <div class="mb-4">
-            <p class="text-lg">Step {@bag_step} of 3</p>
+          <div class="mb-4 bg-blue-900 border border-blue-500 rounded-lg p-4">
+            <p class="text-lg font-semibold mb-2">Step {@bag_step} of 3</p>
+            <p class="text-base"><%= bag_step_instruction(@bag_step) %></p>
           </div>
 
           <div class="space-y-4">
@@ -215,6 +216,10 @@ defmodule KirbsWeb.BagLive.Capture do
   defp bag_step_title(1), do: "Take Bag Photo"
   defp bag_step_title(2), do: "Take Layout Photo"
   defp bag_step_title(3), do: "Take Info Photo"
+
+  defp bag_step_instruction(1), do: "Bag"
+  defp bag_step_instruction(2), do: "All items"
+  defp bag_step_instruction(3), do: "Info paper"
 
   defp extract_photo_data(data_url) do
     # Extract base64 data from "data:image/jpeg;base64,..." format
