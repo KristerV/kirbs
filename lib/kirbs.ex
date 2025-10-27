@@ -11,6 +11,5 @@ defmodule Kirbs do
     resource Kirbs.Resources.Item
     resource Kirbs.Resources.Image
     resource Kirbs.Resources.Settings
-    resource Kirbs.Resources.YagaMetadata
   end
 end

@@ -26,11 +26,6 @@ defmodule Kirbs.Resources.Item do
       :description,
       :quality,
       :suggested_category,
-      :yaga_brand_id,
-      :yaga_category_id,
-      :yaga_colors_id_map,
-      :yaga_materials_id_map,
-      :yaga_condition_id,
       :ai_suggested_price,
       :ai_price_explanation,
       :listed_price,
@@ -53,11 +48,6 @@ defmodule Kirbs.Resources.Item do
         :description,
         :quality,
         :suggested_category,
-        :yaga_brand_id,
-        :yaga_category_id,
-        :yaga_colors_id_map,
-        :yaga_materials_id_map,
-        :yaga_condition_id,
         :ai_suggested_price,
         :ai_price_explanation,
         :listed_price,
@@ -79,11 +69,6 @@ defmodule Kirbs.Resources.Item do
         :description,
         :quality,
         :suggested_category,
-        :yaga_brand_id,
-        :yaga_category_id,
-        :yaga_colors_id_map,
-        :yaga_materials_id_map,
-        :yaga_condition_id,
         :ai_suggested_price,
         :ai_price_explanation,
         :listed_price,
@@ -113,7 +98,7 @@ defmodule Kirbs.Resources.Item do
   attributes do
     uuid_primary_key :id
 
-    # AI-extracted data
+    # AI-extracted data (also used for Yaga upload via YagaTaxonomy lookup)
     attribute :brand, :string
     attribute :size, :string
     attribute :colors, {:array, :string}
@@ -121,13 +106,6 @@ defmodule Kirbs.Resources.Item do
     attribute :description, :string
     attribute :quality, :string
     attribute :suggested_category, :string
-
-    # Yaga-specific fields
-    attribute :yaga_brand_id, :integer
-    attribute :yaga_category_id, :integer
-    attribute :yaga_colors_id_map, {:array, :integer}
-    attribute :yaga_materials_id_map, {:array, :integer}
-    attribute :yaga_condition_id, :integer
 
     # Pricing
     attribute :ai_suggested_price, :decimal

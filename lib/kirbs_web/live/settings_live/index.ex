@@ -2,8 +2,6 @@ defmodule KirbsWeb.SettingsLive.Index do
   use KirbsWeb, :live_view
 
   alias Kirbs.Resources.Settings
-  alias Kirbs.Resources.YagaMetadata
-  alias Kirbs.Services.Yaga.MetadataFetcher
 
   @impl true
   def mount(_params, _session, socket) do
@@ -14,18 +12,9 @@ defmodule KirbsWeb.SettingsLive.Index do
         {:error, _} -> ""
       end
 
-    yaga_metadata =
-      case YagaMetadata.list() do
-        {:ok, metadata} -> metadata
-        {:error, _} -> []
-      end
-
     {:ok,
      socket
-     |> assign(:jwt_token, jwt_setting)
-     |> assign(:loading, false)
-     |> assign(:message, nil)
-     |> assign(:yaga_metadata, yaga_metadata)}
+     |> assign(:jwt_token, jwt_setting)}
   end
 
   @impl true
@@ -41,36 +30,6 @@ defmodule KirbsWeb.SettingsLive.Index do
         {:noreply,
          socket
          |> put_flash(:error, "Failed to save JWT token")}
-    end
-  end
-
-  @impl true
-  def handle_event("refresh_metadata", _params, socket) do
-    send(self(), :do_refresh_metadata)
-    {:noreply, assign(socket, :loading, true)}
-  end
-
-  @impl true
-  def handle_info(:do_refresh_metadata, socket) do
-    case MetadataFetcher.run() do
-      {:ok, count} ->
-        yaga_metadata =
-          case YagaMetadata.list() do
-            {:ok, metadata} -> metadata
-            {:error, _} -> []
-          end
-
-        {:noreply,
-         socket
-         |> assign(:loading, false)
-         |> assign(:yaga_metadata, yaga_metadata)
-         |> put_flash(:info, "Successfully fetched #{count} metadata records from Yaga")}
-
-      {:error, reason} ->
-        {:noreply,
-         socket
-         |> assign(:loading, false)
-         |> put_flash(:error, "Failed to fetch metadata: #{inspect(reason)}")}
     end
   end
 
@@ -104,42 +63,6 @@ defmodule KirbsWeb.SettingsLive.Index do
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title">Yaga Metadata</h2>
-            <p class="text-sm text-base-content/70 mb-4">
-              Fetch brands, categories, colors, materials, and conditions from Yaga.ee
-            </p>
-
-            <div class="card-actions justify-end mb-4">
-              <button
-                type="button"
-                phx-click="refresh_metadata"
-                class="btn btn-secondary"
-                disabled={@loading}
-              >
-                <%= if @loading do %>
-                  <span class="loading loading-spinner loading-sm"></span> Fetching...
-                <% else %>
-                  Refresh Metadata
-                <% end %>
-              </button>
-            </div>
-
-            <div class="collapse collapse-arrow bg-base-200">
-              <input type="checkbox" />
-              <div class="collapse-title text-xl font-medium">
-                View Raw Database Data ({length(@yaga_metadata)} records)
-              </div>
-              <div class="collapse-content">
-                <div class="overflow-x-auto">
-                  <pre class="bg-base-300 p-4 rounded-lg text-xs overflow-auto max-h-96"><%= inspect(@yaga_metadata, pretty: true) %></pre>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

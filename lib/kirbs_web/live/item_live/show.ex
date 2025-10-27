@@ -2,19 +2,20 @@ defmodule KirbsWeb.ItemLive.Show do
   use KirbsWeb, :live_view
   import LiveSelect
 
-  alias Kirbs.Resources.{Item, Image, YagaMetadata}
+  alias Kirbs.Resources.{Item, Image}
+  alias Kirbs.YagaTaxonomy
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     item = Item.get!(id) |> Ash.load!([:bag])
     images = Image.list!() |> Enum.filter(&(&1.item_id == item.id)) |> Enum.sort_by(& &1.order)
 
-    # Load Yaga metadata for dropdowns
-    brands = YagaMetadata.list_by_type!(:brand) |> Enum.sort_by(& &1.name)
-    categories = YagaMetadata.list_by_type!(:category)
-    colors = YagaMetadata.list_by_type!(:color) |> Enum.sort_by(& &1.name)
-    materials = YagaMetadata.list_by_type!(:material) |> Enum.sort_by(& &1.name)
-    conditions = YagaMetadata.list_by_type!(:condition) |> Enum.sort_by(& &1.name)
+    # Load Yaga taxonomy from static data
+    brands = YagaTaxonomy.all_brands() |> Enum.sort_by(& &1.name)
+    categories = YagaTaxonomy.all_categories()
+    colors = YagaTaxonomy.all_colors() |> Enum.sort_by(& &1.name)
+    materials = YagaTaxonomy.all_materials() |> Enum.sort_by(& &1.name)
+    conditions = YagaTaxonomy.all_conditions() |> Enum.sort_by(& &1.name)
 
     # Prepare form changeset
     form = AshPhoenix.Form.for_update(item, :update)
@@ -22,19 +23,19 @@ defmodule KirbsWeb.ItemLive.Show do
     # Build category lookup map
     category_map = Map.new(categories, &{&1.yaga_id, &1})
 
-    # Prepare options for live_select with full paths
+    # Prepare options for live_select with full paths (name -> name for string values)
     category_options =
       categories
       |> Enum.map(fn cat ->
         path = build_category_path(cat, category_map)
-        {path, cat.yaga_id}
+        {path, cat.name}
       end)
       |> Enum.sort_by(&elem(&1, 0))
 
-    brand_options = Enum.map(brands, &{&1.name, &1.yaga_id})
-    condition_options = Enum.map(conditions, &{&1.name, &1.yaga_id})
-    color_options = Enum.map(colors, &{&1.name, &1.yaga_id})
-    material_options = Enum.map(materials, &{&1.name, &1.yaga_id})
+    brand_options = Enum.map(brands, &{&1.name, &1.name})
+    condition_options = Enum.map(conditions, &{&1.name, &1.name})
+    color_options = Enum.map(colors, &{&1.name, &1.name})
+    material_options = Enum.map(materials, &{&1.name, &1.name})
 
     {:ok,
      socket
@@ -56,20 +57,18 @@ defmodule KirbsWeb.ItemLive.Show do
 
   @impl true
   def handle_event("save_item", params, socket) do
-    # Parse array fields
-    colors = parse_array(params["colors"])
-    materials = parse_array(params["materials"])
-    yaga_colors_id_map = parse_live_select_array(params["yaga_colors_id_map"])
-    yaga_materials_id_map = parse_live_select_array(params["yaga_materials_id_map"])
+    # Parse array fields (colors and materials are submitted as arrays from live_select tags mode)
+    colors = parse_live_select_array(params["colors"])
+    materials = parse_live_select_array(params["materials"])
 
     # Check if item is complete (all required fields filled + has images)
     has_images = socket.assigns.images != []
-    yaga_category_filled = params["yaga_category_id"] not in [nil, ""]
-    yaga_condition_filled = params["yaga_condition_id"] not in [nil, ""]
+    category_filled = params["suggested_category"] not in [nil, ""]
+    quality_filled = params["quality"] not in [nil, ""]
     listed_price_filled = params["listed_price"] not in [nil, ""]
 
     is_complete =
-      has_images && yaga_category_filled && yaga_condition_filled && listed_price_filled
+      has_images && category_filled && quality_filled && listed_price_filled
 
     new_status = if is_complete, do: "reviewed", else: "pending"
 
@@ -81,18 +80,12 @@ defmodule KirbsWeb.ItemLive.Show do
         "description",
         "quality",
         "suggested_category",
-        "yaga_brand_id",
-        "yaga_category_id",
-        "yaga_condition_id",
         "listed_price"
       ])
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
-      |> Map.put("yaga_colors_id_map", yaga_colors_id_map)
-      |> Map.put("yaga_materials_id_map", yaga_materials_id_map)
       |> Map.put("status", new_status)
       |> convert_to_atoms()
-      |> convert_integers()
       |> convert_decimal()
 
     case Item.update(socket.assigns.item, update_params) do
@@ -127,35 +120,35 @@ defmodule KirbsWeb.ItemLive.Show do
 
     options =
       cond do
-        String.contains?(live_select_id, "yaga_brand_id") ->
+        String.contains?(live_select_id, "brand") ->
           socket.assigns.brands
           |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
-          |> Enum.map(&{&1.name, &1.yaga_id})
+          |> Enum.map(&{&1.name, &1.name})
           |> Enum.sort_by(&elem(&1, 0))
 
-        String.contains?(live_select_id, "yaga_category_id") ->
+        String.contains?(live_select_id, "suggested_category") ->
           socket.assigns.categories
           |> Enum.map(fn cat ->
             path = build_category_path(cat, socket.assigns.category_map)
-            {path, cat.yaga_id}
+            {path, cat.name}
           end)
           |> Enum.filter(fn {path, _} -> String.contains?(String.downcase(path), search_text) end)
           |> Enum.sort_by(&elem(&1, 0))
 
-        String.contains?(live_select_id, "yaga_condition_id") ->
+        String.contains?(live_select_id, "quality") ->
           socket.assigns.conditions
           |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
-          |> Enum.map(&{&1.name, &1.yaga_id})
+          |> Enum.map(&{&1.name, &1.name})
 
-        String.contains?(live_select_id, "yaga_colors_id_map") ->
+        String.contains?(live_select_id, "colors") ->
           socket.assigns.colors
           |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
-          |> Enum.map(&{&1.name, &1.yaga_id})
+          |> Enum.map(&{&1.name, &1.name})
 
-        String.contains?(live_select_id, "yaga_materials_id_map") ->
+        String.contains?(live_select_id, "materials") ->
           socket.assigns.materials
           |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
-          |> Enum.map(&{&1.name, &1.yaga_id})
+          |> Enum.map(&{&1.name, &1.name})
 
         true ->
           []
@@ -195,49 +188,14 @@ defmodule KirbsWeb.ItemLive.Show do
     end
   end
 
-  defp parse_array(nil), do: []
-  defp parse_array(""), do: []
-
-  defp parse_array(str) when is_binary(str) do
-    str
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
-  end
-
   defp parse_live_select_array(nil), do: []
   defp parse_live_select_array([]), do: []
-
-  defp parse_live_select_array(list) when is_list(list) do
-    list
-    |> Enum.map(fn
-      val when is_integer(val) -> val
-      val when is_binary(val) -> String.to_integer(val)
-    end)
-  end
-
+  defp parse_live_select_array(list) when is_list(list), do: list
   defp parse_live_select_array(_), do: []
 
   defp convert_to_atoms(params) do
     params
     |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
-    |> Enum.into(%{})
-  end
-
-  defp convert_integers(params) do
-    params
-    |> Enum.map(fn
-      {k, v}
-      when k in [:yaga_brand_id, :yaga_category_id, :yaga_condition_id] and is_binary(v) and
-             v != "" ->
-        {k, String.to_integer(v)}
-
-      {k, v} when k in [:yaga_brand_id, :yaga_category_id, :yaga_condition_id] and v == "" ->
-        {k, nil}
-
-      {k, v} ->
-        {k, v}
-    end)
     |> Enum.into(%{})
   end
 
@@ -336,13 +294,17 @@ defmodule KirbsWeb.ItemLive.Show do
                   <label class="label">
                     <span class="label-text font-semibold">Brand</span>
                   </label>
-                  <input
-                    type="text"
-                    name="brand"
-                    class="input input-bordered w-full"
-                    value={@item.brand}
-                    placeholder="H&M, Zara"
-                  />
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:brand]}
+                      mode={:single}
+                      style={:daisyui}
+                      placeholder="Search brands..."
+                      value={@item.brand}
+                      options={@brand_options}
+                      update_min_len={0}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
@@ -360,54 +322,73 @@ defmodule KirbsWeb.ItemLive.Show do
 
                 <div class="form-control">
                   <label class="label">
-                    <span class="label-text font-semibold">Quality</span>
+                    <span class="label-text font-semibold">Category *</span>
                   </label>
-                  <input
-                    type="text"
-                    name="quality"
-                    class="input input-bordered w-full"
-                    value={@item.quality}
-                    placeholder="like new, used, worn"
-                  />
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:suggested_category]}
+                      mode={:single}
+                      style={:daisyui}
+                      placeholder="Search categories..."
+                      value={@item.suggested_category}
+                      options={@category_options}
+                      update_min_len={0}
+                      dropdown_class="bg-base-200 dropdown-content menu menu-compact p-1 rounded-box shadow z-[1] min-w-[800px]"
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
                   <label class="label">
-                    <span class="label-text font-semibold">Suggested Category</span>
+                    <span class="label-text font-semibold">Condition *</span>
                   </label>
-                  <input
-                    type="text"
-                    name="suggested_category"
-                    class="input input-bordered w-full"
-                    value={@item.suggested_category}
-                    placeholder="Pluus, Püksid"
-                  />
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:quality]}
+                      mode={:single}
+                      style={:daisyui}
+                      placeholder="Search conditions..."
+                      value={@item.quality}
+                      options={@condition_options}
+                      update_min_len={0}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text font-semibold">Colors</span>
                   </label>
-                  <input
-                    type="text"
-                    name="colors"
-                    class="input input-bordered w-full"
-                    value={if @item.colors, do: Enum.join(@item.colors, ", "), else: ""}
-                    placeholder="red, blue, green"
-                  />
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:colors]}
+                      mode={:tags}
+                      style={:daisyui}
+                      placeholder="Search colors..."
+                      value={@item.colors || []}
+                      options={@color_options}
+                      update_min_len={0}
+                      keep_options_on_select={true}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
                   <label class="label">
                     <span class="label-text font-semibold">Materials</span>
                   </label>
-                  <input
-                    type="text"
-                    name="materials"
-                    class="input input-bordered w-full"
-                    value={if @item.materials, do: Enum.join(@item.materials, ", "), else: ""}
-                    placeholder="cotton, polyester"
-                  />
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:materials]}
+                      mode={:tags}
+                      style={:daisyui}
+                      placeholder="Search materials..."
+                      value={@item.materials || []}
+                      options={@material_options}
+                      update_min_len={0}
+                      keep_options_on_select={true}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control md:col-span-2">
@@ -419,112 +400,6 @@ defmodule KirbsWeb.ItemLive.Show do
                     class="textarea textarea-bordered h-24 w-full"
                     placeholder="Describe the item..."
                   ><%= @item.description %></textarea>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card bg-base-100 shadow-xl mb-6">
-            <div class="card-body">
-              <h2 class="card-title mb-4">Yaga Integration</h2>
-
-              <%= if @brands == [] do %>
-                <div class="alert alert-warning mb-4">
-                  <span>
-                    No Yaga metadata found. Please go to
-                    <.link navigate="/settings" class="link">Settings</.link>
-                    and refresh metadata.
-                  </span>
-                </div>
-              <% end %>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="form-control">
-                  <label class="label">
-                    <span class="label-text font-semibold">Yaga Brand</span>
-                  </label>
-                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
-                    <.live_select
-                      field={@form[:yaga_brand_id]}
-                      mode={:single}
-                      style={:daisyui}
-                      placeholder="Search brands..."
-                      value={@item.yaga_brand_id}
-                      options={@brand_options}
-                      update_min_len={0}
-                    />
-                  </div>
-                </div>
-
-                <div class="form-control">
-                  <label class="label">
-                    <span class="label-text font-semibold">Yaga Category *</span>
-                  </label>
-                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
-                    <.live_select
-                      field={@form[:yaga_category_id]}
-                      mode={:single}
-                      style={:daisyui}
-                      placeholder="Search categories..."
-                      value={@item.yaga_category_id}
-                      options={@category_options}
-                      update_min_len={0}
-                      dropdown_class="bg-base-200 dropdown-content menu menu-compact p-1 rounded-box shadow z-[1] min-w-[800px]"
-                    />
-                  </div>
-                </div>
-
-                <div class="form-control">
-                  <label class="label">
-                    <span class="label-text font-semibold">Yaga Condition *</span>
-                  </label>
-                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
-                    <.live_select
-                      field={@form[:yaga_condition_id]}
-                      mode={:single}
-                      style={:daisyui}
-                      placeholder="Search conditions..."
-                      value={@item.yaga_condition_id}
-                      options={@condition_options}
-                      update_min_len={0}
-                    />
-                  </div>
-                </div>
-
-                <div class="form-control">
-                  <label class="label">
-                    <span class="label-text font-semibold">Yaga Colors</span>
-                  </label>
-                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
-                    <.live_select
-                      field={@form[:yaga_colors_id_map]}
-                      mode={:tags}
-                      style={:daisyui}
-                      placeholder="Search colors..."
-                      value={@item.yaga_colors_id_map || []}
-                      options={@color_options}
-                      update_min_len={0}
-                      keep_options_on_select={true}
-                    />
-                  </div>
-                </div>
-
-                <div class="form-control">
-                  <label class="label">
-                    <span class="label-text font-semibold">Yaga Materials</span>
-                  </label>
-                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
-                    <.live_select
-                      field={@form[:yaga_materials_id_map]}
-                      mode={:tags}
-                      style={:daisyui}
-                      placeholder="Search materials..."
-                      value={@item.yaga_materials_id_map || []}
-                      options={@material_options}
-                      update_min_len={0}
-                      keep_options_on_select={true}
-                    />
-                  </div>
                 </div>
               </div>
             </div>

@@ -1,0 +1,21 @@
+[
+  %{yaga_id: 3, name: "Sinine", name_en: nil, parent_id: nil},
+  %{yaga_id: 4, name: "Roheline", name_en: nil, parent_id: nil},
+  %{yaga_id: 5, name: "Lilla", name_en: nil, parent_id: nil},
+  %{yaga_id: 7, name: "Türkiissinine", name_en: nil, parent_id: nil},
+  %{yaga_id: 6, name: "Kollane", name_en: nil, parent_id: nil},
+  %{yaga_id: 9, name: "Tumesinine", name_en: nil, parent_id: nil},
+  %{yaga_id: 8, name: "Oranž", name_en: nil, parent_id: nil},
+  %{yaga_id: 11, name: "Hall", name_en: nil, parent_id: nil},
+  %{yaga_id: 13, name: "Valge", name_en: nil, parent_id: nil},
+  %{yaga_id: 14, name: "Pruun", name_en: nil, parent_id: nil},
+  %{yaga_id: 15, name: "Helepruun", name_en: nil, parent_id: nil},
+  %{yaga_id: 16, name: "Kreemikas", name_en: nil, parent_id: nil},
+  %{yaga_id: 17, name: "Tumepunane", name_en: nil, parent_id: nil},
+  %{yaga_id: 18, name: "Roosa", name_en: nil, parent_id: nil},
+  %{yaga_id: 19, name: "Khaki", name_en: nil, parent_id: nil},
+  %{yaga_id: 20, name: "Hõbedane", name_en: nil, parent_id: nil},
+  %{yaga_id: 21, name: "Kuldne", name_en: nil, parent_id: nil},
+  %{yaga_id: 2, name: "Punane", name_en: nil, parent_id: nil},
+  %{yaga_id: 1, name: "Must", name_en: nil, parent_id: nil}
+]
