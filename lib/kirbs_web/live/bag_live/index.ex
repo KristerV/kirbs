@@ -3,7 +3,10 @@ defmodule KirbsWeb.BagLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    bags = Kirbs.Resources.Bag.list!()
+    bags =
+      Kirbs.Resources.Bag
+      |> Ash.Query.load([:item_count, :needs_review])
+      |> Ash.read!()
 
     {:ok,
      socket
@@ -30,7 +33,8 @@ defmodule KirbsWeb.BagLive.Index do
                   <thead>
                     <tr>
                       <th>Number</th>
-                      <th>ID</th>
+                      <th>Items</th>
+                      <th>Needs Review</th>
                       <th>Created At</th>
                       <th>Actions</th>
                     </tr>
@@ -39,7 +43,12 @@ defmodule KirbsWeb.BagLive.Index do
                     <%= for bag <- @bags do %>
                       <tr>
                         <td>{bag.number}</td>
-                        <td>{String.slice(bag.id, 0..7)}</td>
+                        <td>{bag.item_count}</td>
+                        <td>
+                          <%= if bag.needs_review do %>
+                            <span class="badge badge-info">Needs Review</span>
+                          <% end %>
+                        </td>
                         <td>{Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M")}</td>
                         <td>
                           <.link navigate={~p"/bags/#{bag.id}"} class="btn btn-primary btn-sm">

@@ -443,6 +443,36 @@ defmodule KirbsWeb.CoreComponents do
   end
 
   @doc """
+  Renders a status badge.
+
+  ## Examples
+
+      <.status_badge status={:pending} />
+      <.status_badge status={:completed} />
+  """
+  attr :status, :atom, required: true
+
+  def status_badge(assigns) do
+    {label, color} =
+      case assigns.status do
+        :empty -> {"Empty", "badge-ghost"}
+        :needs_review -> {"Needs Review", "badge-warning"}
+        :ready_to_upload -> {"Ready to Upload", "badge-info"}
+        :uploaded -> {"Uploaded", "badge-success"}
+        :completed -> {"Completed", "badge-success"}
+        :has_failures -> {"Has Failures", "badge-error"}
+        :mixed -> {"Mixed", "badge-neutral"}
+        _ -> {assigns.status |> to_string() |> String.replace("_", " ") |> String.capitalize(), "badge-neutral"}
+      end
+
+    assigns = assign(assigns, label: label, color: color)
+
+    ~H"""
+    <span class={["badge", @color]}>{@label}</span>
+    """
+  end
+
+  @doc """
   Translates an error message using gettext.
   """
   def translate_error({msg, opts}) do
