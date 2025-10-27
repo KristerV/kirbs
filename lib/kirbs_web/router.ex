@@ -25,9 +25,11 @@ defmodule KirbsWeb.Router do
   scope "/", KirbsWeb do
     pipe_through :browser
 
+    live "/", LandingLive.Index, :index
+
     ash_authentication_live_session :authenticated_routes,
       on_mount: {KirbsWeb.LiveUserAuth, :live_user_required} do
-      live "/", DashboardLive.Index, :index
+      live "/dashboard", DashboardLive.Index, :index
       live "/bags", BagLive.Index, :index
       live "/bags/capture", BagLive.Capture, :capture
       live "/bags/:id", BagLive.Show, :show
@@ -45,7 +47,8 @@ defmodule KirbsWeb.Router do
     sign_out_route AuthController
 
     # Remove these if you'd like to use your own authentication views
-    sign_in_route register_path: "/register",
+    sign_in_route path: "/login",
+                  register_path: "/register",
                   reset_path: "/reset",
                   auth_routes_prefix: "/auth",
                   on_mount: [{KirbsWeb.LiveUserAuth, :live_no_user}],

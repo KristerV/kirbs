@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang={assigns[:lang] || "et"}>
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Kirbs" suffix=" · Phoenix Framework">
+    <.live_title default="Kirbs" suffix={assigns[:title_suffix] || ""}>
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
@@ -31,59 +31,63 @@
     </script>
   </head>
   <body>
-    <div class="drawer">
-      <input id="main-drawer" type="checkbox" class="drawer-toggle" />
-      <div class="drawer-content flex flex-col">
-        <!-- Navbar -->
-        <div class="navbar bg-base-200 shadow-lg">
-          <div class="flex-none lg:hidden">
-            <label for="main-drawer" class="btn btn-square btn-ghost">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                class="inline-block h-6 w-6 stroke-current"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 6h16M4 12h16M4 18h16"
+    <%= if assigns[:current_user] do %>
+      <div class="drawer">
+        <input id="main-drawer" type="checkbox" class="drawer-toggle" />
+        <div class="drawer-content flex flex-col">
+          <!-- Navbar -->
+          <div class="navbar bg-base-200 shadow-lg">
+            <div class="flex-none lg:hidden">
+              <label for="main-drawer" class="btn btn-square btn-ghost">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  class="inline-block h-6 w-6 stroke-current"
                 >
-                </path>
-              </svg>
-            </label>
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  >
+                  </path>
+                </svg>
+              </label>
+            </div>
+            <div class="flex-1">
+              <a href="/dashboard" class="btn btn-ghost text-xl">Kirbs</a>
+            </div>
+            <div class="flex-none hidden lg:block">
+              <ul class="menu menu-horizontal px-1">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/bags/capture">New Bag</a></li>
+                <li><a href="/review">Review</a></li>
+                <li><a href="/bags">Bags</a></li>
+                <li><a href="/settings">Settings</a></li>
+              </ul>
+            </div>
+            <div class="flex-none">
+              <a href="/sign-out" class="btn btn-ghost btn-sm">Sign Out</a>
+            </div>
           </div>
-          <div class="flex-1">
-            <a href="/" class="btn btn-ghost text-xl">Kirbs</a>
-          </div>
-          <div class="flex-none hidden lg:block">
-            <ul class="menu menu-horizontal px-1">
-              <li><a href="/">Dashboard</a></li>
-              <li><a href="/bags/capture">New Bag</a></li>
-              <li><a href="/review">Review</a></li>
-              <li><a href="/bags">Bags</a></li>
-              <li><a href="/settings">Settings</a></li>
-            </ul>
-          </div>
-          <div class="flex-none">
-            <a href="/sign-out" class="btn btn-ghost btn-sm">Sign Out</a>
-          </div>
+          <!-- Page content -->
+          {@inner_content}
         </div>
-        <!-- Page content -->
-        {@inner_content}
+        <!-- Drawer sidebar for mobile -->
+        <div class="drawer-side z-50">
+          <label for="main-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+          <ul class="menu bg-base-200 min-h-full w-80 p-4">
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/bags/capture">New Bag</a></li>
+            <li><a href="/review">Review</a></li>
+            <li><a href="/bags">Bags</a></li>
+            <li><a href="/settings">Settings</a></li>
+          </ul>
+        </div>
       </div>
-      <!-- Drawer sidebar for mobile -->
-      <div class="drawer-side z-50">
-        <label for="main-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-        <ul class="menu bg-base-200 min-h-full w-80 p-4">
-          <li><a href="/">Dashboard</a></li>
-          <li><a href="/bags/capture">New Bag</a></li>
-          <li><a href="/review">Review</a></li>
-          <li><a href="/bags">Bags</a></li>
-          <li><a href="/settings">Settings</a></li>
-        </ul>
-      </div>
-    </div>
+    <% else %>
+      {@inner_content}
+    <% end %>
   </body>
 </html>

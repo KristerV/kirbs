@@ -1,0 +1,510 @@
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        line-height: 1.6;
+        color: #333;
+        background: linear-gradient(135deg, #fff 0%, #fef8f4 100%);
+        overflow-x: hidden;
+        position: relative;
+        font-weight: 400;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .landing-page * {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    .bubble {
+        position: absolute;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #FF7F3F, #FFB366);
+        opacity: 0.1;
+        z-index: -1;
+    }
+
+    .bubble-1 { width: 200px; height: 200px; top: 10%; left: -5%; }
+    .bubble-2 { width: 150px; height: 150px; top: 60%; right: -3%; }
+    .bubble-3 { width: 100px; height: 100px; top: 30%; right: 15%; }
+    .bubble-4 { width: 80px; height: 80px; bottom: 20%; left: 10%; }
+
+    .wave {
+        position: absolute;
+        width: 120%;
+        height: 200px;
+        left: -10%;
+        background: linear-gradient(135deg, #FF7F3F, #FFB366);
+        opacity: 0.08;
+        clip-path: ellipse(70% 100% at 50% 0%);
+    }
+
+    .wave-top { top: -100px; }
+    .wave-bottom { bottom: -100px; transform: rotate(180deg); z-index: -2; }
+
+    header {
+        position: relative;
+        padding: 100px 0;
+        text-align: center;
+        background: linear-gradient(135deg, rgba(255, 127, 63, 0.05), rgba(255, 179, 102, 0.05));
+        border-radius: 0 0 50px 50px;
+        margin-bottom: 60px;
+    }
+
+    h1 {
+        font-size: 3em;
+        color: #FF7F3F;
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        font-size: 1.3em;
+        color: #666;
+        margin-bottom: 30px;
+        font-weight: 400;
+    }
+
+    .hero-text {
+        font-size: 1.1em;
+        color: #555;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .section {
+        position: relative;
+        padding: 40px 0;
+        margin-bottom: 40px;
+    }
+
+    .section h2 {
+        font-size: 2.2em;
+        color: #FF7F3F;
+        margin-bottom: 30px;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .landing-steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin: 40px 0;
+    }
+
+    .landing-step {
+        background: white;
+        padding: 30px;
+        border-radius: 25px;
+        box-shadow: 0 10px 30px rgba(255, 127, 63, 0.1);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .landing-step p {
+        font-weight: 400;
+    }
+
+    .landing-step::before {
+        content: '';
+        position: absolute;
+        top: -20px;
+        right: -20px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #FF7F3F, #FFB366);
+        border-radius: 50%;
+        opacity: 0.1;
+    }
+
+    .landing-step-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        position: relative;
+    }
+
+    .landing-step-number {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #FF7F3F, #FFB366);
+        color: white;
+        border-radius: 50%;
+        line-height: 50px;
+        font-size: 1.5em;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .landing-step h3 {
+        color: #FF7F3F;
+        margin-bottom: 15px;
+        font-size: 1.3em;
+        font-weight: 700;
+    }
+
+    .sorting-visual {
+        background: linear-gradient(135deg, #fff, #fef8f4);
+        padding: 40px;
+        border-radius: 30px;
+        margin-bottom: 40px;
+        text-align: center;
+        box-shadow: 0 15px 40px rgba(255, 127, 63, 0.1);
+    }
+
+    .sorting-visual h3 {
+        color: #FF7F3F;
+        font-size: 1.8em;
+        margin-bottom: 30px;
+        font-weight: 700;
+    }
+
+    .sorting-boxes {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin: 30px 0;
+    }
+
+    .sorting-box {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(255, 127, 63, 0.1);
+        text-align: center;
+        flex: 1;
+        min-width: 180px;
+        position: relative;
+    }
+
+    .sorting-box::before {
+        content: '';
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        opacity: 0.2;
+    }
+
+    .box-sell::before { background: #4CAF50; }
+    .box-donate::before { background: #2196F3; }
+    .box-recycle::before { background: #9C27B0; }
+
+    .sorting-box h4 {
+        color: #FF7F3F;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+        font-weight: 700;
+    }
+
+    .sorting-box p {
+        font-size: 0.9em;
+        color: #666;
+    }
+
+    .clothes-icon {
+        font-size: 2em;
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    .guide {
+        background: linear-gradient(135deg, #FF7F3F, #FFB366);
+        color: white;
+        padding: 50px 40px;
+        border-radius: 30px;
+        box-shadow: 0 20px 50px rgba(255, 127, 63, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .guide::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    }
+
+    .guide h3 {
+        font-size: 2.2em;
+        margin-bottom: 25px;
+        text-align: center;
+        position: relative;
+        font-weight: 700;
+    }
+
+    .guide ol {
+        list-style: none;
+        counter-reset: guide-counter;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .guide li {
+        counter-increment: guide-counter;
+        position: relative;
+        padding: 20px 0 20px 70px;
+        font-size: 1.2em;
+        margin-bottom: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding-left: 90px;
+        padding-right: 20px;
+    }
+
+    .guide li::before {
+        content: counter(guide-counter);
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 40px;
+        height: 40px;
+        background: white;
+        color: #FF7F3F;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+
+    .highlight {
+        background: rgba(255, 127, 63, 0.1);
+        border: 2px solid #FF7F3F;
+        color: #FF7F3F;
+        padding: 25px;
+        border-radius: 20px;
+        text-align: center;
+        margin-bottom: 40px;
+        font-weight: 600;
+    }
+
+    .highlight h3 {
+        font-size: 1.4em;
+        margin-bottom: 10px;
+        font-weight: 700;
+    }
+
+    .startup-notice {
+        background: linear-gradient(135deg, #f8f9fa, #fff);
+        border-left: 5px solid #FF7F3F;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 40px;
+        color: #555;
+    }
+
+    .startup-notice h3 {
+        color: #FF7F3F;
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+
+    footer {
+        background: #333;
+        color: white;
+        text-align: center;
+        padding: 40px 0;
+        margin-top: 60px;
+        margin-bottom: 0;
+        position: relative;
+    }
+
+    footer::before {
+        content: '';
+        position: absolute;
+        top: -30px;
+        left: 0;
+        right: 0;
+        height: 30px;
+        background: #333;
+        clip-path: ellipse(70% 100% at 50% 100%);
+    }
+
+    .footer-content {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .footer-content p {
+        margin: 10px 0;
+        color: #ccc;
+    }
+
+    .contact {
+        color: #FF7F3F;
+        font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+        h1 { font-size: 2.2em; }
+        .landing-steps { grid-template-columns: 1fr; }
+        .container { padding: 0 15px; }
+        .guide { padding: 30px 25px; }
+        .sorting-boxes { flex-direction: column; }
+        .guide li { padding-left: 70px; font-size: 1.1em; }
+        .guide li::before { width: 35px; height: 35px; left: 15px; }
+    }
+</style>
+
+<div class="landing-page">
+<div class="bubble bubble-1"></div>
+<div class="bubble bubble-2"></div>
+<div class="bubble bubble-3"></div>
+<div class="bubble bubble-4"></div>
+<div class="wave wave-top"></div>
+
+<header>
+    <div class="container">
+        <h1>Käed Vabad Kirbukas</h1>
+        <p class="subtitle">Müü lapse riided ilma vaevata</p>
+        <p class="hero-text">
+            Saada oma lapse riided meile postiga ja me müüme need sinu eest ära.
+            Müüdud esemetest saad 50% endale tagasi!
+        </p>
+    </div>
+</header>
+
+<div class="container">
+    <section class="section">
+        <h2>Kuidas see toimib?</h2>
+        <div class="landing-steps">
+            <div class="landing-step">
+                <div class="landing-step-number">1</div>
+                <h3>Saada riided postiga</h3>
+                <p>Pakenda oma lapse riided ära ja saada need meile lihtsa juhendi järgi</p>
+            </div>
+            <div class="landing-step">
+                <div class="landing-step-number">2</div>
+                <h3>Me sorteerime</h3>
+                <p>Vaatame läbi, mida paneme yaga.ee-sse müüki, mida annetame või viime taaskasutusse</p>
+            </div>
+            <div class="landing-step">
+                <div class="landing-step-number">3</div>
+                <h3>Saad raha tagasi</h3>
+                <p>Müüdud esemetest saad 50% oma pangakontole</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="highlight">
+        <h3>Sinu ainuke kulu on postikulu</h3>
+        <p style="font-weight: normal; line-height: 1.8; margin: 20px 0;">
+            Kui riie saab müüdud, saad sina <span style="font-size: 1.8em; color: #FF7F3F; font-weight: bold;">50%</span> müügitulust
+        </p>
+        <p style="font-weight: 600; margin: 15px 0;">
+            Näiteks: Kui kleit müüakse 10€ eest, saad sina 5€
+        </p>
+        <p style="font-weight: normal; line-height: 1.6; margin: 20px 0;">
+            Teine pool katab meie teenuse kulud: sorteerimine, pildistamine, müügikuulutuste haldamine, ostjatega suhtlemine, pakkimine ja saatmine, müümata jäänud riiete annetamine või taaskasutusse viimine.
+        </p>
+    </div>
+
+    <div class="sorting-visual">
+        <h3>Kuidas me sinu riideid sorteerime?</h3>
+        <p style="color: #666; margin-bottom: 30px;">Iga ese saab hoolikalt hinnatud ja suunatud õigesse kohta</p>
+
+        <div class="sorting-boxes">
+            <div class="sorting-box box-sell">
+                <span class="clothes-icon">👕</span>
+                <h4>Müügiks yaga.ee-sse</h4>
+                <p>Head, müügikõlblikud riided</p>
+            </div>
+            <div class="sorting-box box-donate">
+                <span class="clothes-icon">💝</span>
+                <h4>Annetamiseks</h4>
+                <p>Kulunud, kuid kandmiskõlblikud riided</p>
+            </div>
+            <div class="sorting-box box-recycle">
+                <span class="clothes-icon">♻️</span>
+                <h4>Taaskasutusse</h4>
+                <p>Kulunud riided tekstiili taaskasutusse</p>
+            </div>
+        </div>
+
+        <p style="color: #666; font-style: italic; margin-top: 20px;">
+            Anname sulle teada, mis kategooriasse iga ese läks!
+        </p>
+    </div>
+
+    <section class="section">
+        <div class="guide">
+            <h3>📦 Müügi lihtne juhend</h3>
+            <ol>
+                <li>Pakenda riided ära</li>
+                <li>Lisa sisse paber oma nime, kontaktandmete ja pangakontoga</li>
+                <li>Mine Omniva, DPD või SmartPost pakiautomaati</li>
+                <li>Saada pakk <strong>Saue</strong> pakiautomaati ja telefoninumbriks lisa <strong>5635 5555</strong>. Rimi ja Kaubamajakas on parim, aga ükskõik milline on okei.</li>
+            </ol>
+            <p style="text-align: center; margin-top: 30px; font-style: italic;">
+                ✅ Valmis! Kui saame paki kätte, anname sulle teada, mis läks müüki ja mis mitte.
+            </p>
+        </div>
+    </section>
+
+    <div class="highlight">
+        <h3>Vaata, mis meil müügis on</h3>
+        <p style="font-weight: normal; line-height: 1.8; margin: 20px 0;">
+            Meie pood: <a href="https://www.yaga.ee/kirbs-ee" target="_blank" style="color: #FF7F3F; font-weight: bold; text-decoration: underline;">yaga.ee/kirbs-ee</a>
+        </p>
+    </div>
+
+    <section class="section">
+        <h2>Tingimused</h2>
+        <div style="background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(255, 127, 63, 0.1); border-left: 4px solid #FF7F3F;">
+            <p style="margin-bottom: 20px; font-weight: 600; color: #FF7F3F;">Kui saadad riided kirbu.ee poole, pead arvestama järgnevate tingimustega:</p>
+            <ul style="list-style: disc; padding-left: 25px; line-height: 2; color: #555;">
+                <li>Me sorteerime sinu eest, mis läheb müüki, mis annetusse, mis tekstiilikäitlusesse</li>
+                <li>Me ei saada sulle riideid tagasi, sa ei pea nendega rohkem tegelema</li>
+                <li>Kui saatsid kogemata vale asja, võime eseme tagasi saata, juhul kui see veel alles on</li>
+                <li>Esemete hinna määrame meie ja kui müüdud ei saa, langetame seda jooksvalt</li>
+                <li>Me ei osta sult riideid ära vaid aitame müüa, seega ei saa ka garanteerida müügitulu</li>
+                <li>Võtame kõik su riided vastu, katkised või määrdunud lähevad kohe taaskasutusse</li>
+                <li>Väljamaksed teeme kord kuus pangaülekandega</li>
+                <li>Miinimum väljamakse on 10€ kogutud summast (või kui kõik esemed on müüdud)</li>
+            </ul>
+        </div>
+    </section>
+
+</div>
+
+<footer>
+    <div class="footer-content" style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 40px; max-width: 800px;">
+        <div>
+            <h3 style="color: #FF7F3F; margin-bottom: 15px; font-size: 1.2em;">Ettevõte</h3>
+            <p style="margin: 5px 0;">Täp OÜ</p>
+            <p style="margin: 5px 0;">Registrikood: 12125250</p>
+        </div>
+        <div>
+            <h3 style="color: #FF7F3F; margin-bottom: 15px; font-size: 1.2em;">Kontakt</h3>
+            <p style="margin: 5px 0;">Krister Viirsaar</p>
+            <p style="margin: 5px 0;">Tel: 5635 5555</p>
+            <p style="margin: 0 0 5px 0;"><em style="color: #aaa; font-size: 0.9em;">(helista julgelt küsimuste puhul!)</em></p>
+            <p style="margin: 5px 0;">E-mail: kirbs@krister.ee</p>
+        </div>
+    </div>
+</footer>
+</div>
