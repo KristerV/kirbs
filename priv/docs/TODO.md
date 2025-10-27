@@ -16,21 +16,21 @@
 - [x] Configure IMAGE_UPLOAD_DIR
 - [x] Add routes for bag capture flow
 
-## Phase 2: Resources & Settings
-- [ ] Create Settings resource
-- [ ] Create YagaMetadata resource
-- [ ] Create SettingsLive.Index (manage JWT token)
+## Phase 2: Resources & Settings ✅
+- [x] Create Settings resource
+- [x] Create YagaMetadata resource
+- [x] Create SettingsLive.Index (manage JWT token)
 
-## Phase 3: Yaga Integration - Metadata
-- [ ] Create Yaga.MetadataFetcher service
-  - [ ] Fetch brands from Yaga API
-  - [ ] Fetch categories from Yaga API
-  - [ ] Fetch colors from Yaga API
-  - [ ] Fetch materials from Yaga API
-  - [ ] Fetch conditions from Yaga API
-- [ ] Create RefreshYagaMetadataJob (Oban)
-- [ ] Create seed task to populate Yaga metadata
-- [ ] Create Yaga.Auth service (get JWT from settings)
+## Phase 3: Yaga Integration - Metadata ⚠️ (mostly done, manual refresh via UI works)
+- [x] Create Yaga.MetadataFetcher service
+  - [x] Fetch brands from Yaga API
+  - [x] Fetch categories from Yaga API
+  - [x] Fetch colors from Yaga API
+  - [x] Fetch materials from Yaga API
+  - [x] Fetch conditions from Yaga API
+- [ ] Create RefreshYagaMetadataJob (Oban) - manual refresh via settings UI works
+- [ ] Create seed task to populate Yaga metadata - can use settings UI
+- [x] Create Yaga.Auth service (get JWT from settings)
 
 ## Phase 4: AI Integration
 - [ ] Install/configure LangChain (or alternative)
@@ -62,25 +62,25 @@
   - [ ] Update item status to ai_processed
 - [ ] Wire up jobs to trigger after "End Bag"
 
-## Phase 6: Review UI
-- [ ] Create ReviewLive.Index
-  - [ ] List items with status = ai_processed
-  - [ ] Group by bag
-  - [ ] Show AI data summary
-  - [ ] Link to item details
-- [ ] Create ItemLive.Show
-  - [ ] Display all item photos (with delete button)
-  - [ ] Show AI-extracted text data (inline editable)
-  - [ ] Show Yaga ID fields (dropdowns/autocomplete)
-  - [ ] Show pricing (AI suggestion + listed price)
-  - [ ] "Ready for Yaga" button
-  - [ ] Status badge
-  - [ ] Error display if upload failed
-- [ ] Create BagLive.Show
-  - [ ] Display 3 bag photos
-  - [ ] Show client info (if matched)
-  - [ ] List all items with thumbnails
-  - [ ] Link to item details
+## Phase 6: Review UI ✅ (UI complete, needs AI integration)
+- [x] Create ReviewLive.Index
+  - [x] List items with status = ai_processed
+  - [x] Group by bag
+  - [x] Show AI data summary
+  - [x] Link to item details
+- [x] Create ItemLive.Show
+  - [x] Display all item photos (with delete button)
+  - [x] Show AI-extracted text data (inline editable)
+  - [x] Show Yaga ID fields (dropdowns/autocomplete)
+  - [x] Show pricing (AI suggestion + listed price)
+  - [ ] "Ready for Yaga" button (save button exists, upload not implemented)
+  - [x] Status badge
+  - [x] Error display if upload failed
+- [x] Create BagLive.Show
+  - [x] Display 3 bag photos
+  - [x] Show client info (if matched)
+  - [x] List all items with thumbnails
+  - [x] Link to item details
 
 ## Phase 7: Yaga Upload
 - [ ] Create Yaga.Uploader service
@@ -112,15 +112,15 @@
   - [ ] List their items
   - [ ] Total payout calculation
 
-## Phase 10: Dashboard
-- [ ] Create DashboardLive.Index
-  - [ ] Total items uploaded
-  - [ ] Total items sold
-  - [ ] Total revenue
-  - [ ] Total client payouts
-  - [ ] Items pending review
-  - [ ] Items pending upload
-  - [ ] Failed uploads (needs attention)
+## Phase 10: Dashboard ✅ (basic metrics done)
+- [x] Create DashboardLive.Index
+  - [x] Total items uploaded
+  - [x] Total items sold
+  - [x] Total revenue
+  - [x] Total client payouts
+  - [x] Items pending review
+  - [x] Items pending upload
+  - [x] Failed uploads (needs attention)
   - [ ] Recent activity feed
 
 ## Phase 11: Image Management
@@ -129,7 +129,7 @@
   - [ ] Resize to smaller version
   - [ ] Replace original
 - [ ] Create ResizeImagesJob (Oban, weekly cron)
-- [ ] Add image deletion functionality (from ItemLive.Show)
+- [x] Add image deletion functionality (from ItemLive.Show)
 
 ## Nice to Have / Future
 - [ ] Edit existing Yaga products (re-upload)
