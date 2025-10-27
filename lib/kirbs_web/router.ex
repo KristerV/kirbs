@@ -48,7 +48,7 @@ defmodule KirbsWeb.Router do
 
     # Remove these if you'd like to use your own authentication views
     sign_in_route path: "/login",
-                  register_path: "/register",
+                  register_path: nil,
                   reset_path: "/reset",
                   auth_routes_prefix: "/auth",
                   on_mount: [{KirbsWeb.LiveUserAuth, :live_no_user}],
