@@ -1,7 +1,8 @@
 defmodule Kirbs.Resources.Settings do
   use Ash.Resource,
     domain: Kirbs,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    primary_read_warning?: false
 
   postgres do
     table "settings"

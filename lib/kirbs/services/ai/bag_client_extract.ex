@@ -65,23 +65,23 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
     If any field is not present or unclear, use null for that field.
     """
 
-    message = %{
-      role: :user,
-      content: [
-        %{
-          type: :image,
-          source: %{
-            type: :base64,
-            media_type: "image/jpeg",
-            data: base64_image
+    message =
+      LangChain.Message.new_user!(%{
+        content: [
+          %{
+            type: :image,
+            source: %{
+              type: :base64,
+              media_type: "image/jpeg",
+              data: base64_image
+            }
+          },
+          %{
+            type: :text,
+            text: prompt
           }
-        },
-        %{
-          type: :text,
-          text: prompt
-        }
-      ]
-    }
+        ]
+      })
 
     model = Application.get_env(:kirbs, :ai_model, "claude-haiku-4-5")
 

@@ -93,10 +93,10 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
     content = image_contents ++ [%{type: :text, text: prompt}]
 
-    message = %{
-      role: :user,
-      content: content
-    }
+    message =
+      LangChain.Message.new_user!(%{
+        content: content
+      })
 
     model = Application.get_env(:kirbs, :ai_model, "claude-haiku-4-5")
 
