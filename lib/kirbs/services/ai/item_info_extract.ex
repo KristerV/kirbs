@@ -4,6 +4,8 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
   Uses Gemini vision to identify: brand, size, colors, materials, description, quality, suggested_category, price.
   """
 
+  require Logger
+
   alias Kirbs.Resources.Item
   alias Kirbs.YagaTaxonomy
   alias LangChain.NativeTool
