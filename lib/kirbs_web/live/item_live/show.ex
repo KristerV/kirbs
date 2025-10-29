@@ -323,6 +323,11 @@ defmodule KirbsWeb.ItemLive.Show do
                         class="w-full h-full object-cover"
                       />
                     </div>
+                    <%= if image.is_label do %>
+                      <div class="badge badge-primary badge-sm absolute top-2 left-2">
+                        Label
+                      </div>
+                    <% end %>
                     <button
                       type="button"
                       class="btn btn-error btn-xs absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
