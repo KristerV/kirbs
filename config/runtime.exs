@@ -24,6 +24,19 @@ else
   end
 end
 
+# LangChain Google API key for Gemini
+if config_env() == :prod do
+  config :langchain,
+    google_ai_key:
+      System.get_env("GOOGLE_API_KEY") ||
+        raise("Missing environment variable `GOOGLE_API_KEY`!")
+else
+  # In dev/test, only set if environment variable exists (allows dev.secret.exs to take precedence)
+  if google_ai_key = System.get_env("GOOGLE_API_KEY") do
+    config :langchain, google_ai_key: google_ai_key
+  end
+end
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server

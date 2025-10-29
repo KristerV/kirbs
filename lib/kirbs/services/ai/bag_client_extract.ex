@@ -1,7 +1,7 @@
 defmodule Kirbs.Services.Ai.BagClientExtract do
   @moduledoc """
   Extracts client information from the third bag photo (handwritten info).
-  Uses Claude vision to read: name, phone, email, IBAN.
+  Uses Gemini vision to read: name, phone, email, IBAN.
   """
 
   alias Kirbs.Resources.Bag
@@ -44,7 +44,7 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
   defp extract_with_ai(image_path) do
     with {:ok, image_data} <- File.read(image_path),
          {:ok, base64_image} <- encode_image(image_data),
-         {:ok, result} <- call_claude(base64_image) do
+         {:ok, result} <- call_gemini(base64_image) do
       parse_response(result)
     end
   end
@@ -53,7 +53,7 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
     {:ok, Base.encode64(image_data)}
   end
 
-  defp call_claude(base64_image) do
+  defp call_gemini(base64_image) do
     alias LangChain.Message.ContentPart
 
     prompt = """
@@ -69,15 +69,15 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
 
     message =
       LangChain.Message.new_user!([
-        ContentPart.image!(base64_image, media: "image/jpeg"),
+        ContentPart.image!(base64_image, media: :jpeg),
         ContentPart.text!(prompt)
       ])
 
-    model = Application.get_env(:kirbs, :ai_model, "claude-haiku-4-5")
+    model = Application.get_env(:kirbs, :ai_model, "gemini-2.5-flash")
 
     case LangChain.Chains.LLMChain.new!(%{
            llm:
-             LangChain.ChatModels.ChatAnthropic.new!(%{
+             LangChain.ChatModels.ChatGoogleAI.new!(%{
                model: model,
                temperature: 0,
                stream: false

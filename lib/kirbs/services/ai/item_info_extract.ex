@@ -1,7 +1,7 @@
 defmodule Kirbs.Services.Ai.ItemInfoExtract do
   @moduledoc """
   Extracts item information from ALL item photos.
-  Uses Claude vision to identify: brand, size, colors, materials, description, quality, suggested_category, price.
+  Uses Gemini vision to identify: brand, size, colors, materials, description, quality, suggested_category, price.
   """
 
   alias Kirbs.Resources.Item
@@ -37,7 +37,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
   defp extract_with_ai(images) do
     with {:ok, encoded_images} <- encode_images(images),
-         {:ok, result} <- call_claude(encoded_images) do
+         {:ok, result} <- call_gemini(encoded_images) do
       parse_response(result)
     end
   end
@@ -65,7 +65,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     end
   end
 
-  defp call_claude(encoded_images) do
+  defp call_gemini(encoded_images) do
     alias LangChain.Message.ContentPart
 
     # Get valid options from taxonomy
@@ -128,7 +128,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     # Build content array with all images followed by the prompt
     image_contents =
       Enum.map(encoded_images, fn base64_image ->
-        ContentPart.image!(base64_image, media: "image/jpeg")
+        ContentPart.image!(base64_image, media: :jpeg)
       end)
 
     content = image_contents ++ [ContentPart.text!(prompt)]
@@ -148,14 +148,14 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
       Use tools when needed, then return JSON.
       """)
 
-    model = Application.get_env(:kirbs, :ai_model, "claude-haiku-4-5")
+    model = Application.get_env(:kirbs, :ai_model, "gemini-2.5-flash")
 
-    web_search_tool =
-      NativeTool.new!(%{name: "web_search_20250305", configuration: %{max_uses: 3}})
+    google_search_tool =
+      NativeTool.new!(%{name: "google_search", configuration: %{}})
 
     case LangChain.Chains.LLMChain.new!(%{
            llm:
-             LangChain.ChatModels.ChatAnthropic.new!(%{
+             LangChain.ChatModels.ChatGoogleAI.new!(%{
                model: model,
                temperature: 0,
                stream: false
@@ -163,11 +163,11 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
          })
          |> LangChain.Chains.LLMChain.add_message(system_message)
          |> LangChain.Chains.LLMChain.add_message(user_message)
-         |> LangChain.Chains.LLMChain.add_tools([web_search_tool])
+         |> LangChain.Chains.LLMChain.add_tools([google_search_tool])
          |> LangChain.Chains.LLMChain.run() do
       {:ok, updated_chain} ->
         # Extract ALL text parts and get the last one (which contains the JSON)
-        # Claude returns multiple text parts when using web search:
+        # Gemini returns multiple text parts when using web search:
         # 1. Explanation that it will search
         # 2. Search progress messages
         # 3. Final JSON response (this is what we want)

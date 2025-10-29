@@ -66,7 +66,7 @@ config :kirbs,
   ecto_repos: [Kirbs.Repo],
   generators: [timestamp_type: :utc_datetime],
   ash_domains: [Kirbs.Accounts, Kirbs],
-  ai_model: "claude-haiku-4-5"
+  ai_model: "gemini-2.5-flash"
 
 # Configures the endpoint
 config :kirbs, KirbsWeb.Endpoint,
