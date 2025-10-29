@@ -36,49 +36,7 @@ defmodule Kirbs.Resources.Item do
       :upload_error
     ]
 
-    defaults [:read, :destroy]
-
-    create :create do
-      accept [
-        :bag_id,
-        :brand,
-        :size,
-        :colors,
-        :materials,
-        :description,
-        :quality,
-        :suggested_category,
-        :ai_suggested_price,
-        :ai_price_explanation,
-        :listed_price,
-        :sold_price,
-        :status,
-        :yaga_id,
-        :yaga_slug,
-        :upload_error
-      ]
-    end
-
-    update :update do
-      accept [
-        :bag_id,
-        :brand,
-        :size,
-        :colors,
-        :materials,
-        :description,
-        :quality,
-        :suggested_category,
-        :ai_suggested_price,
-        :ai_price_explanation,
-        :listed_price,
-        :sold_price,
-        :status,
-        :yaga_id,
-        :yaga_slug,
-        :upload_error
-      ]
-    end
+    defaults [:create, :read, :update, :destroy]
 
     read :get do
       get_by [:id]
