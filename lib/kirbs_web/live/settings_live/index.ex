@@ -44,7 +44,11 @@ defmodule KirbsWeb.SettingsLive.Index do
           <div class="card-body">
             <h2 class="card-title">Yaga JWT Token</h2>
             <p class="text-sm text-base-content/70 mb-4">
-              Enter your Yaga.ee JWT token for API authentication
+              Enter your Yaga.ee JWT token for API authentication. <br />
+              <strong>How to get it:</strong>
+              Log into yaga.ee, open the Network tab in developer tools,
+              refresh the page, find any request to yaga.ee/api, look in Headers for
+              "authorization: Bearer ...", and copy the token (everything after "Bearer ").
             </p>
 
             <form phx-submit="save_jwt">

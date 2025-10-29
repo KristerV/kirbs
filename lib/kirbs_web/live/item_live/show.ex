@@ -60,6 +60,12 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
+  def handle_event("save_item", %{"item" => item_params, "action" => "save_and_upload"}, socket) do
+    # Redirect to save_and_upload handler
+    handle_event("save_and_upload", %{"item" => item_params}, socket)
+  end
+
+  @impl true
   def handle_event("save_item", %{"item" => item_params}, socket) do
     # Parse array fields (colors and materials are submitted as arrays from live_select tags mode)
     colors = parse_live_select_array(item_params["colors"])
@@ -107,15 +113,42 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
-  def handle_event("save_and_upload", _params, socket) do
-    # TODO: Implement Yaga upload service
-    # For now, just show a message that this functionality needs to be implemented
-    {:noreply,
-     socket
-     |> put_flash(
-       :info,
-       "Save and upload functionality will be implemented. Please use the form to save first, then upload from bag view."
-     )}
+  def handle_event("save_and_upload", %{"item" => item_params}, socket) do
+    # Parse array fields
+    colors = parse_live_select_array(item_params["colors"])
+    materials = parse_live_select_array(item_params["materials"])
+
+    update_params =
+      item_params
+      |> Map.take([
+        "brand",
+        "size",
+        "description",
+        "quality",
+        "suggested_category",
+        "listed_price"
+      ])
+      |> Map.put("colors", colors)
+      |> Map.put("materials", materials)
+      |> Map.put("status", "reviewed")
+      |> convert_to_atoms()
+      |> convert_decimal()
+
+    case Item.update(socket.assigns.item, update_params) do
+      {:ok, item} ->
+        # Queue upload job
+        %{item_id: item.id}
+        |> Kirbs.Jobs.UploadItemJob.new()
+        |> Oban.insert()
+
+        {:noreply,
+         socket
+         |> put_flash(:info, "Item saved and upload started! Check back in a moment.")
+         |> push_navigate(to: ~p"/bags/#{item.bag_id}")}
+
+      {:error, error} ->
+        {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
+    end
   end
 
   @impl true
@@ -487,9 +520,10 @@ defmodule KirbsWeb.ItemLive.Show do
               Save Item
             </button>
             <button
-              type="button"
+              type="submit"
+              name="action"
+              value="save_and_upload"
               class="btn btn-success"
-              phx-click="save_and_upload"
               disabled={@item.status == :uploaded_to_yaga}
             >
               Save and Upload to Yaga

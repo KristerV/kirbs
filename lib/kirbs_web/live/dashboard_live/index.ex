@@ -1,7 +1,9 @@
 defmodule KirbsWeb.DashboardLive.Index do
   use KirbsWeb, :live_view
 
+  import Ecto.Query
   alias Kirbs.Resources.{Bag, Client, Item}
+  alias Kirbs.Repo
 
   @impl true
   def mount(_params, _session, socket) do
@@ -33,6 +35,14 @@ defmodule KirbsWeb.DashboardLive.Index do
         Decimal.new(0)
       end
 
+    # Check for failed/retryable Oban jobs
+    failed_jobs_count =
+      from(j in "oban_jobs",
+        where: j.state in ["retryable", "discarded"],
+        select: count(j.id)
+      )
+      |> Repo.one()
+
     {:ok,
      socket
      |> assign(:total_bags, length(bags))
@@ -45,7 +55,8 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:sold_items, sold_items)
      |> assign(:failed_uploads, failed_uploads)
      |> assign(:total_revenue, total_revenue)
-     |> assign(:total_payouts, total_payouts)}
+     |> assign(:total_payouts, total_payouts)
+     |> assign(:failed_jobs_count, failed_jobs_count)}
   end
 
   @impl true
@@ -54,6 +65,30 @@ defmodule KirbsWeb.DashboardLive.Index do
     <div class="bg-base-300 min-h-screen">
       <div class="max-w-7xl mx-auto p-6">
         <h1 class="text-4xl font-bold mb-8">Dashboard</h1>
+
+        <%= if @failed_jobs_count > 0 do %>
+          <div class="alert bg-error/10 border-2 border-error shadow-lg mb-8">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="stroke-error shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <h3 class="font-bold text-red-400">Background Jobs Failed</h3>
+              <div class="text-sm text-red-300/90">
+                {@failed_jobs_count} job(s) failed. This might indicate an expired JWT token. Check Settings.
+              </div>
+            </div>
+          </div>
+        <% end %>
         
     <!-- Overview Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

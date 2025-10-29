@@ -6,15 +6,12 @@ defmodule Kirbs.Services.Yaga.Auth do
   alias Kirbs.Resources.Settings
 
   def run do
-    with {:ok, setting} <- Settings.get_by_key("yaga_jwt"),
-         {:ok, jwt} <- validate_jwt(setting.value) do
-      {:ok, jwt}
-    else
-      {:error, %Ash.Error.Query.NotFound{}} ->
-        {:error, "JWT token not found in settings. Please configure it in Settings."}
+    case Settings.get_by_key("yaga_jwt") do
+      {:ok, setting} ->
+        validate_jwt(setting.value)
 
-      {:error, reason} ->
-        {:error, reason}
+      {:error, _error} ->
+        {:error, "JWT token not found in settings. Please configure it in Settings."}
     end
   end
 
