@@ -230,6 +230,15 @@ defmodule KirbsWeb.ItemLive.Show do
     end
   end
 
+  @impl true
+  def handle_event("run_ai", _params, socket) do
+    %{item_id: socket.assigns.item.id}
+    |> Kirbs.Jobs.ProcessItemJob.new()
+    |> Oban.insert()
+
+    {:noreply, put_flash(socket, :info, "AI processing job scheduled")}
+  end
+
   defp parse_live_select_array(nil), do: []
   defp parse_live_select_array([]), do: []
   defp parse_live_select_array(list) when is_list(list), do: list
@@ -285,9 +294,14 @@ defmodule KirbsWeb.ItemLive.Show do
       <div class="max-w-6xl mx-auto p-6">
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Item Details</h1>
-          <.link navigate={~p"/bags/#{@item.bag_id}"} class="btn btn-ghost">
-            Back to Bag
-          </.link>
+          <div class="flex gap-2">
+            <button class="btn btn-accent btn-sm" phx-click="run_ai">
+              Run AI
+            </button>
+            <.link navigate={~p"/bags/#{@item.bag_id}"} class="btn btn-ghost">
+              Back to Bag
+            </.link>
+          </div>
         </div>
         
     <!-- Image Gallery -->

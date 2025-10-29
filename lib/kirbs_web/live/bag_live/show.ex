@@ -101,6 +101,15 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
+  def handle_event("run_ai", _params, socket) do
+    %{bag_id: socket.assigns.bag.id}
+    |> Kirbs.Jobs.ProcessBagJob.new()
+    |> Oban.insert()
+
+    {:noreply, put_flash(socket, :info, "AI processing job scheduled")}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="bg-base-300 min-h-screen">
@@ -136,6 +145,9 @@ defmodule KirbsWeb.BagLive.Show do
             <div class="flex justify-between items-start">
               <h2 class="card-title">Client Information</h2>
               <div class="flex gap-2">
+                <button class="btn btn-accent btn-sm" phx-click="run_ai">
+                  Run AI
+                </button>
                 <%= if @bag.client && !@editing_client do %>
                   <button class="btn btn-secondary btn-sm" phx-click="toggle_edit_client">
                     Edit Client
