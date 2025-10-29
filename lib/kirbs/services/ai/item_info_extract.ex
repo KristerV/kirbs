@@ -92,8 +92,13 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     - size: Suurus. Vaata sildilt ja vali kõige lähedasem neist: #{Enum.join(sizes, ", ")}
     - colors: Värvide loend EESTI KEELES. Vali ainult nendest: #{Enum.join(colors, ", ")}
     - materials: Materjalide loend EESTI KEELES. Vali ainult nendest: #{Enum.join(materials, ", ")}
-    - description: EESTI KEELES lühike kirjeldus (1-2 lauset): mis ese on ja seisukorra kohta. Maini defekte, plekke või muid puudusi kui on.
-    - quality: Seisukord. Vali TÄPSELT üks nendest: #{Enum.join(conditions, ", ")}
+    - description: EESTI KEELES lühike kirjeldus (1-2 lauset) sõbralikus, jutustavas stiilis. Kirjuta nagu räägiks inimene teisele - kasuta igapäevaseid sõnu ja loomuliku vestlustoon. Näited: "Armas body, kergelt kantud, aga väga heas seisukorras", "Mõnus pehme dressipluus, kergete kasutusjälgedega", "Tore suvekleit, paari plekiga, aga muidu korras". Maini defekte loomulikult, aga ära kõla nagu robot!
+    - quality: Seisukord. Vali TÄPSELT üks nendest valikutest:
+      * "Uus" - Täielikult originaalseisukorras või pakendis/siltidega
+      * "Uueväärne" - Minimaalselt või üldse mitte kasutatud, defektide ja kasutusjälgedeta
+      * "Hea" - Võivad esineda vähesed kasutusjäljed, mis on välja toodud kirjelduses
+      * "Keskmine" - Märgatavate kasutusjälgedega, mis on välja toodud kirjelduses
+      OLE RANGE - enamik kasutatud riideid on "Uueväärne" või "Hea", mitte "Keskmine"!
     - suggested_category: Kategooria EESTI KEELES. Vali TÄPSELT üks nendest: #{Enum.join(kids_categories, ", ")}
     - price: KASUTATUD eseme müügihind eurodes yaga.ee turul. Search "site:yaga.ee [brand] [category] laste" to find actual yaga.ee listings. Kasutatud riided on 20-40% uue hinnast. Bodyd tavaliselt €1-2, pluusid €2-3. Kui ei leia yaga.ee hindu, kasuta vinted.ee või üldist Eesti second-hand hinnataset. Kui ei suuda hinnata, tagasta null.
     - price_explanation: English explanation (1-2 sentences) for the price. Mention if you found similar listings on yaga.ee or vinted.ee with prices, or if you estimated based on typical Estonian second-hand prices. Example: "Found similar bodysuits on yaga.ee for €1-2." or "No exact matches, estimated €1.50 based on typical used bodysuit prices on yaga.ee."
@@ -104,7 +109,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     Tagasta täpselt nende võtmetega: brand, size, colors, materials, description, quality, suggested_category, price, price_explanation.
 
     Näide:
-    {"brand": "H&M", "size": "74/80", "colors": ["Sinine"], "materials": ["Puuvill"], "description": "...", "quality": "...", "suggested_category": "...", "price": 5.50, "price_explanation": "Leidsin Etsyst sarnaseid H&M bodysid hinnaga 4-6 eurot."}
+    {"brand": "H&M", "size": "74/80", "colors": ["Sinine"], "materials": ["Puuvill"], "description": "Armas sinine body, kergelt kantud aga väga heas seisukorras", "quality": "Hea", "suggested_category": "Bodyd", "price": 1.50, "price_explanation": "Found similar H&M bodysuits on yaga.ee for €1-2."}
 
     Kui mingit välja ei saa piltidelt määrata, kasuta null.
     Massiivide puhul (colors, materials) tagasta tühi massiiv [] kui ei saa määrata.
@@ -115,7 +120,8 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     - Bränd: IGNOREERI käsitsi kirjutatud teksti! Kasuta AINULT trükitud brändisildilt. Kui käsitsi kirjutatud VÕI ei ole loendis → "Muu"
     - Suurus: vali kõige lähedasem loendist (nt kui sildil on "80cm", vali "74/80")
     - Värvid ja materjalid AINULT eestikeelsed valikud ülaltoodud loendist
-    - Kirjeldus: lihtsalt mis ese on + seisukord/defektid (ei pea välja nägema kirjeldama)
+    - Kirjeldus: SÕBRALIK, LOOMULIK, JUTUSTAV stiil. Kirjuta nagu inimene inimesele, mitte nagu robot!
+    - Kvaliteet: OLE RANGE! Vaata kvaliteedi täpseid kirjeldusi ülal. Kui riie on praktiliselt uus või väga vähe kantud → "Uueväärne". Ainult väheste kasutusjälgedega → "Hea". Ainult päris kulunud/kahjustatud → "Keskmine"
     - Kvaliteet ja kategooria TÄPSELT loendist, mitte sinu enda sõnadega
     - Hind: KRIITILINE! KASUTATUD riie hind! Search "site:yaga.ee" first! Used baby clothes are CHEAP: bodysuits €1-2, NOT €4-5! These are 20-40% of new price. Don't use eBay or foreign prices!
     """
