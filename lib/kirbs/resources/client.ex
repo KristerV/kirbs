@@ -19,15 +19,7 @@ defmodule Kirbs.Resources.Client do
   actions do
     default_accept [:name, :phone, :email, :iban]
 
-    defaults [:read, :destroy]
-
-    create :create do
-      accept [:name, :phone, :email, :iban]
-    end
-
-    update :update do
-      accept [:name, :phone, :email, :iban]
-    end
+    defaults [:create, :read, :update, :destroy]
 
     read :get do
       get_by [:id]
@@ -56,7 +48,7 @@ defmodule Kirbs.Resources.Client do
     end
 
     attribute :iban, :string do
-      allow_nil? false
+      allow_nil? true
     end
 
     create_timestamp :created_at

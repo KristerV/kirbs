@@ -12,8 +12,17 @@ config :kirbs,
   image_upload_dir: System.get_env("IMAGE_UPLOAD_DIR") || "/tmp/kirbs_uploads"
 
 # LangChain Anthropic API key
-config :langchain,
-  anthropic_key: System.get_env("ANTHROPIC_API_KEY")
+if config_env() == :prod do
+  config :langchain,
+    anthropic_key:
+      System.get_env("ANTHROPIC_API_KEY") ||
+        raise("Missing environment variable `ANTHROPIC_API_KEY`!")
+else
+  # In dev/test, only set if environment variable exists (allows dev.secret.exs to take precedence)
+  if anthropic_key = System.get_env("ANTHROPIC_API_KEY") do
+    config :langchain, anthropic_key: anthropic_key
+  end
+end
 
 # ## Using releases
 #

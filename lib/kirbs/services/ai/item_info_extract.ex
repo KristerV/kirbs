@@ -62,6 +62,8 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
   end
 
   defp call_claude(encoded_images) do
+    alias LangChain.Message.ContentPart
+
     prompt = """
     Please analyze these photos of a kids' clothing item label/tags and extract the following information:
 
@@ -81,22 +83,12 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     # Build content array with all images followed by the prompt
     image_contents =
       Enum.map(encoded_images, fn base64_image ->
-        %{
-          type: :image,
-          source: %{
-            type: :base64,
-            media_type: "image/jpeg",
-            data: base64_image
-          }
-        }
+        ContentPart.image!(base64_image, media: "image/jpeg")
       end)
 
-    content = image_contents ++ [%{type: :text, text: prompt}]
+    content = image_contents ++ [ContentPart.text!(prompt)]
 
-    message =
-      LangChain.Message.new_user!(%{
-        content: content
-      })
+    message = LangChain.Message.new_user!(content)
 
     model = Application.get_env(:kirbs, :ai_model, "claude-haiku-4-5")
 
@@ -110,8 +102,17 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
          })
          |> LangChain.Chains.LLMChain.add_message(message)
          |> LangChain.Chains.LLMChain.run() do
-      {:ok, _updated_chain, response} ->
-        {:ok, response.content}
+      {:ok, updated_chain} ->
+        # Extract text from ContentParts
+        text_content =
+          updated_chain.last_message.content
+          |> Enum.find(&(&1.type == :text))
+          |> case do
+            %{content: text} -> text
+            _ -> ""
+          end
+
+        {:ok, text_content}
 
       {:error, reason} ->
         {:error, "AI extraction failed: #{inspect(reason)}"}

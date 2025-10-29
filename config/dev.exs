@@ -69,6 +69,7 @@ config :kirbs, dev_routes: true, token_signing_secret: "2IMARHufXqLx01tukQH6hcic
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
+config :logger, level: :info
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.

@@ -18,15 +18,7 @@ defmodule Kirbs.Resources.Bag do
   actions do
     default_accept [:client_id]
 
-    defaults [:read, :destroy]
-
-    create :create do
-      accept [:client_id]
-    end
-
-    update :update do
-      accept [:client_id]
-    end
+    defaults [:create, :read, :update, :destroy]
 
     read :get do
       get_by [:id]

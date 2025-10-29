@@ -54,6 +54,8 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
   end
 
   defp call_claude(base64_image) do
+    alias LangChain.Message.ContentPart
+
     prompt = """
     Please extract the following information from this handwritten note:
     - Name (full name of the client)
@@ -66,22 +68,10 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
     """
 
     message =
-      LangChain.Message.new_user!(%{
-        content: [
-          %{
-            type: :image,
-            source: %{
-              type: :base64,
-              media_type: "image/jpeg",
-              data: base64_image
-            }
-          },
-          %{
-            type: :text,
-            text: prompt
-          }
-        ]
-      })
+      LangChain.Message.new_user!([
+        ContentPart.image!(base64_image, media: "image/jpeg"),
+        ContentPart.text!(prompt)
+      ])
 
     model = Application.get_env(:kirbs, :ai_model, "claude-haiku-4-5")
 
@@ -95,8 +85,17 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
          })
          |> LangChain.Chains.LLMChain.add_message(message)
          |> LangChain.Chains.LLMChain.run() do
-      {:ok, _updated_chain, response} ->
-        {:ok, response.content}
+      {:ok, updated_chain} ->
+        # Extract text from ContentParts
+        text_content =
+          updated_chain.last_message.content
+          |> Enum.find(&(&1.type == :text))
+          |> case do
+            %{content: text} -> text
+            _ -> ""
+          end
+
+        {:ok, text_content}
 
       {:error, reason} ->
         {:error, "AI extraction failed: #{inspect(reason)}"}

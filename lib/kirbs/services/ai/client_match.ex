@@ -18,7 +18,7 @@ defmodule Kirbs.Services.Ai.ClientMatch do
       {:ok, client} ->
         {:ok, client}
 
-      {:error, %Ash.Error.Query.NotFound{}} ->
+      {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}} ->
         create_client(info)
 
       {:error, reason} ->
@@ -27,11 +27,11 @@ defmodule Kirbs.Services.Ai.ClientMatch do
   end
 
   defp create_client(%{name: name, phone: phone, email: email, iban: iban}) do
-    Client.create(%{
+    Ash.create(Client, %{
       name: name || "Unknown",
       phone: phone,
       email: email,
-      iban: iban || ""
+      iban: iban
     })
   end
 end
