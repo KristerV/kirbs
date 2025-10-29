@@ -22,6 +22,21 @@ defmodule KirbsWeb.Router do
     plug :set_actor, :user
   end
 
+  pipeline :admin do
+    plug :browser
+    plug :require_authenticated_user
+  end
+
+  defp require_authenticated_user(conn, _opts) do
+    if Map.get(conn.assigns, :current_user) do
+      conn
+    else
+      conn
+      |> Phoenix.Controller.redirect(to: "/login")
+      |> Plug.Conn.halt()
+    end
+  end
+
   scope "/", KirbsWeb do
     pipe_through :browser
 
@@ -80,36 +95,24 @@ defmodule KirbsWeb.Router do
   #   pipe_through :api
   # end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
-  if Application.compile_env(:kirbs, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
-    import Phoenix.LiveDashboard.Router
+  # Admin routes - requires authentication
+  import AshAdmin.Router
+  import Phoenix.LiveDashboard.Router
 
+  scope "/admin" do
+    pipe_through :admin
+
+    live_dashboard "/dashboard", metrics: KirbsWeb.Telemetry
+    oban_dashboard("/oban")
+    ash_admin "/"
+  end
+
+  # Enable Swoosh mailbox preview in development
+  if Application.compile_env(:kirbs, :dev_routes) do
     scope "/dev" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: KirbsWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
-    end
-
-    scope "/" do
-      pipe_through :browser
-
-      oban_dashboard("/oban")
-    end
-  end
-
-  if Application.compile_env(:kirbs, :dev_routes) do
-    import AshAdmin.Router
-
-    scope "/admin" do
-      pipe_through :browser
-
-      ash_admin "/"
     end
   end
 end
