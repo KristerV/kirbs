@@ -209,9 +209,10 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
         case json_str do
           nil ->
-            # Log the response to help debug
-            IO.puts("Failed to extract JSON from response:")
-            IO.puts(String.slice(response_text, 0..500))
+            Logger.error(
+              "Failed to extract JSON from Gemini response: #{String.slice(response_text, 0..500)}"
+            )
+
             {:error, "Could not find JSON in AI response"}
 
           json ->
@@ -220,15 +221,17 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
                 parse_extracted_data(data)
 
               {:error, err} ->
-                IO.puts("Failed to parse JSON: #{inspect(err)}")
-                IO.puts("JSON string: #{json}")
+                Logger.error(
+                  "Failed to parse JSON from Gemini: #{inspect(err)}. JSON string: #{json}"
+                )
+
                 {:error, "Could not parse AI response"}
             end
         end
     end
   end
 
-  defp parse_extracted_data(data) do
+  defp parse_extracted_data(data) when is_map(data) do
     {:ok,
      %{
        brand: data["brand"],
@@ -241,6 +244,14 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
        price: data["price"],
        price_explanation: data["price_explanation"]
      }}
+  end
+
+  defp parse_extracted_data(data) do
+    Logger.error(
+      "Expected map but got invalid data structure from Gemini: #{inspect(data, pretty: true, limit: :infinity)}"
+    )
+
+    {:error, "Invalid data structure received from AI"}
   end
 
   defp validate_extracted_data(extracted) do
