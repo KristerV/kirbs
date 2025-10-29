@@ -16,7 +16,8 @@ defmodule KirbsWeb.BagLive.Show do
      |> assign(:clients, clients)
      |> assign(:upload_dir, upload_dir)
      |> assign(:show_client_modal, false)
-     |> assign(:creating_new_client, false)}
+     |> assign(:creating_new_client, false)
+     |> assign(:editing_client, false)}
   end
 
   @impl true
@@ -78,6 +79,28 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
+  def handle_event("toggle_edit_client", _params, socket) do
+    {:noreply, assign(socket, :editing_client, !socket.assigns.editing_client)}
+  end
+
+  @impl true
+  def handle_event("update_client", params, socket) do
+    case Ash.update(socket.assigns.bag.client, params) do
+      {:ok, _client} ->
+        bag = Ash.load!(socket.assigns.bag, [:client, :items, :images])
+
+        {:noreply,
+         socket
+         |> assign(:bag, bag)
+         |> assign(:editing_client, false)
+         |> put_flash(:info, "Client updated successfully")}
+
+      {:error, error} ->
+        {:noreply, put_flash(socket, :error, "Failed to update client: #{inspect(error)}")}
+    end
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="bg-base-300 min-h-screen">
@@ -112,30 +135,100 @@ defmodule KirbsWeb.BagLive.Show do
           <div class="card-body">
             <div class="flex justify-between items-start">
               <h2 class="card-title">Client Information</h2>
-              <button class="btn btn-primary btn-sm" phx-click="show_client_modal">
-                {if @bag.client, do: "Change Client", else: "Assign Client"}
-              </button>
+              <div class="flex gap-2">
+                <%= if @bag.client && !@editing_client do %>
+                  <button class="btn btn-secondary btn-sm" phx-click="toggle_edit_client">
+                    Edit Client
+                  </button>
+                <% end %>
+                <button class="btn btn-primary btn-sm" phx-click="show_client_modal">
+                  {if @bag.client, do: "Change Client", else: "Assign Client"}
+                </button>
+              </div>
             </div>
 
             <%= if @bag.client do %>
-              <div class="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <span class="font-semibold">Name:</span>
-                  <span class="ml-2">{@bag.client.name}</span>
+              <%= if @editing_client do %>
+                <form phx-submit="update_client" class="mt-4">
+                  <div class="form-control mb-4">
+                    <label class="label">
+                      <span class="label-text">Name *</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={@bag.client.name}
+                      class="input input-bordered"
+                      required
+                    />
+                  </div>
+
+                  <div class="form-control mb-4">
+                    <label class="label">
+                      <span class="label-text">Phone *</span>
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={@bag.client.phone}
+                      class="input input-bordered"
+                      required
+                    />
+                  </div>
+
+                  <div class="form-control mb-4">
+                    <label class="label">
+                      <span class="label-text">Email</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={@bag.client.email}
+                      class="input input-bordered"
+                    />
+                  </div>
+
+                  <div class="form-control mb-4">
+                    <label class="label">
+                      <span class="label-text">IBAN</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="iban"
+                      value={@bag.client.iban}
+                      class="input input-bordered"
+                    />
+                  </div>
+
+                  <div class="flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                      Save Changes
+                    </button>
+                    <button type="button" class="btn" phx-click="toggle_edit_client">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              <% else %>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <span class="font-semibold">Name:</span>
+                    <span class="ml-2">{@bag.client.name}</span>
+                  </div>
+                  <div>
+                    <span class="font-semibold">Phone:</span>
+                    <span class="ml-2">{@bag.client.phone}</span>
+                  </div>
+                  <div>
+                    <span class="font-semibold">Email:</span>
+                    <span class="ml-2">{@bag.client.email || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span class="font-semibold">IBAN:</span>
+                    <span class="ml-2">{@bag.client.iban || "N/A"}</span>
+                  </div>
                 </div>
-                <div>
-                  <span class="font-semibold">Phone:</span>
-                  <span class="ml-2">{@bag.client.phone}</span>
-                </div>
-                <div>
-                  <span class="font-semibold">Email:</span>
-                  <span class="ml-2">{@bag.client.email || "N/A"}</span>
-                </div>
-                <div>
-                  <span class="font-semibold">IBAN:</span>
-                  <span class="ml-2">{@bag.client.iban}</span>
-                </div>
-              </div>
+              <% end %>
             <% else %>
               <div class="alert alert-warning mt-4">
                 <span>No client assigned to this bag</span>

@@ -49,6 +49,8 @@ defmodule KirbsWeb.Router do
       live "/bags/capture", BagLive.Capture, :capture
       live "/bags/:id", BagLive.Show, :show
       live "/items/:id", ItemLive.Show, :show
+      live "/clients", ClientLive.Index, :index
+      live "/clients/:id", ClientLive.Show, :show
       live "/settings", SettingsLive.Index, :index
     end
   end
