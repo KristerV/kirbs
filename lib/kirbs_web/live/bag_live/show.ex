@@ -298,13 +298,13 @@ defmodule KirbsWeb.BagLive.Show do
                           <p class="text-sm text-base-content/70">
                             {length(item_images)} photos
                           </p>
-                          <div class="badge badge-sm mt-2">
+                          <div class={"badge badge-sm mt-2 #{if item.status == :uploaded_to_yaga, do: "badge-success"}"}>
                             {item.status}
                           </div>
                         </div>
 
                         <.link navigate={~p"/items/#{item.id}"} class="btn btn-primary btn-sm">
-                          Review Item
+                          Details
                         </.link>
                       </div>
                     </div>
