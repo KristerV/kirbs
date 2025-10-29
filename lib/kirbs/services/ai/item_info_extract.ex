@@ -72,7 +72,6 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     kids_categories = YagaTaxonomy.kids_categories() |> Enum.map(& &1.name) |> Enum.uniq()
     colors = YagaTaxonomy.all_colors() |> Enum.map(& &1.name)
     materials = YagaTaxonomy.all_materials() |> Enum.map(& &1.name)
-    conditions = YagaTaxonomy.all_conditions() |> Enum.map(& &1.name)
     sizes = YagaTaxonomy.all_sizes() |> Enum.map(& &1.name)
     brands = YagaTaxonomy.all_brands() |> Enum.map(& &1.name) |> Enum.sort()
 
