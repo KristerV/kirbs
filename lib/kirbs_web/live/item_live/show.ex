@@ -231,6 +231,31 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
+  def handle_event("toggle_label", %{"image_id" => image_id}, socket) do
+    case Image.get(image_id) do
+      {:ok, image} ->
+        case Image.update(image, %{is_label: !image.is_label}) do
+          {:ok, _updated_image} ->
+            images =
+              Image.list!()
+              |> Enum.filter(&(&1.item_id == socket.assigns.item.id))
+              |> Enum.sort_by(& &1.order)
+
+            {:noreply,
+             socket
+             |> assign(:images, images)
+             |> put_flash(:info, "Label flag toggled successfully")}
+
+          {:error, _error} ->
+            {:noreply, put_flash(socket, :error, "Failed to toggle label flag")}
+        end
+
+      {:error, _error} ->
+        {:noreply, put_flash(socket, :error, "Image not found")}
+    end
+  end
+
+  @impl true
   def handle_event("run_ai", _params, socket) do
     %{item_id: socket.assigns.item.id}
     |> Kirbs.Jobs.ProcessItemJob.new()
@@ -336,6 +361,14 @@ defmodule KirbsWeb.ItemLive.Show do
                       data-confirm="Are you sure you want to delete this image?"
                     >
                       Delete
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-info btn-xs absolute top-10 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      phx-click="toggle_label"
+                      phx-value-image_id={image.id}
+                    >
+                      {if image.is_label, do: "Unmark Label", else: "Mark Label"}
                     </button>
                   </div>
                 <% end %>
