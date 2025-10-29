@@ -7,6 +7,9 @@ defmodule KirbsWeb.ItemLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
+    # Subscribe to item updates
+    Phoenix.PubSub.subscribe(Kirbs.PubSub, "item:#{id}")
+
     item = Item.get!(id) |> Ash.load!([:bag])
     images = Image.list!() |> Enum.filter(&(&1.item_id == item.id)) |> Enum.sort_by(& &1.order)
 
@@ -241,17 +244,14 @@ defmodule KirbsWeb.ItemLive.Show do
               |> Enum.filter(&(&1.item_id == socket.assigns.item.id))
               |> Enum.sort_by(& &1.order)
 
-            {:noreply,
-             socket
-             |> assign(:images, images)
-             |> put_flash(:info, "Label flag toggled successfully")}
+            {:noreply, assign(socket, :images, images)}
 
           {:error, _error} ->
-            {:noreply, put_flash(socket, :error, "Failed to toggle label flag")}
+            {:noreply, socket}
         end
 
       {:error, _error} ->
-        {:noreply, put_flash(socket, :error, "Image not found")}
+        {:noreply, socket}
     end
   end
 
@@ -262,6 +262,18 @@ defmodule KirbsWeb.ItemLive.Show do
     |> Oban.insert()
 
     {:noreply, put_flash(socket, :info, "AI processing job scheduled")}
+  end
+
+  @impl true
+  def handle_info({:item_processed, _item_id}, socket) do
+    # Reload item data when AI processing completes
+    item = Item.get!(socket.assigns.item.id) |> Ash.load!([:bag])
+    form = AshPhoenix.Form.for_update(item, :update, as: "item")
+
+    {:noreply,
+     socket
+     |> assign(:item, item)
+     |> assign(:form, to_form(form))}
   end
 
   defp parse_live_select_array(nil), do: []

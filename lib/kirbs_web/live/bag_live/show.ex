@@ -5,6 +5,9 @@ defmodule KirbsWeb.BagLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
+    # Subscribe to bag updates
+    Phoenix.PubSub.subscribe(Kirbs.PubSub, "bag:#{id}")
+
     bag = Bag.get!(id) |> Ash.load!([:client, :items, :images])
     clients = Client.list!()
 
@@ -107,6 +110,14 @@ defmodule KirbsWeb.BagLive.Show do
     |> Oban.insert()
 
     {:noreply, put_flash(socket, :info, "AI processing job scheduled")}
+  end
+
+  @impl true
+  def handle_info({:bag_processed, _bag_id}, socket) do
+    # Reload bag data when AI processing completes
+    bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :items, :images])
+
+    {:noreply, assign(socket, :bag, bag)}
   end
 
   @impl true

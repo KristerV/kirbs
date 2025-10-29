@@ -12,6 +12,13 @@ defmodule Kirbs.Jobs.ProcessItemJob do
   def perform(%Oban.Job{args: %{"item_id" => item_id}}) do
     with {:ok, item} <- ItemInfoExtract.run(item_id),
          {:ok, _item} <- mark_as_processed(item) do
+      # Broadcast completion to LiveView
+      Phoenix.PubSub.broadcast(
+        Kirbs.PubSub,
+        "item:#{item_id}",
+        {:item_processed, item_id}
+      )
+
       {:ok, "Item processed successfully"}
     else
       {:error, reason} ->
