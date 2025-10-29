@@ -78,10 +78,13 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     prompt = """
     KONTEKST: Sa hindad KASUTATUD laste rõivaid Eesti second-hand turule (yaga.ee).
 
+    TÄHTIS: Pildil võib olla MITU asja korraga - see on komplekt! Kui näed mitut eset (nt body + püksid, või 2-3 bodyt koos), siis käsitle neid koos ühe komplektina.
+
     HINNAKUJUNDUS:
     - Need on KASUTATUD riided, mitte uued!
     - Uued laste rõivad maksavad €3-10, kasutatud peaksid olema 20-40% uuest hinnast
     - Tüüpilised yaga.ee hinnad: bodyd €1-2, pluusid €2-3, püksid €3-4, joped €5-8
+    - Komplekti puhul: liida üksikute asjade hinnad kokku (nt 2 bodyt = €3-4)
     - Otsi ESMALT yaga.ee (site:yaga.ee), seejärel vinted.ee
     - Väldi eBay'i ja USA hindu täielikult
 
@@ -89,9 +92,9 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
     - brand: AINULT trükitud brändisildilt. Vaata kas on TÄPSELT loendis: #{Enum.join(brands, ", ")}. Kui ei ole loendis VÕI on käsitsi kirjutatud VÕI puudub, kasuta "Muu".
     - size: Suurus. Vaata sildilt ja vali kõige lähedasem neist: #{Enum.join(sizes, ", ")}
-    - colors: Värvide loend EESTI KEELES. Vali ainult nendest: #{Enum.join(colors, ", ")}
+    - colors: Värvide loend EESTI KEELES. Vali ainult nendest: #{Enum.join(colors, ", ")}. MAKSIMAALSELT 2 värvi! Vali 1-2 kõige domineerivat värvi.
     - materials: Materjalide loend EESTI KEELES. Vali ainult nendest: #{Enum.join(materials, ", ")}
-    - description: EESTI KEELES lühike kirjeldus (1-2 lauset) sõbralikus, jutustavas stiilis. Kirjuta nagu räägiks inimene teisele - kasuta igapäevaseid sõnu ja loomuliku vestlustoon. Näited: "Armas body, kergelt kantud, aga väga heas seisukorras", "Mõnus pehme dressipluus, kergete kasutusjälgedega", "Tore suvekleit, paari plekiga, aga muidu korras". Maini defekte loomulikult, aga ära kõla nagu robot!
+    - description: EESTI KEELES lühike kirjeldus (1-2 lauset) sõbralikus, jutustavas stiilis. Kirjuta nagu räägiks inimene teisele - kasuta igapäevaseid sõnu ja loomuliku vestlustoon. KUI ON MITU ASJA, alusta "Komplekt:" ja nimeta asjad. Näited üksikute asjade kohta: "Armas body, kergelt kantud, aga väga heas seisukorras", "Mõnus pehme dressipluus, kergete kasutusjälgedega". Näited komplekti kohta: "Komplekt: 2 armsat bodyt, mõlemad väga heas seisukorras", "Komplekt: body ja püksid, natuke kantud aga kenasti hoitud", "Komplekt: 3 bodyt erinevatest brändidest, kergete kasutusjälgedega". Maini defekte loomulikult, aga ära kõla nagu robot!
     - quality: Seisukord. Vali TÄPSELT üks nendest valikutest:
       * "Uus" - Täielikult originaalseisukorras või pakendis/siltidega
       * "Uueväärne" - Minimaalselt või üldse mitte kasutatud, defektide ja kasutusjälgedeta
@@ -107,8 +110,9 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     Ära kasuta markdown koodiplokke (```).
     Tagasta täpselt nende võtmetega: brand, size, colors, materials, description, quality, suggested_category, price, price_explanation.
 
-    Näide:
-    {"brand": "H&M", "size": "74/80", "colors": ["Sinine"], "materials": ["Puuvill"], "description": "Armas sinine body, kergelt kantud aga väga heas seisukorras", "quality": "Hea", "suggested_category": "Bodyd", "price": 1.50, "price_explanation": "Found similar H&M bodysuits on yaga.ee for €1-2."}
+    Näited:
+    Üks asi: {"brand": "H&M", "size": "74/80", "colors": ["Sinine"], "materials": ["Puuvill"], "description": "Armas sinine body, kergelt kantud aga väga heas seisukorras", "quality": "Hea", "suggested_category": "Bodyd", "price": 1.50, "price_explanation": "Found similar H&M bodysuits on yaga.ee for €1-2."}
+    Komplekt: {"brand": "Muu", "size": "74/80", "colors": ["Sinine", "Valge"], "materials": ["Puuvill"], "description": "Komplekt: 2 armsat bodyt, üks sinine ja üks valge, mõlemad hästi hoitud", "quality": "Hea", "suggested_category": "Bodyd", "price": 3.00, "price_explanation": "Set of 2 bodysuits, priced at €1.50 each based on typical yaga.ee prices."}
 
     Kui mingit välja ei saa piltidelt määrata, kasuta null.
     Massiivide puhul (colors, materials) tagasta tühi massiiv [] kui ei saa määrata.
@@ -116,13 +120,15 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     Hinna selgitus peab alati olema, kui hind on määratud.
 
     OLULINE:
-    - Bränd: IGNOREERI käsitsi kirjutatud teksti! Kasuta AINULT trükitud brändisildilt. Kui käsitsi kirjutatud VÕI ei ole loendis → "Muu"
-    - Suurus: vali kõige lähedasem loendist (nt kui sildil on "80cm", vali "74/80")
-    - Värvid ja materjalid AINULT eestikeelsed valikud ülaltoodud loendist
-    - Kirjeldus: SÕBRALIK, LOOMULIK, JUTUSTAV stiil. Kirjuta nagu inimene inimesele, mitte nagu robot!
+    - KOMPLEKT: Kui pildil on mitu asja, käsitle neid ühe komplektina! Kirjelduses alusta "Komplekt:" ja nimeta asjad. Hind = üksikute asjade hinnad kokku.
+    - Bränd: IGNOREERI käsitsi kirjutatud teksti! Kasuta AINULT trükitud brändisildilt. Kui käsitsi kirjutatud VÕI ei ole loendis → "Muu". Komplekti puhul kui erinevad brändid → "Muu"
+    - Suurus: vali kõige lähedasem loendist (nt kui sildil on "80cm", vali "74/80"). Komplekti puhul kui sama suurus → see suurus, kui erinevad → vanim/väiksem suurus
+    - Värvid: AINULT eestikeelsed valikud ülaltoodud loendist. MAKSIMAALSELT 2 värvi! Vali domineerivad värvid.
+    - Materjalid: AINULT eestikeelsed valikud ülaltoodud loendist
+    - Kirjeldus: SÕBRALIK, LOOMULIK, JUTUSTAV stiil. Kirjuta nagu inimene inimesele, mitte nagu robot! Komplekt → alusta "Komplekt:" ja kirjelda mida kuulub
     - Kvaliteet: OLE RANGE! Vaata kvaliteedi täpseid kirjeldusi ülal. Kui riie on praktiliselt uus või väga vähe kantud → "Uueväärne". Ainult väheste kasutusjälgedega → "Hea". Ainult päris kulunud/kahjustatud → "Keskmine"
     - Kvaliteet ja kategooria TÄPSELT loendist, mitte sinu enda sõnadega
-    - Hind: KRIITILINE! KASUTATUD riie hind! Search "site:yaga.ee" first! Used baby clothes are CHEAP: bodysuits €1-2, NOT €4-5! These are 20-40% of new price. Don't use eBay or foreign prices!
+    - Hind: KRIITILINE! KASUTATUD riie hind! Search "site:yaga.ee" first! Used baby clothes are CHEAP: bodysuits €1-2, NOT €4-5! These are 20-40% of new price. KOMPLEKTI puhul liida üksikute asjade hinnad kokku! Don't use eBay or foreign prices!
     """
 
     # Build content array with all images followed by the prompt

@@ -112,10 +112,14 @@ defmodule Kirbs.Services.Yaga.Uploader do
       |> Enum.reject(& &1.is_label)
       |> Enum.sort_by(& &1.order)
 
-    case upload_photos_recursive(jwt, product, images, []) do
-      {:ok, _uploaded_files} -> {:ok, product}
-      {:error, reason} -> {:error, reason}
+    with {:ok, file_names} <- upload_photos_to_s3(jwt, product, images),
+         {:ok, _} <- attach_all_images(jwt, product.id, file_names) do
+      {:ok, product}
     end
+  end
+
+  defp upload_photos_to_s3(jwt, product, images) do
+    upload_photos_recursive(jwt, product, images, [])
   end
 
   defp upload_photos_recursive(_jwt, _product, [], uploaded) do
@@ -132,8 +136,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
 
   defp upload_single_photo(jwt, product, image) do
     with {:ok, upload_url, file_name} <- get_upload_url(jwt, product.slug, image),
-         {:ok, _} <- upload_to_s3(upload_url, image),
-         {:ok, _} <- attach_image(jwt, product.id, file_name) do
+         {:ok, _} <- upload_to_s3(upload_url, image) do
       {:ok, file_name}
     end
   end
@@ -195,7 +198,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
     end
   end
 
-  defp attach_image(jwt, product_id, file_name) do
+  defp attach_all_images(jwt, product_id, file_names) do
     headers = [
       {"authorization", "Bearer #{jwt}"},
       {"content-type", "application/json"},
@@ -203,7 +206,8 @@ defmodule Kirbs.Services.Yaga.Uploader do
       {"x-language", "et"}
     ]
 
-    body = %{images: [%{fileName: file_name}]}
+    images = Enum.map(file_names, fn file_name -> %{fileName: file_name} end)
+    body = %{images: images}
 
     case Req.post("#{@base_url}/api/product/#{product_id}/images",
            json: body,
@@ -213,10 +217,10 @@ defmodule Kirbs.Services.Yaga.Uploader do
         {:ok, :attached}
 
       {:ok, %{status: status, body: body}} ->
-        {:error, "Failed to attach image: HTTP #{status} - #{inspect(body)}"}
+        {:error, "Failed to attach images: HTTP #{status} - #{inspect(body)}"}
 
       {:error, error} ->
-        {:error, "Network error attaching image: #{inspect(error)}"}
+        {:error, "Network error attaching images: #{inspect(error)}"}
     end
   end
 
