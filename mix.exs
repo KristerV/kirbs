@@ -41,7 +41,7 @@ defmodule Kirbs.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:langchain, "== 0.4.0"},
+      {:langchain, path: "/home/krister/code/langchain", override: true},
       {:live_select, "~> 1.0"},
       {:git_hooks, "~> 0.8", only: [:dev]},
       {:ex_money_sql, "~> 1.0"},
@@ -85,7 +85,7 @@ defmodule Kirbs.MixProject do
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.26"},
+      {:gettext, "~> 0.26 or ~> 1.0", override: true},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"}

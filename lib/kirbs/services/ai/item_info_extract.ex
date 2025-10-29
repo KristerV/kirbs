@@ -1,11 +1,12 @@
 defmodule Kirbs.Services.Ai.ItemInfoExtract do
   @moduledoc """
   Extracts item information from ALL item photos.
-  Uses Claude vision to identify: brand, size, colors, materials, description, quality, suggested_category.
+  Uses Claude vision to identify: brand, size, colors, materials, description, quality, suggested_category, price.
   """
 
   alias Kirbs.Resources.Item
   alias Kirbs.YagaTaxonomy
+  alias LangChain.NativeTool
 
   def run(item_id) do
     with {:ok, item} <- load_item(item_id),
@@ -16,6 +17,8 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
          {:ok, updated_item} <- update_item(item, validated) do
       {:ok, updated_item}
     end
+
+    # |> dbg
   end
 
   defp load_item(item_id) do
@@ -74,6 +77,15 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     brands = YagaTaxonomy.all_brands() |> Enum.map(& &1.name) |> Enum.sort()
 
     prompt = """
+    KONTEKST: Sa hindad KASUTATUD laste rõivaid Eesti second-hand turule (yaga.ee).
+
+    HINNAKUJUNDUS:
+    - Need on KASUTATUD riided, mitte uued!
+    - Uued laste rõivad maksavad €3-10, kasutatud peaksid olema 20-40% uuest hinnast
+    - Tüüpilised yaga.ee hinnad: bodyd €1-2, pluusid €2-3, püksid €3-4, joped €5-8
+    - Otsi ESMALT yaga.ee (site:yaga.ee), seejärel vinted.ee
+    - Väldi eBay'i ja USA hindu täielikult
+
     Analüüsi neid laste rõivaste fotosid ja eralda järgmine informatsioon:
 
     - brand: AINULT trükitud brändisildilt. Vaata kas on TÄPSELT loendis: #{Enum.join(brands, ", ")}. Kui ei ole loendis VÕI on käsitsi kirjutatud VÕI puudub, kasuta "Muu".
@@ -83,10 +95,21 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     - description: EESTI KEELES lühike kirjeldus (1-2 lauset): mis ese on ja seisukorra kohta. Maini defekte, plekke või muid puudusi kui on.
     - quality: Seisukord. Vali TÄPSELT üks nendest: #{Enum.join(conditions, ", ")}
     - suggested_category: Kategooria EESTI KEELES. Vali TÄPSELT üks nendest: #{Enum.join(kids_categories, ", ")}
+    - price: KASUTATUD eseme müügihind eurodes yaga.ee turul. Search "site:yaga.ee [brand] [category] laste" to find actual yaga.ee listings. Kasutatud riided on 20-40% uue hinnast. Bodyd tavaliselt €1-2, pluusid €2-3. Kui ei leia yaga.ee hindu, kasuta vinted.ee või üldist Eesti second-hand hinnataset. Kui ei suuda hinnata, tagasta null.
+    - price_explanation: English explanation (1-2 sentences) for the price. Mention if you found similar listings on yaga.ee or vinted.ee with prices, or if you estimated based on typical Estonian second-hand prices. Example: "Found similar bodysuits on yaga.ee for €1-2." or "No exact matches, estimated €1.50 based on typical used bodysuit prices on yaga.ee."
 
-    Tagasta JSON formaadis täpselt nende võtmetega: brand, size, colors, materials, description, quality, suggested_category.
+    VASTUSE FORMAAT:
+    Tagasta AINULT puhas JSON objekt ilma lisateksti või selgitusteta.
+    Ära kasuta markdown koodiplokke (```).
+    Tagasta täpselt nende võtmetega: brand, size, colors, materials, description, quality, suggested_category, price, price_explanation.
+
+    Näide:
+    {"brand": "H&M", "size": "74/80", "colors": ["Sinine"], "materials": ["Puuvill"], "description": "...", "quality": "...", "suggested_category": "...", "price": 5.50, "price_explanation": "Leidsin Etsyst sarnaseid H&M bodysid hinnaga 4-6 eurot."}
+
     Kui mingit välja ei saa piltidelt määrata, kasuta null.
     Massiivide puhul (colors, materials) tagasta tühi massiiv [] kui ei saa määrata.
+    Hinna puhul tagasta number (nt 5.50) või null.
+    Hinna selgitus peab alati olema, kui hind on määratud.
 
     OLULINE:
     - Bränd: IGNOREERI käsitsi kirjutatud teksti! Kasuta AINULT trükitud brändisildilt. Kui käsitsi kirjutatud VÕI ei ole loendis → "Muu"
@@ -94,6 +117,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     - Värvid ja materjalid AINULT eestikeelsed valikud ülaltoodud loendist
     - Kirjeldus: lihtsalt mis ese on + seisukord/defektid (ei pea välja nägema kirjeldama)
     - Kvaliteet ja kategooria TÄPSELT loendist, mitte sinu enda sõnadega
+    - Hind: KRIITILINE! KASUTATUD riie hind! Search "site:yaga.ee" first! Used baby clothes are CHEAP: bodysuits €1-2, NOT €4-5! These are 20-40% of new price. Don't use eBay or foreign prices!
     """
 
     # Build content array with all images followed by the prompt
@@ -104,9 +128,25 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
     content = image_contents ++ [ContentPart.text!(prompt)]
 
-    message = LangChain.Message.new_user!(content)
+    user_message = LangChain.Message.new_user!(content)
+
+    system_message =
+      LangChain.Message.new_system!("""
+      You extract item information and return it as JSON.
+
+      WORKFLOW:
+      1. First, silently use web search tool to find pricing for used items on yaga.ee
+      2. After you have the search results, output ONLY valid JSON with all extracted data
+      3. Your final response must be ONLY the JSON object, starting with { and ending with }
+      4. Do not include explanations, markdown blocks, or any text outside the JSON
+
+      Use tools when needed, then return JSON.
+      """)
 
     model = Application.get_env(:kirbs, :ai_model, "claude-haiku-4-5")
+
+    web_search_tool =
+      NativeTool.new!(%{name: "web_search_20250305", configuration: %{max_uses: 3}})
 
     case LangChain.Chains.LLMChain.new!(%{
            llm:
@@ -116,17 +156,23 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
                stream: false
              })
          })
-         |> LangChain.Chains.LLMChain.add_message(message)
+         |> LangChain.Chains.LLMChain.add_message(system_message)
+         |> LangChain.Chains.LLMChain.add_message(user_message)
+         |> LangChain.Chains.LLMChain.add_tools([web_search_tool])
          |> LangChain.Chains.LLMChain.run() do
       {:ok, updated_chain} ->
-        # Extract text from ContentParts
-        text_content =
+        # Extract ALL text parts and get the last one (which contains the JSON)
+        # Claude returns multiple text parts when using web search:
+        # 1. Explanation that it will search
+        # 2. Search progress messages
+        # 3. Final JSON response (this is what we want)
+        text_parts =
           updated_chain.last_message.content
-          |> Enum.find(&(&1.type == :text))
-          |> case do
-            %{content: text} -> text
-            _ -> ""
-          end
+          |> Enum.filter(&(&1.type == :text))
+          |> Enum.map(& &1.content)
+
+        # Get the last text part (should contain the JSON)
+        text_content = List.last(text_parts) || ""
 
         {:ok, text_content}
 
@@ -142,16 +188,37 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
         parse_extracted_data(data)
 
       {:error, _} ->
-        # Try to find JSON in the text
-        case Regex.run(~r/\{.*\}/s, response_text) do
-          [json_str] ->
-            case Jason.decode(json_str) do
-              {:ok, data} -> parse_extracted_data(data)
-              _ -> {:error, "Could not parse AI response"}
-            end
+        # Try to extract from markdown code block first
+        json_str =
+          case Regex.run(~r/```(?:json)?\s*(\{.*?\})\s*```/s, response_text) do
+            [_, json] ->
+              json
 
-          _ ->
+            _ ->
+              # Try to find JSON object (non-greedy match for better nesting support)
+              case Regex.run(~r/(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})/s, response_text) do
+                [_, json] -> json
+                _ -> nil
+              end
+          end
+
+        case json_str do
+          nil ->
+            # Log the response to help debug
+            IO.puts("Failed to extract JSON from response:")
+            IO.puts(String.slice(response_text, 0..500))
             {:error, "Could not find JSON in AI response"}
+
+          json ->
+            case Jason.decode(json) do
+              {:ok, data} ->
+                parse_extracted_data(data)
+
+              {:error, err} ->
+                IO.puts("Failed to parse JSON: #{inspect(err)}")
+                IO.puts("JSON string: #{json}")
+                {:error, "Could not parse AI response"}
+            end
         end
     end
   end
@@ -165,12 +232,16 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
        materials: data["materials"] || [],
        description: data["description"],
        quality: data["quality"],
-       suggested_category: data["suggested_category"]
+       suggested_category: data["suggested_category"],
+       price: data["price"],
+       price_explanation: data["price_explanation"]
      }}
   end
 
   defp validate_extracted_data(extracted) do
     valid_sizes = YagaTaxonomy.all_sizes() |> Enum.map(& &1.name)
+
+    price = validate_price(extracted.price)
 
     validated = %{
       brand: validate_brand(extracted.brand),
@@ -179,7 +250,10 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
       materials: validate_materials(extracted.materials),
       description: extracted.description,
       quality: validate_quality(extracted.quality),
-      suggested_category: validate_category(extracted.suggested_category)
+      suggested_category: validate_category(extracted.suggested_category),
+      ai_suggested_price: price,
+      ai_price_explanation: extracted.price_explanation,
+      listed_price: price
     }
 
     {:ok, validated}
@@ -222,6 +296,14 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
   defp validate_category(category) do
     if YagaTaxonomy.category_to_id(category), do: category, else: nil
   end
+
+  defp validate_price(nil), do: nil
+
+  defp validate_price(price) when is_number(price) and price > 0 do
+    Decimal.new(to_string(price))
+  end
+
+  defp validate_price(_), do: nil
 
   defp update_item(item, extracted) do
     Ash.update(item, extracted)

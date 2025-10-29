@@ -435,7 +435,9 @@ defmodule KirbsWeb.ItemLive.Show do
                   />
                   <%= if @item.ai_price_explanation do %>
                     <label class="label">
-                      <span class="label-text-alt">{@item.ai_price_explanation}</span>
+                      <span class="label-text-alt text-gray-500 whitespace-normal break-words">
+                        {@item.ai_price_explanation}
+                      </span>
                     </label>
                   <% end %>
                 </div>
