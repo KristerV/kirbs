@@ -14,12 +14,14 @@ defmodule Kirbs.YagaTaxonomy do
   @external_resource Path.expand("priv/data/yaga_color.exs")
   @external_resource Path.expand("priv/data/yaga_material.exs")
   @external_resource Path.expand("priv/data/yaga_condition.exs")
+  @external_resource Path.expand("priv/data/yaga_size.exs")
 
   @brands Code.eval_file(Path.expand("priv/data/yaga_brand.exs")) |> elem(0)
   @categories Code.eval_file(Path.expand("priv/data/yaga_category.exs")) |> elem(0)
   @colors Code.eval_file(Path.expand("priv/data/yaga_color.exs")) |> elem(0)
   @materials Code.eval_file(Path.expand("priv/data/yaga_material.exs")) |> elem(0)
   @conditions Code.eval_file(Path.expand("priv/data/yaga_condition.exs")) |> elem(0)
+  @sizes Code.eval_file(Path.expand("priv/data/yaga_size.exs")) |> elem(0)
 
   # Create lookup maps for fast access
   @brand_name_to_id Map.new(@brands, fn item -> {String.downcase(item.name), item.yaga_id} end)
@@ -59,6 +61,19 @@ defmodule Kirbs.YagaTaxonomy do
 
   @doc "Returns all conditions as list of maps"
   def all_conditions, do: @conditions
+
+  @doc "Returns all sizes as list of maps"
+  def all_sizes, do: @sizes
+
+  @doc "Returns only kids categories (under parent_id 3 'Lastele' or containing 'laste')"
+  def kids_categories do
+    @categories
+    |> Enum.filter(fn cat ->
+      # Category 3 is "Lastele", 438 is "Riided" under Lastele
+      cat.parent_id == 3 or cat.parent_id == 438 or cat.yaga_id == 3 or cat.yaga_id == 438 or
+        String.contains?(String.downcase(cat.name), "laste")
+    end)
+  end
 
   # Public API - Name to ID lookups
 

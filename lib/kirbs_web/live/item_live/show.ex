@@ -16,6 +16,7 @@ defmodule KirbsWeb.ItemLive.Show do
     colors = YagaTaxonomy.all_colors() |> Enum.sort_by(& &1.name)
     materials = YagaTaxonomy.all_materials() |> Enum.sort_by(& &1.name)
     conditions = YagaTaxonomy.all_conditions() |> Enum.sort_by(& &1.name)
+    sizes = YagaTaxonomy.all_sizes()
 
     # Prepare form changeset
     form = AshPhoenix.Form.for_update(item, :update, as: "item")
@@ -36,6 +37,7 @@ defmodule KirbsWeb.ItemLive.Show do
     condition_options = Enum.map(conditions, &{&1.name, &1.name})
     color_options = Enum.map(colors, &{&1.name, &1.name})
     material_options = Enum.map(materials, &{&1.name, &1.name})
+    size_options = Enum.map(sizes, &{&1.name, &1.name})
 
     {:ok,
      socket
@@ -46,13 +48,15 @@ defmodule KirbsWeb.ItemLive.Show do
      |> assign(:colors, colors)
      |> assign(:materials, materials)
      |> assign(:conditions, conditions)
+     |> assign(:sizes, sizes)
      |> assign(:form, to_form(form))
      |> assign(:category_options, category_options)
      |> assign(:category_map, category_map)
      |> assign(:brand_options, brand_options)
      |> assign(:condition_options, condition_options)
      |> assign(:color_options, color_options)
-     |> assign(:material_options, material_options)}
+     |> assign(:material_options, material_options)
+     |> assign(:size_options, size_options)}
   end
 
   @impl true
@@ -125,6 +129,11 @@ defmodule KirbsWeb.ItemLive.Show do
           |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
           |> Enum.map(&{&1.name, &1.name})
           |> Enum.sort_by(&elem(&1, 0))
+
+        String.contains?(live_select_id, "size") ->
+          socket.assigns.sizes
+          |> Enum.filter(&String.contains?(String.downcase(&1.name), search_text))
+          |> Enum.map(&{&1.name, &1.name})
 
         String.contains?(live_select_id, "suggested_category") ->
           socket.assigns.categories
@@ -311,13 +320,17 @@ defmodule KirbsWeb.ItemLive.Show do
                   <label class="label">
                     <span class="label-text font-semibold">Size</span>
                   </label>
-                  <input
-                    type="text"
-                    name="item[size]"
-                    class="input input-bordered w-full"
-                    value={@item.size}
-                    placeholder="6-9 kuud, 110"
-                  />
+                  <div class="[&_.live-select-wrapper]:block [&_label]:hidden">
+                    <.live_select
+                      field={@form[:size]}
+                      mode={:single}
+                      style={:daisyui}
+                      placeholder="Search sizes..."
+                      value={@item.size}
+                      options={@size_options}
+                      update_min_len={0}
+                    />
+                  </div>
                 </div>
 
                 <div class="form-control">
