@@ -36,6 +36,6 @@ kill_signal = 'SIGTERM'
   initial_size = '1gb'
 
 [[vm]]
-  memory = '512mb'
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
