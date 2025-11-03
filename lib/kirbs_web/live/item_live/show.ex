@@ -332,6 +332,9 @@ defmodule KirbsWeb.ItemLive.Show do
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Item Details</h1>
           <div class="flex gap-2">
+            <.link navigate={~p"/items/#{@item.id}/split"} class="btn btn-warning btn-sm">
+              Split Item
+            </.link>
             <button class="btn btn-accent btn-sm" phx-click="run_ai">
               Run AI
             </button>

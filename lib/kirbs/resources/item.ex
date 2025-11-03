@@ -14,6 +14,7 @@ defmodule Kirbs.Resources.Item do
     define :get_by_bag, args: [:bag_id]
     define :create
     define :update
+    define :clear_ai_data
   end
 
   actions do
@@ -50,6 +51,25 @@ defmodule Kirbs.Resources.Item do
       end
 
       filter expr(bag_id == ^arg(:bag_id))
+    end
+
+    update :clear_ai_data do
+      accept []
+      require_atomic? false
+
+      change fn changeset, _context ->
+        changeset
+        |> Ash.Changeset.force_change_attribute(:brand, nil)
+        |> Ash.Changeset.force_change_attribute(:size, nil)
+        |> Ash.Changeset.force_change_attribute(:colors, nil)
+        |> Ash.Changeset.force_change_attribute(:materials, nil)
+        |> Ash.Changeset.force_change_attribute(:description, nil)
+        |> Ash.Changeset.force_change_attribute(:quality, nil)
+        |> Ash.Changeset.force_change_attribute(:suggested_category, nil)
+        |> Ash.Changeset.force_change_attribute(:ai_suggested_price, nil)
+        |> Ash.Changeset.force_change_attribute(:ai_price_explanation, nil)
+        |> Ash.Changeset.force_change_attribute(:status, :pending)
+      end
     end
   end
 
