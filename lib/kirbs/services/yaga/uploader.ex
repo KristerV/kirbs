@@ -26,7 +26,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
   end
 
   defp load_and_validate(item_id) do
-    case Ash.get(Item, item_id, load: [:images]) do
+    case Ash.get(Item, item_id, load: [:images, :bag]) do
       {:ok, nil} ->
         {:error, "Item not found"}
 
@@ -255,12 +255,20 @@ defmodule Kirbs.Services.Yaga.Uploader do
     colors_id_map = YagaTaxonomy.colors_to_ids(item.colors)
     materials_id_map = YagaTaxonomy.materials_to_ids(item.materials)
 
+    description =
+      if item.bag && item.bag.number do
+        bag_label = "B#{String.pad_leading(Integer.to_string(item.bag.number), 4, "0")}"
+        "#{item.description}\n\n#{bag_label}"
+      else
+        item.description
+      end
+
     body = %{
       price: price,
       quantity: 1,
       category_id: category_id,
       condition_id: condition_id,
-      description: item.description,
+      description: description,
       location: "Tallinn/Harjumaa",
       address: "Saue vald",
       shipping: default_shipping(),
