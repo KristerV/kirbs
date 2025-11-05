@@ -14,6 +14,7 @@ defmodule Kirbs.Resources.Item do
     define :get_by_bag, args: [:bag_id]
     define :create
     define :update
+    define :destroy
     define :clear_ai_data
   end
 
