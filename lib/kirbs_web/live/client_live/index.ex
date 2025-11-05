@@ -28,7 +28,8 @@ defmodule KirbsWeb.ClientLive.Index do
             <span>No clients yet.</span>
           </div>
         <% else %>
-          <div class="card bg-base-100 shadow-xl">
+          <%!-- Desktop table view --%>
+          <div class="hidden md:block card bg-base-100 shadow-xl">
             <div class="card-body">
               <div class="overflow-x-auto">
                 <table class="table">
@@ -59,6 +60,27 @@ defmodule KirbsWeb.ClientLive.Index do
                 </table>
               </div>
             </div>
+          </div>
+
+          <%!-- Mobile card view --%>
+          <div class="md:hidden space-y-4">
+            <%= for client <- @clients do %>
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h3 class="font-bold text-lg">{client.name}</h3>
+                  <div class="text-sm space-y-1 mt-2">
+                    <p><span class="font-semibold">Phone:</span> {client.phone}</p>
+                    <p><span class="font-semibold">Email:</span> {client.email || "N/A"}</p>
+                    <p><span class="font-semibold">Bags:</span> {length(client.bags)}</p>
+                  </div>
+                  <div class="card-actions justify-end mt-4">
+                    <.link navigate={~p"/clients/#{client.id}"} class="btn btn-primary btn-sm w-full">
+                      View Client
+                    </.link>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
         <% end %>
       </div>

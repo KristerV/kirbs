@@ -136,7 +136,7 @@ defmodule KirbsWeb.BagLive.Show do
         <div class="card bg-base-100 shadow-xl mb-6">
           <div class="card-body">
             <h2 class="card-title">Bag Photos</h2>
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
               <%= for image <- @bag.images do %>
                 <div class="aspect-square bg-base-200 rounded-lg overflow-hidden">
                   <img
@@ -155,7 +155,7 @@ defmodule KirbsWeb.BagLive.Show do
           <div class="card-body">
             <div class="flex justify-between items-start">
               <h2 class="card-title">Client Information</h2>
-              <div class="flex gap-2">
+              <div class="flex flex-wrap gap-2 justify-end">
                 <button class="btn btn-accent btn-sm" phx-click="run_ai">
                   Run AI
                 </button>
@@ -233,7 +233,7 @@ defmodule KirbsWeb.BagLive.Show do
                   </div>
                 </form>
               <% else %>
-                <div class="grid grid-cols-2 gap-4 mt-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div>
                     <span class="font-semibold">Name:</span>
                     <span class="ml-2">{@bag.client.name}</span>

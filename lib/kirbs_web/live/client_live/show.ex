@@ -120,7 +120,7 @@ defmodule KirbsWeb.ClientLive.Show do
                 </div>
               </form>
             <% else %>
-              <div class="grid grid-cols-2 gap-4 mt-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
                   <span class="font-semibold">Name:</span>
                   <span class="ml-2">{@client.name}</span>

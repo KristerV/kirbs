@@ -371,7 +371,7 @@ defmodule KirbsWeb.ItemLive.Show do
       <div class="max-w-6xl mx-auto p-6">
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Item Details</h1>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2 justify-end">
             <.link
               navigate={~p"/bags/capture?bag_id=#{@item.bag_id}&item_id=#{@item.id}"}
               class="btn btn-sm"
@@ -402,7 +402,7 @@ defmodule KirbsWeb.ItemLive.Show do
                 <span>No photos for this item</span>
               </div>
             <% else %>
-              <div class="grid grid-cols-4 gap-4">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <%= for image <- @images do %>
                   <div class="relative group">
                     <div class="aspect-square bg-base-200 rounded-lg overflow-hidden">

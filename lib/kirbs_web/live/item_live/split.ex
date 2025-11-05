@@ -88,7 +88,7 @@ defmodule KirbsWeb.ItemLive.Split do
               Both items will have their AI data cleared and AI processing will be scheduled automatically.
             </p>
             <div class="divider"></div>
-            <div class="stats shadow">
+            <div class="stats shadow stats-vertical sm:stats-horizontal">
               <div class="stat">
                 <div class="stat-title">Total Images</div>
                 <div class="stat-value text-2xl">{length(@images)}</div>
@@ -120,7 +120,7 @@ defmodule KirbsWeb.ItemLive.Split do
                 <span>No photos for this item</span>
               </div>
             <% else %>
-              <div class="grid grid-cols-4 gap-4">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <%= for image <- @images do %>
                   <div class="relative group">
                     <label class="cursor-pointer">
