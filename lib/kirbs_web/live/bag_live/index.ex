@@ -47,7 +47,7 @@ defmodule KirbsWeb.BagLive.Index do
                         <td>
                           <%= if first_image = List.first(bag.images) do %>
                             <img
-                              src={first_image.path}
+                              src={"/uploads/#{first_image.path}"}
                               alt="Bag preview"
                               class="w-16 h-16 object-cover rounded"
                             />
@@ -90,7 +90,7 @@ defmodule KirbsWeb.BagLive.Index do
                   <div class="flex gap-4">
                     <%= if first_image = List.first(bag.images) do %>
                       <img
-                        src={first_image.path}
+                        src={"/uploads/#{first_image.path}"}
                         alt="Bag preview"
                         class="w-24 h-24 object-cover rounded flex-shrink-0"
                       />
