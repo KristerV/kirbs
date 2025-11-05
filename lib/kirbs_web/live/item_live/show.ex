@@ -382,7 +382,7 @@ defmodule KirbsWeb.ItemLive.Show do
               class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: "btn-ghost"}"}
               phx-click="delete_item"
             >
-              <%= if @delete_confirmation, do: "Confirm Delete?", else: "Delete Item" %>
+              {if @delete_confirmation, do: "Confirm Delete?", else: "Delete Item"}
             </button>
             <.link navigate={~p"/bags/#{@item.bag_id}"} class="btn btn-ghost">
               Back to Bag

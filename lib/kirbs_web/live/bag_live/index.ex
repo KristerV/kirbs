@@ -5,7 +5,7 @@ defmodule KirbsWeb.BagLive.Index do
   def mount(_params, _session, socket) do
     bags =
       Kirbs.Resources.Bag
-      |> Ash.Query.load([:item_count, :needs_review, :client])
+      |> Ash.Query.load([:item_count, :needs_review, :client, :images])
       |> Ash.read!()
 
     {:ok,
@@ -26,12 +26,14 @@ defmodule KirbsWeb.BagLive.Index do
             <span>No bags yet. Start by creating a new bag!</span>
           </div>
         <% else %>
-          <div class="card bg-base-100 shadow-xl">
+          <%!-- Desktop table view --%>
+          <div class="hidden md:block card bg-base-100 shadow-xl">
             <div class="card-body">
               <div class="overflow-x-auto">
                 <table class="table">
                   <thead>
                     <tr>
+                      <th>Image</th>
                       <th>Number</th>
                       <th>Items</th>
                       <th>Needs Review</th>
@@ -42,6 +44,19 @@ defmodule KirbsWeb.BagLive.Index do
                   <tbody>
                     <%= for bag <- @bags do %>
                       <tr>
+                        <td>
+                          <%= if first_image = List.first(bag.images) do %>
+                            <img
+                              src={first_image.path}
+                              alt="Bag preview"
+                              class="w-16 h-16 object-cover rounded"
+                            />
+                          <% else %>
+                            <div class="w-16 h-16 bg-base-300 rounded flex items-center justify-center">
+                              <span class="text-xs text-gray-400">No image</span>
+                            </div>
+                          <% end %>
+                        </td>
                         <td>{bag.number}</td>
                         <td>{bag.item_count}</td>
                         <td>
@@ -65,6 +80,56 @@ defmodule KirbsWeb.BagLive.Index do
                 </table>
               </div>
             </div>
+          </div>
+
+          <%!-- Mobile block view --%>
+          <div class="md:hidden space-y-4">
+            <%= for bag <- @bags do %>
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <div class="flex gap-4">
+                    <%= if first_image = List.first(bag.images) do %>
+                      <img
+                        src={first_image.path}
+                        alt="Bag preview"
+                        class="w-24 h-24 object-cover rounded flex-shrink-0"
+                      />
+                    <% else %>
+                      <div class="w-24 h-24 bg-base-300 rounded flex items-center justify-center flex-shrink-0">
+                        <span class="text-xs text-gray-400">No image</span>
+                      </div>
+                    <% end %>
+
+                    <div class="flex-1">
+                      <h3 class="font-bold text-lg">Bag #{bag.number}</h3>
+                      <div class="text-sm space-y-1 mt-2">
+                        <p><span class="font-semibold">Items:</span> {bag.item_count}</p>
+                        <p>
+                          <span class="font-semibold">Status:</span>
+                          <%= cond do %>
+                            <% is_nil(bag.client) -> %>
+                              <span class="badge badge-warning badge-sm">No Client</span>
+                            <% bag.needs_review -> %>
+                              <span class="badge badge-info badge-sm">Needs Review</span>
+                            <% true -> %>
+                              <span class="badge badge-success badge-sm">Ready</span>
+                          <% end %>
+                        </p>
+                        <p class="text-xs text-gray-500">
+                          {Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card-actions justify-end mt-4">
+                    <.link navigate={~p"/bags/#{bag.id}"} class="btn btn-primary btn-sm w-full">
+                      View Bag
+                    </.link>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
         <% end %>
       </div>
