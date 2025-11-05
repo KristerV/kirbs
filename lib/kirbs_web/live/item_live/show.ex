@@ -59,7 +59,8 @@ defmodule KirbsWeb.ItemLive.Show do
      |> assign(:condition_options, condition_options)
      |> assign(:color_options, color_options)
      |> assign(:material_options, material_options)
-     |> assign(:size_options, size_options)}
+     |> assign(:size_options, size_options)
+     |> assign(:delete_confirmation, false)}
   end
 
   @impl true
@@ -112,7 +113,8 @@ defmodule KirbsWeb.ItemLive.Show do
 
   @impl true
   def handle_event("form_change", _params, socket) do
-    {:noreply, socket}
+    # Reset delete confirmation if user starts editing
+    {:noreply, assign(socket, :delete_confirmation, false)}
   end
 
   @impl true
@@ -265,6 +267,44 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
+  def handle_event("delete_item", _params, socket) do
+    if socket.assigns.delete_confirmation do
+      # User confirmed - proceed with deletion
+      item = socket.assigns.item
+      bag_id = item.bag_id
+
+      # Delete all associated images first
+      upload_dir = Application.get_env(:kirbs, :image_upload_dir)
+
+      Enum.each(socket.assigns.images, fn image ->
+        # Delete file from disk
+        file_path = Path.join(upload_dir, image.path)
+        File.rm(file_path)
+        # Delete image record
+        Image.destroy(image)
+      end)
+
+      # Delete the item
+      case Item.destroy(item) do
+        :ok ->
+          {:noreply,
+           socket
+           |> put_flash(:info, "Item deleted successfully")
+           |> push_navigate(to: ~p"/bags/#{bag_id}")}
+
+        {:error, _error} ->
+          {:noreply,
+           socket
+           |> assign(:delete_confirmation, false)
+           |> put_flash(:error, "Failed to delete item")}
+      end
+    else
+      # First click - show confirmation
+      {:noreply, assign(socket, :delete_confirmation, true)}
+    end
+  end
+
+  @impl true
   def handle_info({:item_processed, _item_id}, socket) do
     # Reload item data when AI processing completes
     item = Item.get!(socket.assigns.item.id) |> Ash.load!([:bag])
@@ -337,6 +377,12 @@ defmodule KirbsWeb.ItemLive.Show do
             </.link>
             <button class="btn btn-accent btn-sm" phx-click="run_ai">
               Run AI
+            </button>
+            <button
+              class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: "btn-ghost"}"}
+              phx-click="delete_item"
+            >
+              <%= if @delete_confirmation, do: "Confirm Delete?", else: "Delete Item" %>
             </button>
             <.link navigate={~p"/bags/#{@item.bag_id}"} class="btn btn-ghost">
               Back to Bag
