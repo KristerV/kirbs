@@ -419,7 +419,7 @@ defmodule KirbsWeb.ItemLive.Show do
                     <% end %>
                     <button
                       type="button"
-                      class="btn btn-error btn-xs absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      class="btn btn-error btn-xs absolute top-2 right-2 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
                       phx-click="delete_image"
                       phx-value-image_id={image.id}
                       data-confirm="Are you sure you want to delete this image?"
@@ -428,7 +428,7 @@ defmodule KirbsWeb.ItemLive.Show do
                     </button>
                     <button
                       type="button"
-                      class="btn btn-info btn-xs absolute top-10 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      class="btn btn-info btn-xs absolute top-10 right-2 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
                       phx-click="toggle_label"
                       phx-value-image_id={image.id}
                     >
