@@ -19,6 +19,15 @@ defmodule Kirbs.Services.PhotoCapture do
     end
   end
 
+  def run(%{type: :item, item_id: item_id, photos: photos, label_photos: label_photos}) do
+    item = Kirbs.Resources.Item.get!(item_id)
+
+    with {:ok, item} <- save_photos(item, :item, photos, false),
+         {:ok, item} <- save_photos(item, :item, label_photos, true) do
+      {:ok, item}
+    end
+  end
+
   defp create_bag do
     Kirbs.Resources.Bag.create(%{})
   end

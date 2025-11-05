@@ -372,21 +372,24 @@ defmodule KirbsWeb.ItemLive.Show do
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Item Details</h1>
           <div class="flex gap-2">
-            <.link navigate={~p"/items/#{@item.id}/split"} class="btn btn-warning btn-sm">
+            <.link
+              navigate={~p"/bags/capture?bag_id=#{@item.bag_id}&item_id=#{@item.id}"}
+              class="btn btn-sm"
+            >
+              Add Photos
+            </.link>
+            <.link navigate={~p"/items/#{@item.id}/split"} class="btn btn-sm">
               Split Item
             </.link>
-            <button class="btn btn-accent btn-sm" phx-click="run_ai">
+            <button class="btn btn-sm" phx-click="run_ai">
               Run AI
             </button>
             <button
-              class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: "btn-ghost"}"}
+              class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: ""}"}
               phx-click="delete_item"
             >
-              {if @delete_confirmation, do: "Confirm Delete?", else: "Delete Item"}
+              {if @delete_confirmation, do: "Confirm Delete?", else: "Delete"}
             </button>
-            <.link navigate={~p"/bags/#{@item.bag_id}"} class="btn btn-ghost">
-              Back to Bag
-            </.link>
           </div>
         </div>
         
