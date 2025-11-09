@@ -1,0 +1,95 @@
+<style>
+  .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF7F3F, #FFB366);
+      opacity: 0.1;
+      z-index: -1;
+  }
+
+  .bubble-1 { width: 200px; height: 200px; top: 10%; left: 0%; }
+  .bubble-2 { width: 150px; height: 150px; top: 60%; right: 0%; }
+  .bubble-3 { width: 100px; height: 100px; top: 30%; right: 15%; }
+  .bubble-4 { width: 80px; height: 80px; bottom: 20%; left: 10%; }
+
+  .article-decoration::before {
+      content: '';
+      position: absolute;
+      top: -20px;
+      right: -20px;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #FF7F3F, #FFB366);
+      border-radius: 50%;
+      opacity: 0.1;
+  }
+
+  .footer-wave::before {
+      content: '';
+      position: absolute;
+      top: -30px;
+      left: 0;
+      right: 0;
+      height: 30px;
+      background: #333;
+      clip-path: ellipse(70% 100% at 50% 100%);
+  }
+
+  @media (max-width: 768px) {
+      .bubble { display: none; }
+  }
+</style>
+
+<div class="overflow-x-hidden w-full relative bg-gradient-to-br from-white to-orange-50">
+  <div class="bubble bubble-1"></div>
+  <div class="bubble bubble-2"></div>
+  <div class="bubble bubble-3"></div>
+  <div class="bubble bubble-4"></div>
+
+  <nav class="py-4 relative z-10 bg-transparent">
+    <div class="max-w-6xl mx-auto px-5 flex gap-6 justify-end">
+      <a href="/" class="text-orange-500 font-bold hover:opacity-70 transition-opacity">
+        Avaleht
+      </a>
+      <a href="/uudised" class="text-orange-500 font-bold hover:opacity-70 transition-opacity">
+        Uudised
+      </a>
+    </div>
+  </nav>
+
+  <header class="relative py-24 pb-16 text-center bg-gradient-to-br from-orange-500/5 to-orange-300/5 rounded-b-[50px] mb-16">
+    <div class="max-w-6xl mx-auto px-5">
+      <h1 class="text-5xl md:text-6xl text-orange-500 mb-5 font-bold">Uudised</h1>
+    </div>
+  </header>
+
+  <div class="max-w-6xl mx-auto px-5 pb-16">
+    <%= for article <- @articles do %>
+      <article class="article-decoration bg-white p-10 md:p-10 rounded-3xl shadow-lg shadow-orange-500/10 mb-10 relative overflow-hidden">
+        <div class="text-gray-400 text-sm mb-2">{article["date"]}</div>
+        <h2 class="text-orange-500 text-3xl md:text-4xl mb-5 font-bold">{article["title"]}</h2>
+        <div class="text-gray-600 leading-relaxed whitespace-pre-wrap">{article["content"]}</div>
+        <div class="mt-8 text-gray-400 italic text-right">— {article["author"]}</div>
+      </article>
+    <% end %>
+  </div>
+
+  <footer class="footer-wave bg-[#333] text-white text-center py-10 mt-16 relative">
+    <div class="flex flex-wrap justify-around gap-10 max-w-4xl mx-auto px-5">
+      <div>
+        <h3 class="text-orange-500 mb-4 text-xl font-semibold">Ettevõte</h3>
+        <p class="my-1 text-gray-400">Täp OÜ</p>
+        <p class="my-1 text-gray-400">Registrikood: 12125250</p>
+      </div>
+      <div>
+        <h3 class="text-orange-500 mb-4 text-xl font-semibold">Kontakt</h3>
+        <p class="my-1 text-gray-400">Krister Viirsaar</p>
+        <p class="my-1 text-gray-400">Tel: 5635 5555</p>
+        <p class="mb-1 text-gray-400">
+          <em class="text-gray-500 text-sm">(helista julgelt küsimuste puhul!)</em>
+        </p>
+        <p class="my-1 text-gray-400">E-mail: kirbs@krister.ee</p>
+      </div>
+    </div>
+  </footer>
+</div>

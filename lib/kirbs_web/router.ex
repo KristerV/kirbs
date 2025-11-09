@@ -41,6 +41,7 @@ defmodule KirbsWeb.Router do
     pipe_through :browser
 
     live "/", LandingLive.Index, :index
+    live "/uudised", BlogLive.Index, :index
 
     ash_authentication_live_session :authenticated_routes,
       on_mount: {KirbsWeb.LiveUserAuth, :live_user_required} do

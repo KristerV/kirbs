@@ -463,6 +463,10 @@
       font-weight: 700;
   }
 
+  nav a:hover {
+      opacity: 0.7;
+  }
+
   @media (max-width: 768px) {
       h1 { font-size: 2.2em; }
       .landing-steps { grid-template-columns: 1fr; }
@@ -491,6 +495,23 @@
   <div class="bubble bubble-3"></div>
   <div class="bubble bubble-4"></div>
   <div class="wave wave-top"></div>
+
+  <nav style="padding: 1rem 0; position: relative; z-index: 10;">
+    <div class="container" style="display: flex; gap: 1.5rem; justify-content: flex-end;">
+      <a
+        href="/"
+        style="color: #FF7F3F; text-decoration: none; font-weight: bold; transition: opacity 0.2s;"
+      >
+        Avaleht
+      </a>
+      <a
+        href="/uudised"
+        style="color: #FF7F3F; text-decoration: none; font-weight: bold; transition: opacity 0.2s;"
+      >
+        Uudised
+      </a>
+    </div>
+  </nav>
 
   <header>
     <div class="container">
@@ -668,6 +689,12 @@
       class="footer-content"
       style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 40px; max-width: 800px;"
     >
+      <div>
+        <h3 style="color: #FF7F3F; margin-bottom: 15px; font-size: 1.2em;">Lingid</h3>
+        <p style="margin: 5px 0;">
+          <a href="/uudised" style="color: #ccc; text-decoration: underline;">Uudised</a>
+        </p>
+      </div>
       <div>
         <h3 style="color: #FF7F3F; margin-bottom: 15px; font-size: 1.2em;">Ettevõte</h3>
         <p style="margin: 5px 0;">Täp OÜ</p>
