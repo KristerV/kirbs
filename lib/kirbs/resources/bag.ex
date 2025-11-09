@@ -11,6 +11,7 @@ defmodule Kirbs.Resources.Bag do
   code_interface do
     define :get, args: [:id]
     define :list
+    define :get_bags_needing_review, args: []
     define :create
     define :update
   end
@@ -25,6 +26,11 @@ defmodule Kirbs.Resources.Bag do
     end
 
     read :list
+
+    read :get_bags_needing_review do
+      prepare build(sort: [created_at: :asc], load: [:client, :items])
+      filter expr(is_nil(client_id) or exists(items, status in [:pending, :ai_processed]))
+    end
   end
 
   attributes do

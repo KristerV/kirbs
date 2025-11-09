@@ -4,69 +4,112 @@ defmodule KirbsWeb.ItemLive.Show do
 
   alias Kirbs.Resources.{Item, Image}
   alias Kirbs.YagaTaxonomy
+  alias Kirbs.ReviewQueue
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
+  def mount(params, _session, socket) do
+    # Handle review_index action - redirect to first thing needing review
+    socket =
+      if socket.assigns.live_action == :review_index do
+        case ReviewQueue.find_first_review_target() do
+          nil ->
+            socket
+            |> put_flash(:info, "Nothing to review!")
+            |> push_navigate(to: ~p"/dashboard")
+
+          {:bag, bag_id} ->
+            push_navigate(socket, to: ~p"/review/bags/#{bag_id}")
+
+          {:item, item_id} ->
+            push_navigate(socket, to: ~p"/review/#{item_id}")
+        end
+      else
+        socket
+      end
+
+    # Get item ID from params
+    id = params["id"]
+
     # Subscribe to item updates
-    Phoenix.PubSub.subscribe(Kirbs.PubSub, "item:#{id}")
+    if id, do: Phoenix.PubSub.subscribe(Kirbs.PubSub, "item:#{id}")
 
-    item = Item.get!(id) |> Ash.load!([:bag])
-    images = Image.list!() |> Enum.filter(&(&1.item_id == item.id)) |> Enum.sort_by(& &1.order)
+    # Early return if redirecting (no item id)
+    if is_nil(id) do
+      {:ok, socket}
+    else
+      item = Item.get!(id) |> Ash.load!([:bag])
+      images = Image.list!() |> Enum.filter(&(&1.item_id == item.id)) |> Enum.sort_by(& &1.order)
 
-    # Load Yaga taxonomy from static data
-    brands = YagaTaxonomy.all_brands() |> Enum.sort_by(& &1.name)
-    categories = YagaTaxonomy.all_categories()
-    colors = YagaTaxonomy.all_colors() |> Enum.sort_by(& &1.name)
-    materials = YagaTaxonomy.all_materials() |> Enum.sort_by(& &1.name)
-    conditions = YagaTaxonomy.all_conditions() |> Enum.sort_by(& &1.name)
-    sizes = YagaTaxonomy.all_sizes()
+      # Load Yaga taxonomy from static data
+      brands = YagaTaxonomy.all_brands() |> Enum.sort_by(& &1.name)
+      categories = YagaTaxonomy.all_categories()
+      colors = YagaTaxonomy.all_colors() |> Enum.sort_by(& &1.name)
+      materials = YagaTaxonomy.all_materials() |> Enum.sort_by(& &1.name)
+      conditions = YagaTaxonomy.all_conditions() |> Enum.sort_by(& &1.name)
+      sizes = YagaTaxonomy.all_sizes()
 
-    # Prepare form changeset
-    form = AshPhoenix.Form.for_update(item, :update, as: "item")
+      # Prepare form changeset
+      form = AshPhoenix.Form.for_update(item, :update, as: "item")
 
-    # Build category lookup map
-    category_map = Map.new(categories, &{&1.yaga_id, &1})
+      # Build category lookup map
+      category_map = Map.new(categories, &{&1.yaga_id, &1})
 
-    # Prepare options for live_select with full paths (name -> name for string values)
-    category_options =
-      categories
-      |> Enum.map(fn cat ->
-        path = build_category_path(cat, category_map)
-        {path, cat.name}
-      end)
-      |> Enum.sort_by(&elem(&1, 0))
+      # Prepare options for live_select with full paths (name -> name for string values)
+      category_options =
+        categories
+        |> Enum.map(fn cat ->
+          path = build_category_path(cat, category_map)
+          {path, cat.name}
+        end)
+        |> Enum.sort_by(&elem(&1, 0))
 
-    brand_options = Enum.map(brands, &{&1.name, &1.name})
-    condition_options = Enum.map(conditions, &{&1.name, &1.name})
-    color_options = Enum.map(colors, &{&1.name, &1.name})
-    material_options = Enum.map(materials, &{&1.name, &1.name})
-    size_options = Enum.map(sizes, &{&1.name, &1.name})
+      brand_options = Enum.map(brands, &{&1.name, &1.name})
+      condition_options = Enum.map(conditions, &{&1.name, &1.name})
+      color_options = Enum.map(colors, &{&1.name, &1.name})
+      material_options = Enum.map(materials, &{&1.name, &1.name})
+      size_options = Enum.map(sizes, &{&1.name, &1.name})
 
-    {:ok,
-     socket
-     |> assign(:item, item)
-     |> assign(:images, images)
-     |> assign(:brands, brands)
-     |> assign(:categories, categories)
-     |> assign(:colors, colors)
-     |> assign(:materials, materials)
-     |> assign(:conditions, conditions)
-     |> assign(:sizes, sizes)
-     |> assign(:form, to_form(form))
-     |> assign(:category_options, category_options)
-     |> assign(:category_map, category_map)
-     |> assign(:brand_options, brand_options)
-     |> assign(:condition_options, condition_options)
-     |> assign(:color_options, color_options)
-     |> assign(:material_options, material_options)
-     |> assign(:size_options, size_options)
-     |> assign(:delete_confirmation, false)}
+      review_mode = socket.assigns.live_action == :review
+
+      {:ok,
+       socket
+       |> assign(:item, item)
+       |> assign(:images, images)
+       |> assign(:brands, brands)
+       |> assign(:categories, categories)
+       |> assign(:colors, colors)
+       |> assign(:materials, materials)
+       |> assign(:conditions, conditions)
+       |> assign(:sizes, sizes)
+       |> assign(:form, to_form(form))
+       |> assign(:category_options, category_options)
+       |> assign(:category_map, category_map)
+       |> assign(:brand_options, brand_options)
+       |> assign(:condition_options, condition_options)
+       |> assign(:color_options, color_options)
+       |> assign(:material_options, material_options)
+       |> assign(:size_options, size_options)
+       |> assign(:delete_confirmation, false)
+       |> assign(:review_mode, review_mode)}
+    end
   end
 
   @impl true
   def handle_event("save_item", %{"item" => item_params, "action" => "save_and_upload"}, socket) do
     # Redirect to save_and_upload handler
     handle_event("save_and_upload", %{"item" => item_params}, socket)
+  end
+
+  @impl true
+  def handle_event("save_item", %{"item" => item_params, "action" => "save_and_next"}, socket) do
+    # Redirect to save_and_next handler
+    handle_event("save_and_next", %{"item" => item_params}, socket)
+  end
+
+  @impl true
+  def handle_event("save_item", %{"item" => item_params, "action" => "save_upload_next"}, socket) do
+    # Redirect to save_upload_next handler
+    handle_event("save_upload_next", %{"item" => item_params}, socket)
   end
 
   @impl true
@@ -150,6 +193,107 @@ defmodule KirbsWeb.ItemLive.Show do
          socket
          |> put_flash(:info, "Item saved and upload started! Check back in a moment.")
          |> push_navigate(to: ~p"/bags/#{item.bag_id}")}
+
+      {:error, error} ->
+        {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("save_and_next", %{"item" => item_params}, socket) do
+    # Parse array fields
+    colors = parse_live_select_array(item_params["colors"])
+    materials = parse_live_select_array(item_params["materials"])
+
+    update_params =
+      item_params
+      |> Map.take([
+        "brand",
+        "size",
+        "description",
+        "quality",
+        "suggested_category",
+        "listed_price"
+      ])
+      |> Map.put("colors", colors)
+      |> Map.put("materials", materials)
+      |> Map.put("status", "reviewed")
+      |> convert_to_atoms()
+      |> convert_decimal()
+
+    case Item.update(socket.assigns.item, update_params) do
+      {:ok, item} ->
+        # Find next thing to review
+        case ReviewQueue.find_next_after_item(item) do
+          nil ->
+            # Nothing more to review
+            {:noreply,
+             socket
+             |> put_flash(:info, "All done reviewing!")
+             |> push_navigate(to: ~p"/dashboard")}
+
+          {:bag, bag_id} ->
+            {:noreply, push_navigate(socket, to: ~p"/review/bags/#{bag_id}")}
+
+          {:item, item_id} ->
+            {:noreply, push_navigate(socket, to: ~p"/review/#{item_id}")}
+        end
+
+      {:error, error} ->
+        {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("save_upload_next", %{"item" => item_params}, socket) do
+    # Parse array fields
+    colors = parse_live_select_array(item_params["colors"])
+    materials = parse_live_select_array(item_params["materials"])
+
+    update_params =
+      item_params
+      |> Map.take([
+        "brand",
+        "size",
+        "description",
+        "quality",
+        "suggested_category",
+        "listed_price"
+      ])
+      |> Map.put("colors", colors)
+      |> Map.put("materials", materials)
+      |> Map.put("status", "reviewed")
+      |> convert_to_atoms()
+      |> convert_decimal()
+
+    case Item.update(socket.assigns.item, update_params) do
+      {:ok, item} ->
+        # Queue upload job
+        %{item_id: item.id}
+        |> Kirbs.Jobs.UploadItemJob.new()
+        |> Oban.insert()
+
+        # Find next thing to review
+        case ReviewQueue.find_next_after_item(item) do
+          nil ->
+            # Nothing more to review
+            {:noreply,
+             socket
+             |> put_flash(:info, "Item uploaded and all done reviewing!")
+             |> push_navigate(to: ~p"/dashboard")}
+
+          {:bag, bag_id} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Item saved and upload started!")
+             |> push_navigate(to: ~p"/review/bags/#{bag_id}")}
+
+          {:item, item_id} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Item saved and upload started!")
+             |> push_navigate(to: ~p"/review/#{item_id}")}
+        end
 
       {:error, error} ->
         {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
@@ -631,20 +775,36 @@ defmodule KirbsWeb.ItemLive.Show do
             </div>
           </div>
 
-          <div class="flex justify-end gap-2">
-            <button type="submit" class="btn btn-primary">
-              Save Item
-            </button>
-            <button
-              type="submit"
-              name="action"
-              value="save_and_upload"
-              class="btn btn-success"
-              disabled={@item.status == :uploaded_to_yaga}
-            >
-              Save and Upload to Yaga
-            </button>
-          </div>
+          <%= if @review_mode do %>
+            <div class="flex justify-end gap-2">
+              <button type="submit" name="action" value="save_and_next" class="btn btn-primary">
+                Save and Next
+              </button>
+              <button
+                type="submit"
+                name="action"
+                value="save_upload_next"
+                class="btn btn-success"
+              >
+                Save, Upload, Next
+              </button>
+            </div>
+          <% else %>
+            <div class="flex justify-end gap-2">
+              <button type="submit" class="btn btn-primary">
+                Save Item
+              </button>
+              <button
+                type="submit"
+                name="action"
+                value="save_and_upload"
+                class="btn btn-success"
+                disabled={@item.status == :uploaded_to_yaga}
+              >
+                Save and Upload to Yaga
+              </button>
+            </div>
+          <% end %>
         </form>
       </div>
     </div>

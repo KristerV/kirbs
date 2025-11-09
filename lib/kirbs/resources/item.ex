@@ -12,6 +12,7 @@ defmodule Kirbs.Resources.Item do
     define :get, args: [:id]
     define :list
     define :get_by_bag, args: [:bag_id]
+    define :get_items_needing_review, args: []
     define :create
     define :update
     define :destroy
@@ -52,6 +53,11 @@ defmodule Kirbs.Resources.Item do
       end
 
       filter expr(bag_id == ^arg(:bag_id))
+    end
+
+    read :get_items_needing_review do
+      prepare build(sort: [bag_id: :asc, created_at: :asc], load: :bag)
+      filter expr(status in [:pending, :ai_processed])
     end
 
     update :clear_ai_data do
