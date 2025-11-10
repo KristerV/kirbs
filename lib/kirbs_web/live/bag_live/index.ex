@@ -5,7 +5,13 @@ defmodule KirbsWeb.BagLive.Index do
   def mount(_params, _session, socket) do
     bags =
       Kirbs.Resources.Bag
-      |> Ash.Query.load([:item_count, :needs_review, :client, :images])
+      |> Ash.Query.load([
+        :item_count,
+        :bag_needs_review,
+        :items_needing_review_count,
+        :client,
+        :images
+      ])
       |> Ash.read!()
 
     {:ok,
@@ -36,7 +42,8 @@ defmodule KirbsWeb.BagLive.Index do
                       <th>Image</th>
                       <th>Number</th>
                       <th>Items</th>
-                      <th>Needs Review</th>
+                      <th>Bag Review</th>
+                      <th>Items Need Review</th>
                       <th>Created At</th>
                       <th>Actions</th>
                     </tr>
@@ -60,12 +67,15 @@ defmodule KirbsWeb.BagLive.Index do
                         <td>{bag.number}</td>
                         <td>{bag.item_count}</td>
                         <td>
-                          <%= cond do %>
-                            <% is_nil(bag.client) -> %>
-                              <span class="badge badge-warning">No Client</span>
-                            <% bag.needs_review -> %>
-                              <span class="badge badge-info">Needs Review</span>
-                            <% true -> %>
+                          <%= if bag.bag_needs_review do %>
+                            <span class="badge badge-warning">Needs Review</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <%= if bag.items_needing_review_count > 0 do %>
+                            <span class="badge badge-info">
+                              Count: {bag.items_needing_review_count}
+                            </span>
                           <% end %>
                         </td>
                         <td>{Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M")}</td>
@@ -104,17 +114,20 @@ defmodule KirbsWeb.BagLive.Index do
                       <h3 class="font-bold text-lg">Bag #{bag.number}</h3>
                       <div class="text-sm space-y-1 mt-2">
                         <p><span class="font-semibold">Items:</span> {bag.item_count}</p>
-                        <p>
-                          <span class="font-semibold">Status:</span>
-                          <%= cond do %>
-                            <% is_nil(bag.client) -> %>
-                              <span class="badge badge-warning badge-sm">No Client</span>
-                            <% bag.needs_review -> %>
-                              <span class="badge badge-info badge-sm">Needs Review</span>
-                            <% true -> %>
-                              <span class="badge badge-success badge-sm">Ready</span>
-                          <% end %>
-                        </p>
+                        <%= if bag.bag_needs_review do %>
+                          <p>
+                            <span class="font-semibold">Bag Review:</span>
+                            <span class="badge badge-warning badge-sm">Needs Review</span>
+                          </p>
+                        <% end %>
+                        <%= if bag.items_needing_review_count > 0 do %>
+                          <p>
+                            <span class="font-semibold">Items Need Review:</span>
+                            <span class="badge badge-info badge-sm">
+                              Count: {bag.items_needing_review_count}
+                            </span>
+                          </p>
+                        <% end %>
                         <p class="text-xs text-gray-500">
                           {Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M")}
                         </p>
