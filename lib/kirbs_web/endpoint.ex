@@ -8,7 +8,8 @@ defmodule KirbsWeb.Endpoint do
     store: :cookie,
     key: "_kirbs_key",
     signing_salt: "a5lc7qKK",
-    same_site: "Lax"
+    same_site: "Lax",
+    max_age: 30 * 24 * 60 * 60
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
