@@ -25,7 +25,9 @@ defmodule Kirbs.Resources.Bag do
       get_by [:id]
     end
 
-    read :list
+    read :list do
+      prepare build(sort: [number: :asc])
+    end
 
     read :get_bags_needing_review do
       prepare build(sort: [created_at: :asc], load: [:client, :items])
