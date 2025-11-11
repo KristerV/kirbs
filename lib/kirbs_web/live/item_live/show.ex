@@ -463,6 +463,9 @@ defmodule KirbsWeb.ItemLive.Show do
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Item Details</h1>
           <div class="flex flex-wrap gap-2 justify-end">
+            <.link navigate={~p"/bags/#{@item.bag_id}"} class="btn btn-sm">
+              View Bag
+            </.link>
             <.link
               navigate={~p"/bags/capture?bag_id=#{@item.bag_id}&item_id=#{@item.id}"}
               class="btn btn-sm"
@@ -730,7 +733,7 @@ defmodule KirbsWeb.ItemLive.Show do
               type="submit"
               name="action"
               value="save_and_upload"
-              class="btn btn-success"
+              class="btn btn-primary"
               disabled={@item.status == :uploaded_to_yaga}
             >
               Save and Upload
@@ -739,7 +742,7 @@ defmodule KirbsWeb.ItemLive.Show do
               type="submit"
               name="action"
               value="save_upload_next"
-              class="btn btn-accent"
+              class="btn btn-primary"
             >
               Save, Upload, Next
             </button>
