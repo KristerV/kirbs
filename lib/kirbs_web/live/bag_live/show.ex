@@ -117,7 +117,7 @@ defmodule KirbsWeb.BagLive.Show do
 
   @impl true
   def handle_event("select_client_and_next", %{"client_id" => client_id}, socket) do
-    case Bag.update(socket.assigns.bag, %{client_id: client_id}) do
+    case Bag.update(socket.assigns.bag, %{client_id: client_id, status: :reviewed}) do
       {:ok, bag} ->
         bag = Ash.load!(bag, [:client, :items, :images])
 
@@ -148,10 +148,60 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
+  def handle_event("confirm_client", _params, socket) do
+    # Update bag status to reviewed (non-review mode - stay on page)
+    case Bag.update(socket.assigns.bag, %{status: :reviewed}) do
+      {:ok, bag} ->
+        bag = Ash.load!(bag, [:client, :items, :images])
+
+        {:noreply,
+         socket
+         |> assign(:bag, bag)
+         |> put_flash(:info, "Client confirmed!")}
+
+      {:error, _error} ->
+        {:noreply, put_flash(socket, :error, "Failed to confirm client")}
+    end
+  end
+
+  @impl true
+  def handle_event("confirm_client_and_next", _params, socket) do
+    # Update bag status to reviewed
+    case Bag.update(socket.assigns.bag, %{status: :reviewed}) do
+      {:ok, bag} ->
+        bag = Ash.load!(bag, [:client, :items, :images])
+
+        # Find next thing to review
+        case ReviewQueue.find_next_after_bag(bag) do
+          nil ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Client confirmed and all done reviewing!")
+             |> push_navigate(to: ~p"/dashboard")}
+
+          {:bag, bag_id} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Client confirmed!")
+             |> push_navigate(to: ~p"/review/bags/#{bag_id}")}
+
+          {:item, item_id} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Client confirmed!")
+             |> push_navigate(to: ~p"/review/#{item_id}")}
+        end
+
+      {:error, _error} ->
+        {:noreply, put_flash(socket, :error, "Failed to confirm client")}
+    end
+  end
+
+  @impl true
   def handle_event("create_client_and_next", params, socket) do
     case Client.create(params) do
       {:ok, client} ->
-        case Bag.update(socket.assigns.bag, %{client_id: client.id}) do
+        case Bag.update(socket.assigns.bag, %{client_id: client.id, status: :reviewed}) do
           {:ok, bag} ->
             bag = Ash.load!(bag, [:client, :items, :images])
 
@@ -241,6 +291,16 @@ defmodule KirbsWeb.BagLive.Show do
                   <button class="btn btn-secondary btn-sm" phx-click="toggle_edit_client">
                     Edit Client
                   </button>
+                  <%= if @bag.status != :reviewed do %>
+                    <button
+                      class="btn btn-success btn-sm"
+                      phx-click={
+                        if @review_mode, do: "confirm_client_and_next", else: "confirm_client"
+                      }
+                    >
+                      Confirm Client
+                    </button>
+                  <% end %>
                 <% end %>
                 <button class="btn btn-primary btn-sm" phx-click="show_client_modal">
                   {if @bag.client, do: "Change Client", else: "Assign Client"}

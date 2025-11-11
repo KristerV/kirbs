@@ -12,6 +12,7 @@ defmodule KirbsWeb.BagLive.Index do
         :client,
         :images
       ])
+      |> Ash.Query.sort(number: :asc)
       |> Ash.read!()
 
     {:ok,
@@ -73,8 +74,8 @@ defmodule KirbsWeb.BagLive.Index do
                         </td>
                         <td>
                           <%= if bag.items_needing_review_count > 0 do %>
-                            <span class="badge badge-info">
-                              Count: {bag.items_needing_review_count}
+                            <span class="text-yellow-500 font-bold">
+                              {bag.items_needing_review_count}
                             </span>
                           <% end %>
                         </td>
@@ -123,8 +124,8 @@ defmodule KirbsWeb.BagLive.Index do
                         <%= if bag.items_needing_review_count > 0 do %>
                           <p>
                             <span class="font-semibold">Items Need Review:</span>
-                            <span class="badge badge-info badge-sm">
-                              Count: {bag.items_needing_review_count}
+                            <span class="text-yellow-500 font-bold">
+                              {bag.items_needing_review_count}
                             </span>
                           </p>
                         <% end %>
