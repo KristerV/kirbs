@@ -12,6 +12,7 @@ defmodule Kirbs.Resources.Bag do
     define :get, args: [:id]
     define :list
     define :get_bags_needing_review, args: []
+    define :get_first_bag_needing_review, args: []
     define :create
     define :update
   end
@@ -32,10 +33,13 @@ defmodule Kirbs.Resources.Bag do
     read :get_bags_needing_review do
       prepare build(sort: [created_at: :asc], load: [:client, :items])
 
-      filter expr(
-               status in [:pending, :ai_processed] or
-                 exists(items, status in [:pending, :ai_processed])
-             )
+      filter expr(status in [:pending, :ai_processed])
+    end
+
+    read :get_first_bag_needing_review do
+      prepare build(sort: [created_at: :asc], limit: 1)
+
+      filter expr(status in [:pending, :ai_processed])
     end
   end
 

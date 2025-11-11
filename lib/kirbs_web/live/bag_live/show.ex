@@ -2,7 +2,7 @@ defmodule KirbsWeb.BagLive.Show do
   use KirbsWeb, :live_view
 
   alias Kirbs.Resources.{Bag, Client, Image}
-  alias Kirbs.ReviewQueue
+  alias Kirbs.Services.FindFirstReviewTarget
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -13,7 +13,6 @@ defmodule KirbsWeb.BagLive.Show do
     clients = Client.list!()
 
     upload_dir = Application.get_env(:kirbs, :image_upload_dir)
-    review_mode = socket.assigns.live_action == :review
 
     {:ok,
      socket
@@ -22,8 +21,7 @@ defmodule KirbsWeb.BagLive.Show do
      |> assign(:upload_dir, upload_dir)
      |> assign(:show_client_modal, false)
      |> assign(:creating_new_client, false)
-     |> assign(:editing_client, false)
-     |> assign(:review_mode, review_mode)}
+     |> assign(:editing_client, false)}
   end
 
   @impl true
@@ -85,6 +83,22 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
+  def handle_event("confirm_client", _params, socket) do
+    case Bag.update(socket.assigns.bag, %{status: :reviewed}) do
+      {:ok, bag} ->
+        bag = Ash.load!(bag, [:client, :items, :images])
+
+        {:noreply,
+         socket
+         |> assign(:bag, bag)
+         |> put_flash(:info, "Client confirmed!")}
+
+      {:error, _error} ->
+        {:noreply, put_flash(socket, :error, "Failed to confirm client")}
+    end
+  end
+
+  @impl true
   def handle_event("toggle_edit_client", _params, socket) do
     {:noreply, assign(socket, :editing_client, !socket.assigns.editing_client)}
   end
@@ -116,122 +130,19 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
-  def handle_event("select_client_and_next", %{"client_id" => client_id}, socket) do
-    case Bag.update(socket.assigns.bag, %{client_id: client_id, status: :reviewed}) do
-      {:ok, bag} ->
-        bag = Ash.load!(bag, [:client, :items, :images])
-
-        # Find next thing to review
-        case ReviewQueue.find_next_after_bag(bag) do
-          nil ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Client assigned and all done reviewing!")
-             |> push_navigate(to: ~p"/dashboard")}
-
-          {:bag, bag_id} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Client assigned!")
-             |> push_navigate(to: ~p"/review/bags/#{bag_id}")}
-
-          {:item, item_id} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Client assigned!")
-             |> push_navigate(to: ~p"/review/#{item_id}")}
-        end
-
-      {:error, _error} ->
-        {:noreply, put_flash(socket, :error, "Failed to assign client")}
-    end
-  end
-
-  @impl true
-  def handle_event("confirm_client", _params, socket) do
-    # Update bag status to reviewed (non-review mode - stay on page)
-    case Bag.update(socket.assigns.bag, %{status: :reviewed}) do
-      {:ok, bag} ->
-        bag = Ash.load!(bag, [:client, :items, :images])
-
+  def handle_event("review_next", _params, socket) do
+    case FindFirstReviewTarget.run() do
+      {:ok, nil} ->
         {:noreply,
          socket
-         |> assign(:bag, bag)
-         |> put_flash(:info, "Client confirmed!")}
+         |> put_flash(:info, "All done reviewing!")
+         |> push_navigate(to: ~p"/dashboard")}
 
-      {:error, _error} ->
-        {:noreply, put_flash(socket, :error, "Failed to confirm client")}
-    end
-  end
+      {:ok, {:bag, bag_id}} ->
+        {:noreply, push_navigate(socket, to: ~p"/bags/#{bag_id}")}
 
-  @impl true
-  def handle_event("confirm_client_and_next", _params, socket) do
-    # Update bag status to reviewed
-    case Bag.update(socket.assigns.bag, %{status: :reviewed}) do
-      {:ok, bag} ->
-        bag = Ash.load!(bag, [:client, :items, :images])
-
-        # Find next thing to review
-        case ReviewQueue.find_next_after_bag(bag) do
-          nil ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Client confirmed and all done reviewing!")
-             |> push_navigate(to: ~p"/dashboard")}
-
-          {:bag, bag_id} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Client confirmed!")
-             |> push_navigate(to: ~p"/review/bags/#{bag_id}")}
-
-          {:item, item_id} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Client confirmed!")
-             |> push_navigate(to: ~p"/review/#{item_id}")}
-        end
-
-      {:error, _error} ->
-        {:noreply, put_flash(socket, :error, "Failed to confirm client")}
-    end
-  end
-
-  @impl true
-  def handle_event("create_client_and_next", params, socket) do
-    case Client.create(params) do
-      {:ok, client} ->
-        case Bag.update(socket.assigns.bag, %{client_id: client.id, status: :reviewed}) do
-          {:ok, bag} ->
-            bag = Ash.load!(bag, [:client, :items, :images])
-
-            # Find next thing to review
-            case ReviewQueue.find_next_after_bag(bag) do
-              nil ->
-                {:noreply,
-                 socket
-                 |> put_flash(:info, "Client created and all done reviewing!")
-                 |> push_navigate(to: ~p"/dashboard")}
-
-              {:bag, bag_id} ->
-                {:noreply,
-                 socket
-                 |> put_flash(:info, "Client created!")
-                 |> push_navigate(to: ~p"/review/bags/#{bag_id}")}
-
-              {:item, item_id} ->
-                {:noreply,
-                 socket
-                 |> put_flash(:info, "Client created!")
-                 |> push_navigate(to: ~p"/review/#{item_id}")}
-            end
-
-          {:error, _error} ->
-            {:noreply, put_flash(socket, :error, "Failed to assign client")}
-        end
-
-      {:error, error} ->
-        {:noreply, put_flash(socket, :error, "Failed to create client: #{inspect(error)}")}
+      {:ok, {:item, item_id}} ->
+        {:noreply, push_navigate(socket, to: ~p"/items/#{item_id}")}
     end
   end
 
@@ -249,15 +160,15 @@ defmodule KirbsWeb.BagLive.Show do
     <div class="bg-base-300 min-h-screen">
       <div class="max-w-6xl mx-auto p-6">
         <div class="flex justify-between items-center mb-6">
-          <div class="flex items-center gap-3">
-            <h1 class="text-3xl font-bold">Bag #{@bag.number}</h1>
-            <%= if @review_mode do %>
-              <div class="badge badge-primary badge-lg">Review Mode</div>
-            <% end %>
+          <h1 class="text-3xl font-bold">Bag #{@bag.number}</h1>
+          <div class="flex gap-2">
+            <button class="btn btn-accent" phx-click="review_next">
+              Review Next
+            </button>
+            <.link navigate="/bags" class="btn btn-ghost">
+              Back to Bags
+            </.link>
           </div>
-          <.link navigate={if @review_mode, do: "/review", else: "/bags"} class="btn btn-ghost">
-            {if @review_mode, do: "Back to Review", else: "Back to Bags"}
-          </.link>
         </div>
         
     <!-- Bag Photos -->
@@ -294,9 +205,7 @@ defmodule KirbsWeb.BagLive.Show do
                   <%= if @bag.status != :reviewed do %>
                     <button
                       class="btn btn-success btn-sm"
-                      phx-click={
-                        if @review_mode, do: "confirm_client_and_next", else: "confirm_client"
-                      }
+                      phx-click="confirm_client"
                     >
                       Confirm Client
                     </button>
@@ -463,9 +372,7 @@ defmodule KirbsWeb.BagLive.Show do
 
               <%= if @creating_new_client do %>
                 <!-- Create New Client Form -->
-                <form phx-submit={
-                  if @review_mode, do: "create_client_and_next", else: "create_client"
-                }>
+                <form phx-submit="create_client">
                   <div class="form-control mb-4">
                     <label class="label">
                       <span class="label-text">Name *</span>
@@ -534,7 +441,7 @@ defmodule KirbsWeb.BagLive.Show do
                   <%= for client <- @clients do %>
                     <div
                       class="card bg-base-200 mb-2 cursor-pointer hover:bg-base-300"
-                      phx-click={if @review_mode, do: "select_client_and_next", else: "select_client"}
+                      phx-click="select_client"
                       phx-value-client_id={client.id}
                     >
                       <div class="card-body p-4">
