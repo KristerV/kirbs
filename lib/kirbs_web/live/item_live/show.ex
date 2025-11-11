@@ -87,7 +87,8 @@ defmodule KirbsWeb.ItemLive.Show do
        |> assign(:color_options, color_options)
        |> assign(:material_options, material_options)
        |> assign(:size_options, size_options)
-       |> assign(:delete_confirmation, false)}
+       |> assign(:delete_confirmation, false)
+       |> assign(:selected_image, nil)}
     end
   end
 
@@ -358,6 +359,17 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
+  def handle_event("show_image", %{"image_id" => image_id}, socket) do
+    selected_image = Enum.find(socket.assigns.images, &(&1.id == image_id))
+    {:noreply, assign(socket, :selected_image, selected_image)}
+  end
+
+  @impl true
+  def handle_event("close_image", _params, socket) do
+    {:noreply, assign(socket, :selected_image, nil)}
+  end
+
+  @impl true
   def handle_event("delete_item", _params, socket) do
     if socket.assigns.delete_confirmation do
       # User confirmed - proceed with deletion
@@ -499,7 +511,11 @@ defmodule KirbsWeb.ItemLive.Show do
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <%= for image <- @images do %>
                   <div class="relative group">
-                    <div class="aspect-square bg-base-200 rounded-lg overflow-hidden">
+                    <div
+                      class="aspect-square bg-base-200 rounded-lg overflow-hidden cursor-pointer"
+                      phx-click="show_image"
+                      phx-value-image_id={image.id}
+                    >
                       <img
                         src={"/uploads/#{image.path}"}
                         alt="Item photo"
@@ -507,13 +523,13 @@ defmodule KirbsWeb.ItemLive.Show do
                       />
                     </div>
                     <%= if image.is_label do %>
-                      <div class="badge badge-primary badge-sm absolute top-2 left-2">
+                      <div class="badge badge-primary badge-sm absolute top-2 left-2 pointer-events-none">
                         Label
                       </div>
                     <% end %>
                     <button
                       type="button"
-                      class="btn btn-error btn-xs absolute top-2 right-2 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
+                      class="btn btn-error btn-xs absolute top-2 right-2 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity z-10"
                       phx-click="delete_image"
                       phx-value-image_id={image.id}
                       data-confirm="Are you sure you want to delete this image?"
@@ -522,7 +538,7 @@ defmodule KirbsWeb.ItemLive.Show do
                     </button>
                     <button
                       type="button"
-                      class="btn btn-info btn-xs absolute top-10 right-2 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
+                      class="btn btn-info btn-xs absolute top-10 right-2 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity z-10"
                       phx-click="toggle_label"
                       phx-value-image_id={image.id}
                     >
@@ -750,6 +766,17 @@ defmodule KirbsWeb.ItemLive.Show do
         </form>
       </div>
     </div>
+
+    <!-- Image modal for full-screen view -->
+    <%= if @selected_image do %>
+      <div class="modal modal-open" phx-click="close_image">
+        <img
+          src={"/uploads/#{@selected_image.path}"}
+          alt="Full size"
+          class="max-h-[95vh] max-w-[95vw] object-contain cursor-pointer"
+        />
+      </div>
+    <% end %>
     """
   end
 end
