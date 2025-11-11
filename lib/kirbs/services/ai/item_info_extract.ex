@@ -93,7 +93,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     Analüüsi neid laste rõivaste fotosid ja eralda järgmine informatsioon:
 
     - brand: AINULT trükitud brändisildilt. Vaata kas on TÄPSELT loendis: #{Enum.join(brands, ", ")}. Kui ei ole loendis VÕI on käsitsi kirjutatud VÕI puudub, kasuta "Muu".
-    - size: Suurus. Vaata sildilt ja vali kõige lähedasem neist: #{Enum.join(sizes, ", ")}
+    - size: Suurus. Vaata sildilt ja vali kõige lähedasem neist: #{Enum.join(sizes, ", ")}. TÄHTIS: Kui suurus on piiri peal (nt 128), vali ALATI vahemik kus see number on ALUMINE piir (nt 128/134, MITTE 122/128), et laps kasvades ikka ära mahub.
     - colors: Värvide loend EESTI KEELES. Vali ainult nendest: #{Enum.join(colors, ", ")}. MAKSIMAALSELT 2 värvi! Vali 1-2 kõige domineerivat värvi.
     - materials: Materjalide loend EESTI KEELES. Vali ainult nendest: #{Enum.join(materials, ", ")}
     - description: EESTI KEELES lühike kirjeldus (1-2 lauset) sõbralikus, jutustavas stiilis. Kirjuta nagu räägiks inimene teisele - kasuta igapäevaseid sõnu ja loomuliku vestlustoon. KUI ON MITU ASJA, alusta "Komplekt:" ja nimeta asjad. Näited üksikute asjade kohta: "Armas body, kergelt kantud, aga väga heas seisukorras", "Mõnus pehme dressipluus, kergete kasutusjälgedega". Näited komplekti kohta: "Komplekt: 2 armsat bodyt, mõlemad väga heas seisukorras", "Komplekt: body ja püksid, natuke kantud aga kenasti hoitud", "Komplekt: 3 bodyt erinevatest brändidest, kergete kasutusjälgedega". Maini defekte loomulikult, aga ära kõla nagu robot!
@@ -124,7 +124,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     OLULINE:
     - KOMPLEKT: Kui pildil on mitu asja, käsitle neid ühe komplektina! Kirjelduses alusta "Komplekt:" ja nimeta asjad. Hind = üksikute asjade hinnad kokku.
     - Bränd: IGNOREERI käsitsi kirjutatud teksti! Kasuta AINULT trükitud brändisildilt. Kui käsitsi kirjutatud VÕI ei ole loendis → "Muu". Komplekti puhul kui erinevad brändid → "Muu"
-    - Suurus: vali kõige lähedasem loendist (nt kui sildil on "80cm", vali "74/80"). Komplekti puhul kui sama suurus → see suurus, kui erinevad → vanim/väiksem suurus
+    - Suurus: vali kõige lähedasem loendist (nt kui sildil on "80cm", vali "74/80"). TÄHTIS: Kui suurus on piiri peal (nt 128), vali ALATI vahemik kus see number on ALUMINE piir (nt 128/134, MITTE 122/128), et laps kasvades ikka ära mahub. Komplekti puhul kui sama suurus → see suurus, kui erinevad → vanim/väiksem suurus
     - Värvid: AINULT eestikeelsed valikud ülaltoodud loendist. MAKSIMAALSELT 2 värvi! Vali domineerivad värvid.
     - Materjalid: AINULT eestikeelsed valikud ülaltoodud loendist
     - Kirjeldus: SÕBRALIK, LOOMULIK, JUTUSTAV stiil. Kirjuta nagu inimene inimesele, mitte nagu robot! Komplekt → alusta "Komplekt:" ja kirjelda mida kuulub
