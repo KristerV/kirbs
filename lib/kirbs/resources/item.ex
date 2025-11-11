@@ -57,12 +57,12 @@ defmodule Kirbs.Resources.Item do
     end
 
     read :get_items_needing_review do
-      prepare build(sort: [created_at: :asc], load: :bag)
+      prepare build(sort: [{:bag, :created_at}, :created_at], load: :bag)
       filter expr(status in [:pending, :ai_processed])
     end
 
     read :get_first_item_needing_review do
-      prepare build(sort: [created_at: :asc], limit: 1)
+      prepare build(sort: [{:bag, :created_at}, :created_at], limit: 1, load: :bag)
       filter expr(status in [:pending, :ai_processed])
     end
 
