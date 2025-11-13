@@ -71,9 +71,7 @@ defmodule Kirbs.Resources.Bag do
       allow_nil? true
     end
 
-    has_many :items, Kirbs.Resources.Item do
-      sort created_at: :asc
-    end
+    has_many :items, Kirbs.Resources.Item
 
     has_many :images, Kirbs.Resources.Image
   end
