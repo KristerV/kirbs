@@ -1,5 +1,3 @@
-import Chart from "chart.js/auto"
-
 export const DashboardChart = {
   mounted() {
     const ctx = this.el.getContext("2d")
