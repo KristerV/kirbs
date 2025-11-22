@@ -737,6 +737,13 @@ defmodule KirbsWeb.ItemLive.Show do
                   </div>
                 <% end %>
 
+                <%= if @item.sold_at do %>
+                  <div class="text-sm">
+                    <span class="font-semibold">Sold:</span>
+                    {Calendar.strftime(@item.sold_at, "%Y-%m-%d %H:%M")}
+                  </div>
+                <% end %>
+
                 <%= if @item.upload_error do %>
                   <div class="alert alert-error">
                     <span>{@item.upload_error}</span>

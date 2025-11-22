@@ -15,7 +15,13 @@ config :kirbs, Oban,
   notifier: Oban.Notifiers.Postgres,
   queues: [default: 10],
   repo: Kirbs.Repo,
-  plugins: [{Oban.Plugins.Cron, []}]
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       # Check for sold items every hour
+       {"0 * * * *", Kirbs.Jobs.CheckSoldItemsJob}
+     ]}
+  ]
 
 config :ash,
   allow_forbidden_field_for_relationships_by_default?: true,

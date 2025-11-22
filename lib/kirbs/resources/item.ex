@@ -37,7 +37,8 @@ defmodule Kirbs.Resources.Item do
       :status,
       :yaga_id,
       :yaga_slug,
-      :upload_error
+      :upload_error,
+      :sold_at
     ]
 
     defaults [:read, :update, :destroy]
@@ -136,6 +137,7 @@ defmodule Kirbs.Resources.Item do
     attribute :yaga_id, :integer
     attribute :yaga_slug, :string
     attribute :upload_error, :string
+    attribute :sold_at, :utc_datetime_usec
 
     create_timestamp :created_at
     update_timestamp :updated_at

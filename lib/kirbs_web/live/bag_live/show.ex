@@ -405,8 +405,20 @@ defmodule KirbsWeb.BagLive.Show do
                           <p class="text-sm text-base-content/70">
                             {length(item_images)} photos
                           </p>
-                          <div class={"badge badge-sm mt-2 #{if item.status == :uploaded_to_yaga, do: "badge-success"}"}>
-                            {item.status}
+                          <div class="flex flex-wrap items-center gap-2 mt-2">
+                            <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
+                              {item.status}
+                            </div>
+                            <%= if item.status == :sold && item.sold_price do %>
+                              <span class="text-sm text-success font-semibold">
+                                €{item.sold_price}
+                              </span>
+                              <%= if item.sold_at do %>
+                                <span class="text-xs text-base-content/60">
+                                  {Calendar.strftime(item.sold_at, "%Y-%m-%d")}
+                                </span>
+                              <% end %>
+                            <% end %>
                           </div>
                         </div>
 
@@ -571,4 +583,10 @@ defmodule KirbsWeb.BagLive.Show do
     </div>
     """
   end
+
+  defp status_badge_class(:sold), do: "badge-success"
+  defp status_badge_class(:uploaded_to_yaga), do: "badge-success"
+  defp status_badge_class(:reviewed), do: "badge-info"
+  defp status_badge_class(:upload_failed), do: "badge-error"
+  defp status_badge_class(_), do: ""
 end

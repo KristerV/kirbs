@@ -56,7 +56,21 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:failed_uploads, failed_uploads)
      |> assign(:total_revenue, total_revenue)
      |> assign(:total_payouts, total_payouts)
-     |> assign(:failed_jobs_count, failed_jobs_count)}
+     |> assign(:failed_jobs_count, failed_jobs_count)
+     |> assign(:checking_sold, false)}
+  end
+
+  @impl true
+  def handle_event("check_sold_items", _params, socket) do
+    socket = assign(socket, :checking_sold, true)
+
+    Kirbs.Jobs.CheckSoldItemsJob.new(%{})
+    |> Oban.insert()
+
+    {:noreply,
+     socket
+     |> assign(:checking_sold, false)
+     |> put_flash(:info, "Checking for sold items...")}
   end
 
   @impl true
@@ -117,7 +131,12 @@ defmodule KirbsWeb.DashboardLive.Index do
     <!-- Item Status -->
         <div class="card bg-base-100 shadow-xl mb-8">
           <div class="card-body">
-            <h2 class="card-title mb-4">Items by Status</h2>
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="card-title">Items by Status</h2>
+              <button class="btn btn-sm btn-secondary" phx-click="check_sold_items">
+                Check Sold Items
+              </button>
+            </div>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div class="stat bg-base-200 rounded-lg">
                 <div class="stat-title">Pending</div>
