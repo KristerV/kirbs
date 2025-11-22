@@ -3,6 +3,7 @@ defmodule KirbsWeb.BagLive.Show do
 
   alias Kirbs.Resources.{Bag, Client, Image}
   alias Kirbs.Services.FindFirstReviewTarget
+  alias Kirbs.Services.Yaga.Importer
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -21,7 +22,10 @@ defmodule KirbsWeb.BagLive.Show do
      |> assign(:upload_dir, upload_dir)
      |> assign(:show_client_modal, false)
      |> assign(:creating_new_client, false)
-     |> assign(:editing_client, false)}
+     |> assign(:editing_client, false)
+     |> assign(:show_import_modal, false)
+     |> assign(:import_links, "")
+     |> assign(:importing, false)}
   end
 
   @impl true
@@ -127,6 +131,57 @@ defmodule KirbsWeb.BagLive.Show do
     |> Oban.insert()
 
     {:noreply, put_flash(socket, :info, "AI processing job scheduled")}
+  end
+
+  @impl true
+  def handle_event("show_import_modal", _params, socket) do
+    {:noreply, assign(socket, show_import_modal: true, import_links: "")}
+  end
+
+  @impl true
+  def handle_event("close_import_modal", _params, socket) do
+    {:noreply, assign(socket, show_import_modal: false, import_links: "", importing: false)}
+  end
+
+  @impl true
+  def handle_event("update_import_links", %{"links" => links}, socket) do
+    {:noreply, assign(socket, :import_links, links)}
+  end
+
+  @impl true
+  def handle_event("import_from_yaga", %{"links" => links}, socket) do
+    socket = socket |> assign(:importing, true) |> assign(:import_links, links)
+
+    case Importer.run(socket.assigns.bag.id, links) do
+      {:ok, %{imported: count, errors: errors}} ->
+        bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :items, :images])
+
+        socket =
+          socket
+          |> assign(:bag, bag)
+          |> assign(:show_import_modal, false)
+          |> assign(:import_links, "")
+          |> assign(:importing, false)
+
+        socket =
+          if errors == [] do
+            put_flash(socket, :info, "Imported #{count} product(s) successfully")
+          else
+            put_flash(
+              socket,
+              :warning,
+              "Imported #{count} product(s). Errors: #{Enum.join(errors, "; ")}"
+            )
+          end
+
+        {:noreply, socket}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(:importing, false)
+         |> put_flash(:error, "Import failed: #{reason}")}
+    end
   end
 
   @impl true
@@ -312,9 +367,14 @@ defmodule KirbsWeb.BagLive.Show do
           <div class="card-body">
             <div class="flex justify-between items-center">
               <h2 class="card-title">Items ({length(@bag.items)})</h2>
-              <.link navigate={~p"/bags/capture?bag_id=#{@bag.id}"} class="btn btn-primary btn-sm">
-                + Add More Items
-              </.link>
+              <div class="flex gap-2">
+                <button class="btn btn-secondary btn-sm" phx-click="show_import_modal">
+                  Import from Yaga
+                </button>
+                <.link navigate={~p"/bags/capture?bag_id=#{@bag.id}"} class="btn btn-primary btn-sm">
+                  + Add More Items
+                </.link>
+              </div>
             </div>
 
             <%= if @bag.items == [] do %>
@@ -458,6 +518,52 @@ defmodule KirbsWeb.BagLive.Show do
                   <button class="btn" phx-click="close_client_modal">Close</button>
                 </div>
               <% end %>
+            </div>
+          </div>
+        <% end %>
+        
+    <!-- Import from Yaga Modal -->
+        <%= if @show_import_modal do %>
+          <div class="modal modal-open">
+            <div class="modal-box max-w-2xl">
+              <h3 class="font-bold text-lg mb-4">Import from Yaga</h3>
+
+              <p class="text-sm text-base-content/70 mb-4">
+                Paste yaga.ee product links below (one per line or comma-separated).
+              </p>
+
+              <form phx-change="update_import_links" phx-submit="import_from_yaga">
+                <div class="form-control">
+                  <textarea
+                    class="textarea textarea-bordered h-48 font-mono text-sm"
+                    placeholder="https://www.yaga.ee/kirbs-ee/toode/abc123&#10;https://www.yaga.ee/kirbs-ee/toode/def456"
+                    name="links"
+                    disabled={@importing}
+                  >{@import_links}</textarea>
+                </div>
+
+                <div class="modal-action">
+                  <button
+                    type="button"
+                    class="btn"
+                    phx-click="close_import_modal"
+                    disabled={@importing}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                    disabled={@importing || @import_links == ""}
+                  >
+                    <%= if @importing do %>
+                      <span class="loading loading-spinner loading-sm"></span> Importing...
+                    <% else %>
+                      Import
+                    <% end %>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         <% end %>

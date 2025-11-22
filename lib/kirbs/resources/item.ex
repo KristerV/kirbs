@@ -40,7 +40,19 @@ defmodule Kirbs.Resources.Item do
       :upload_error
     ]
 
-    defaults [:create, :read, :update, :destroy]
+    defaults [:read, :update, :destroy]
+
+    create :create do
+      argument :created_at, :utc_datetime_usec
+
+      change fn changeset, _context ->
+        # Allow setting created_at for imports via argument
+        case Ash.Changeset.get_argument(changeset, :created_at) do
+          nil -> changeset
+          dt -> Ash.Changeset.force_change_attribute(changeset, :created_at, dt)
+        end
+      end
+    end
 
     read :get do
       get_by [:id]

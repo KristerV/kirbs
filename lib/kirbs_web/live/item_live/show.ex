@@ -722,8 +722,13 @@ defmodule KirbsWeb.ItemLive.Show do
             <div class="card-body">
               <h2 class="card-title mb-4">Status</h2>
 
-              <div class="flex items-center gap-4">
+              <div class="flex flex-wrap items-center gap-4">
                 <div class="badge badge-lg">{@item.status}</div>
+
+                <div class="text-sm">
+                  <span class="font-semibold">Created:</span>
+                  {Calendar.strftime(@item.created_at, "%Y-%m-%d %H:%M")}
+                </div>
 
                 <%= if @item.yaga_id do %>
                   <div class="text-sm">
