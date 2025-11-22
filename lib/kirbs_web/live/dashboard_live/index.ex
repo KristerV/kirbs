@@ -12,9 +12,7 @@ defmodule KirbsWeb.DashboardLive.Index do
     items = Item.list!()
 
     # Count items by status
-    pending_items = Enum.count(items, &(&1.status == :pending))
-    ai_processed_items = Enum.count(items, &(&1.status == :ai_processed))
-    reviewed_items = Enum.count(items, &(&1.status == :reviewed))
+    needs_review = Enum.count(items, &(&1.status in [:pending, :ai_processed, :reviewed]))
     uploaded_items = Enum.count(items, &(&1.status == :uploaded_to_yaga))
     sold_items = Enum.count(items, &(&1.status == :sold))
     failed_uploads = Enum.count(items, &(&1.status == :upload_failed))
@@ -48,9 +46,7 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:total_bags, length(bags))
      |> assign(:total_clients, length(clients))
      |> assign(:total_items, length(items))
-     |> assign(:pending_items, pending_items)
-     |> assign(:ai_processed_items, ai_processed_items)
-     |> assign(:reviewed_items, reviewed_items)
+     |> assign(:needs_review, needs_review)
      |> assign(:uploaded_items, uploaded_items)
      |> assign(:sold_items, sold_items)
      |> assign(:failed_uploads, failed_uploads)
@@ -137,20 +133,10 @@ defmodule KirbsWeb.DashboardLive.Index do
                 Check Sold Items
               </button>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="stat bg-base-200 rounded-lg">
-                <div class="stat-title">Pending</div>
-                <div class="stat-value text-warning">{@pending_items}</div>
-              </div>
-
-              <div class="stat bg-base-200 rounded-lg">
-                <div class="stat-title">AI Processed</div>
-                <div class="stat-value text-info">{@ai_processed_items}</div>
-              </div>
-
-              <div class="stat bg-base-200 rounded-lg">
-                <div class="stat-title">Reviewed</div>
-                <div class="stat-value text-success">{@reviewed_items}</div>
+                <div class="stat-title">Needs Review</div>
+                <div class="stat-value text-warning">{@needs_review}</div>
               </div>
 
               <div class="stat bg-base-200 rounded-lg">
