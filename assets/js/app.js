@@ -25,13 +25,14 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/kirbs"
 import topbar from "../vendor/topbar"
 import {Camera} from "./hooks/camera"
+import {DashboardChart} from "./hooks/dashboard_chart"
 import live_select from "live_select"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, Camera, ...live_select},
+  hooks: {...colocatedHooks, Camera, DashboardChart, ...live_select},
 })
 
 // Show progress bar on live navigation and form submits

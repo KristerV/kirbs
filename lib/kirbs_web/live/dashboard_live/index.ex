@@ -41,6 +41,9 @@ defmodule KirbsWeb.DashboardLive.Index do
       )
       |> Repo.one()
 
+    # Build chart data for last 30 days
+    chart_data = build_chart_data(items)
+
     {:ok,
      socket
      |> assign(:total_bags, length(bags))
@@ -53,7 +56,8 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:total_revenue, total_revenue)
      |> assign(:total_payouts, total_payouts)
      |> assign(:failed_jobs_count, failed_jobs_count)
-     |> assign(:checking_sold, false)}
+     |> assign(:checking_sold, false)
+     |> assign(:chart_data, chart_data)}
   end
 
   @impl true
@@ -99,6 +103,21 @@ defmodule KirbsWeb.DashboardLive.Index do
             </div>
           </div>
         <% end %>
+        
+    <!-- 30 Day Chart -->
+        <div class="card bg-base-100 shadow-xl mb-8">
+          <div class="card-body">
+            <h2 class="card-title">Last 30 Days</h2>
+            <div class="h-80">
+              <canvas
+                id="dashboard-chart"
+                phx-hook="DashboardChart"
+                data-chart-data={Jason.encode!(@chart_data)}
+              >
+              </canvas>
+            </div>
+          </div>
+        </div>
         
     <!-- Overview Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -181,5 +200,70 @@ defmodule KirbsWeb.DashboardLive.Index do
       </div>
     </div>
     """
+  end
+
+  defp build_chart_data(items) do
+    today = Date.utc_today()
+
+    # Generate last 30 days
+    dates =
+      Enum.map(29..0//-1, fn days_ago ->
+        Date.add(today, -days_ago)
+      end)
+
+    # Group items by created_at date
+    items_by_created =
+      items
+      |> Enum.group_by(fn item ->
+        item.created_at |> DateTime.to_date()
+      end)
+
+    # Group sold items by sold_at date
+    items_by_sold =
+      items
+      |> Enum.filter(&(&1.sold_at != nil))
+      |> Enum.group_by(fn item ->
+        item.sold_at |> DateTime.to_date()
+      end)
+
+    # Build data arrays
+    labels = Enum.map(dates, &Calendar.strftime(&1, "%d %b"))
+
+    items_created =
+      Enum.map(dates, fn date ->
+        Map.get(items_by_created, date, []) |> length()
+      end)
+
+    items_sold =
+      Enum.map(dates, fn date ->
+        Map.get(items_by_sold, date, []) |> length()
+      end)
+
+    # Monthly burndown - start at 1000€, subtract cumulative profit
+    goal = Decimal.new(1000)
+
+    {burndown, _} =
+      Enum.map_reduce(dates, Decimal.new(0), fn date, cumulative_profit ->
+        day_profit =
+          Map.get(items_by_sold, date, [])
+          |> Enum.reduce(Decimal.new(0), fn item, acc ->
+            if item.sold_price do
+              Decimal.add(acc, Decimal.div(item.sold_price, 2))
+            else
+              acc
+            end
+          end)
+
+        new_cumulative = Decimal.add(cumulative_profit, day_profit)
+        remaining = Decimal.sub(goal, new_cumulative) |> Decimal.max(Decimal.new(0))
+        {Decimal.to_float(remaining), new_cumulative}
+      end)
+
+    %{
+      labels: labels,
+      items_created: items_created,
+      items_sold: items_sold,
+      burndown: burndown
+    }
   end
 end
