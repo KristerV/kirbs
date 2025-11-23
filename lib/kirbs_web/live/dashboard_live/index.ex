@@ -239,11 +239,90 @@ defmodule KirbsWeb.DashboardLive.Index do
         Map.get(items_by_sold, date, []) |> length()
       end)
 
-    # Monthly burndown - start at 1000€, subtract cumulative profit
+    # Monthly burndown - separate line per month, each starting at 1000€
     goal = Decimal.new(1000)
 
-    {burndown, _} =
-      Enum.map_reduce(dates, Decimal.new(0), fn date, cumulative_profit ->
+    # Group dates by month
+    dates_by_month = Enum.group_by(dates, fn date -> {date.year, date.month} end)
+
+    # Build burndown data for each month (accounting for sales before chart window)
+    burndown_by_month =
+      Enum.map(dates_by_month, fn {{year, month} = month_key, month_dates} ->
+        month_dates_sorted = Enum.sort(month_dates, Date)
+        first_chart_date = List.first(month_dates_sorted)
+        month_start = Date.beginning_of_month(first_chart_date)
+
+        # Calculate profit from start of month up to (but not including) first chart date
+        prior_profit =
+          if Date.compare(first_chart_date, month_start) == :gt do
+            Date.range(month_start, Date.add(first_chart_date, -1))
+            |> Enum.reduce(Decimal.new(0), fn date, acc ->
+              day_profit =
+                Map.get(items_by_sold, date, [])
+                |> Enum.reduce(Decimal.new(0), fn item, inner_acc ->
+                  if item.sold_price do
+                    Decimal.add(inner_acc, Decimal.div(item.sold_price, 2))
+                  else
+                    inner_acc
+                  end
+                end)
+
+              Decimal.add(acc, day_profit)
+            end)
+          else
+            Decimal.new(0)
+          end
+
+        {month_burndown, _} =
+          Enum.map_reduce(month_dates_sorted, prior_profit, fn date, cumulative ->
+            day_profit =
+              Map.get(items_by_sold, date, [])
+              |> Enum.reduce(Decimal.new(0), fn item, acc ->
+                if item.sold_price do
+                  Decimal.add(acc, Decimal.div(item.sold_price, 2))
+                else
+                  acc
+                end
+              end)
+
+            new_cumulative = Decimal.add(cumulative, day_profit)
+            remaining = Decimal.sub(goal, new_cumulative) |> Decimal.max(Decimal.new(0))
+            {Decimal.to_float(remaining), new_cumulative}
+          end)
+
+        {month_key, Map.new(Enum.zip(month_dates_sorted, month_burndown))}
+      end)
+      |> Map.new()
+
+    # Build separate arrays for each month (null for days outside that month)
+    months = Map.keys(burndown_by_month) |> Enum.sort()
+
+    burndown_lines =
+      Enum.map(months, fn {year, month} = month_key ->
+        month_data = burndown_by_month[month_key]
+
+        values =
+          Enum.map(dates, fn date ->
+            Map.get(month_data, date)
+          end)
+
+        [[year, month], values]
+      end)
+
+    # Build ghost line: FULL previous month's burndown mapped onto current month dates
+    current_month = {today.year, today.month}
+    prev_month_start = Date.add(Date.beginning_of_month(today), -1) |> Date.beginning_of_month()
+    prev_month_end = Date.end_of_month(prev_month_start)
+
+    # Generate all dates for previous month
+    prev_month_dates =
+      Enum.map(0..Date.diff(prev_month_end, prev_month_start), fn day ->
+        Date.add(prev_month_start, day)
+      end)
+
+    # Calculate burndown for full previous month
+    {prev_month_burndown, _} =
+      Enum.map_reduce(prev_month_dates, Decimal.new(0), fn date, cumulative ->
         day_profit =
           Map.get(items_by_sold, date, [])
           |> Enum.reduce(Decimal.new(0), fn item, acc ->
@@ -254,16 +333,33 @@ defmodule KirbsWeb.DashboardLive.Index do
             end
           end)
 
-        new_cumulative = Decimal.add(cumulative_profit, day_profit)
+        new_cumulative = Decimal.add(cumulative, day_profit)
         remaining = Decimal.sub(goal, new_cumulative) |> Decimal.max(Decimal.new(0))
         {Decimal.to_float(remaining), new_cumulative}
+      end)
+
+    # Map by day-of-month
+    prev_by_day =
+      Map.new(Enum.zip(prev_month_dates, prev_month_burndown), fn {date, value} ->
+        {date.day, value}
+      end)
+
+    # Map onto current month's dates in the chart
+    ghost_line =
+      Enum.map(dates, fn date ->
+        if {date.year, date.month} == current_month do
+          Map.get(prev_by_day, date.day)
+        else
+          nil
+        end
       end)
 
     %{
       labels: labels,
       items_created: items_created,
       items_sold: items_sold,
-      burndown: burndown
+      burndown_lines: burndown_lines,
+      ghost_line: ghost_line
     }
   end
 end

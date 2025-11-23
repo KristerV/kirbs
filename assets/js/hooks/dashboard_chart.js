@@ -1,7 +1,51 @@
+function buildBurndownDatasets(burndownLines) {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+
+  return burndownLines.map(([[year, month], values], index) => {
+    const isCurrentMonth = year === currentYear && month === currentMonth
+    return {
+      label: index === 0 ? "Goal Remaining (€)" : "",
+      data: values,
+      type: "line",
+      borderColor: isCurrentMonth ? "rgb(34, 197, 94)" : "rgba(34, 197, 94, 0.5)",
+      backgroundColor: "transparent",
+      borderDash: isCurrentMonth ? [] : [5, 5],
+      tension: 0.3,
+      fill: false,
+      yAxisID: "y1",
+      order: 0,
+      spanGaps: false
+    }
+  })
+}
+
+function buildGhostDataset(ghostLine) {
+  if (!ghostLine) return null
+  return {
+    label: "Last Month",
+    data: ghostLine,
+    type: "line",
+    borderColor: "rgba(34, 197, 94, 0.3)",
+    backgroundColor: "transparent",
+    borderDash: [5, 5],
+    tension: 0.3,
+    fill: false,
+    yAxisID: "y1",
+    order: 1,
+    spanGaps: false,
+    pointRadius: 0
+  }
+}
+
 export const DashboardChart = {
   mounted() {
     const ctx = this.el.getContext("2d")
     const data = JSON.parse(this.el.dataset.chartData)
+
+    const burndownDatasets = buildBurndownDatasets(data.burndown_lines)
+    const ghostDataset = buildGhostDataset(data.ghost_line)
 
     this.chart = new Chart(ctx, {
       type: "bar",
@@ -24,17 +68,8 @@ export const DashboardChart = {
             borderWidth: 1,
             order: 2
           },
-          {
-            label: "Goal Remaining (€)",
-            data: data.burndown,
-            type: "line",
-            borderColor: "rgb(34, 197, 94)",
-            backgroundColor: "rgba(34, 197, 94, 0.1)",
-            tension: 0.3,
-            fill: false,
-            yAxisID: "y1",
-            order: 0
-          }
+          ...burndownDatasets,
+          ...(ghostDataset ? [ghostDataset] : [])
         ]
       },
       options: {
@@ -83,7 +118,16 @@ export const DashboardChart = {
     this.chart.data.labels = data.labels
     this.chart.data.datasets[0].data = data.items_created
     this.chart.data.datasets[1].data = data.items_sold
-    this.chart.data.datasets[2].data = data.burndown
+
+    // Update burndown lines (remove old ones, add new ones)
+    const burndownDatasets = buildBurndownDatasets(data.burndown_lines)
+    const ghostDataset = buildGhostDataset(data.ghost_line)
+    this.chart.data.datasets = [
+      this.chart.data.datasets[0],
+      this.chart.data.datasets[1],
+      ...burndownDatasets,
+      ...(ghostDataset ? [ghostDataset] : [])
+    ]
     this.chart.update()
   },
 
