@@ -237,6 +237,22 @@ defmodule KirbsWeb.BagLive.Capture do
           </div>
 
           <div class="p-4 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <button
+                phx-click="request_capture"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+              >
+                Capture
+              </button>
+
+              <button
+                phx-click="request_label_capture"
+                class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+              >
+                Capture Label
+              </button>
+            </div>
+
             <%= if @existing_item_id do %>
               <button
                 phx-click="end_bag"
@@ -261,22 +277,6 @@ defmodule KirbsWeb.BagLive.Capture do
                 </button>
               </div>
             <% end %>
-
-            <div class="grid grid-cols-2 gap-4">
-              <button
-                phx-click="request_capture"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-              >
-                Capture
-              </button>
-
-              <button
-                phx-click="request_label_capture"
-                class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-              >
-                Capture Label
-              </button>
-            </div>
 
             <div class="text-sm text-gray-400 text-center">
               <div>
