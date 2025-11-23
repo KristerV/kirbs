@@ -2,15 +2,20 @@ defmodule KirbsWeb.ClientLive.Show do
   use KirbsWeb, :live_view
 
   alias Kirbs.Resources.Client
+  alias Kirbs.Services.ClientMerge
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     client = Ash.get!(Client, id) |> Ash.load!([:bags])
+    all_clients = Client.list!() |> Enum.reject(&(&1.id == id))
 
     {:ok,
      socket
      |> assign(:client, client)
      |> assign(:editing, false)
+     |> assign(:show_merge_modal, false)
+     |> assign(:all_clients, all_clients)
+     |> assign(:selected_merge_client_id, nil)
      |> assign(:page_title, client.name)}
   end
 
@@ -37,15 +42,57 @@ defmodule KirbsWeb.ClientLive.Show do
   end
 
   @impl true
+  def handle_event("show_merge_modal", _params, socket) do
+    {:noreply, assign(socket, :show_merge_modal, true)}
+  end
+
+  @impl true
+  def handle_event("close_merge_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_merge_modal, false)
+     |> assign(:selected_merge_client_id, nil)}
+  end
+
+  @impl true
+  def handle_event("select_merge_client", params, socket) do
+    client_id = params["client_id"]
+    client_id = if client_id == "", do: nil, else: client_id
+    {:noreply, assign(socket, :selected_merge_client_id, client_id)}
+  end
+
+  @impl true
+  def handle_event("confirm_merge", _params, socket) do
+    primary_client_id = socket.assigns.selected_merge_client_id
+    secondary_client_id = socket.assigns.client.id
+
+    case ClientMerge.run(primary_client_id, secondary_client_id) do
+      {:ok, _primary} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Clients merged successfully")
+         |> push_navigate(to: ~p"/clients/#{primary_client_id}")}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to merge: #{inspect(reason)}")}
+    end
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="bg-base-300 min-h-screen">
       <div class="max-w-6xl mx-auto p-6">
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">{@client.name}</h1>
-          <.link navigate="/clients" class="btn btn-ghost">
-            Back to Clients
-          </.link>
+          <div class="flex gap-2">
+            <button class="btn btn-secondary" phx-click="show_merge_modal">
+              Merge into another client
+            </button>
+            <.link navigate="/clients" class="btn btn-ghost">
+              Back to Clients
+            </.link>
+          </div>
         </div>
         
     <!-- Client Info -->
@@ -181,6 +228,64 @@ defmodule KirbsWeb.ClientLive.Show do
         </div>
       </div>
     </div>
+
+    <!-- Merge Modal -->
+    <%= if @show_merge_modal do %>
+      <div class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg mb-4">Merge into another client</h3>
+          <p class="text-sm text-base-content/70 mb-4">
+            Select a client to merge this one into. All bags from {@client.name} will be moved to the selected client, and {@client.name} will be deleted.
+          </p>
+
+          <%= if @all_clients == [] do %>
+            <div class="alert alert-warning">
+              <span>No other clients available to merge</span>
+            </div>
+          <% else %>
+            <form phx-change="select_merge_client" class="form-control mb-4">
+              <label class="label">
+                <span class="label-text">Client to merge</span>
+              </label>
+              <select
+                class="select select-bordered w-full"
+                name="client_id"
+              >
+                <option value="">Select a client...</option>
+                <%= for client <- @all_clients do %>
+                  <option value={client.id} selected={@selected_merge_client_id == client.id}>
+                    {client.name} ({client.phone})
+                  </option>
+                <% end %>
+              </select>
+            </form>
+
+            <%= if @selected_merge_client_id do %>
+              <% selected = Enum.find(@all_clients, &(&1.id == @selected_merge_client_id)) %>
+              <%= if selected do %>
+                <div class="alert alert-warning mb-4">
+                  <span>
+                    This will move all bags from <strong>{@client.name}</strong>
+                    to <strong>{selected.name}</strong>
+                    and permanently delete {@client.name}.
+                  </span>
+                </div>
+              <% end %>
+            <% end %>
+          <% end %>
+
+          <div class="modal-action">
+            <button class="btn" phx-click="close_merge_modal">Cancel</button>
+            <%= if @selected_merge_client_id do %>
+              <button class="btn btn-primary" phx-click="confirm_merge">
+                Confirm Merge
+              </button>
+            <% end %>
+          </div>
+        </div>
+        <div class="modal-backdrop" phx-click="close_merge_modal"></div>
+      </div>
+    <% end %>
     """
   end
 end
