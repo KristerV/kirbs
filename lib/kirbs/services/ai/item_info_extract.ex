@@ -189,6 +189,10 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
         {:ok, text_content}
 
+      {:error, _chain, %LangChain.LangChainError{} = error} ->
+        Logger.error("Gemini API error: #{error.message}. Original: #{inspect(error.original)}")
+        {:error, "AI extraction failed: #{error.message}"}
+
       {:error, reason} ->
         {:error, "AI extraction failed: #{inspect(reason)}"}
     end
