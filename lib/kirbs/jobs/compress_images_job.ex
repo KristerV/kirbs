@@ -16,6 +16,12 @@ defmodule Kirbs.Jobs.CompressImagesJob do
 
   @batch_size 50
 
+  def schedule do
+    %{}
+    |> __MODULE__.new()
+    |> Oban.insert()
+  end
+
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
     Logger.info("CompressImagesJob: Starting image compression")
