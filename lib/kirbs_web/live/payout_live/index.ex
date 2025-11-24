@@ -5,7 +5,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    clients = load_clients_with_sales()
+    clients = load_clients()
     payouts = Payout.list!()
     months = get_payout_months(payouts)
 
@@ -21,31 +21,27 @@ defmodule KirbsWeb.PayoutLive.Index do
      |> assign(:payout_date, Date.utc_today())}
   end
 
-  defp load_clients_with_sales do
+  defp load_clients do
     Client
     |> Ash.Query.load(bags: [:items])
+    |> Ash.Query.sort(created_at: :desc)
     |> Ash.read!()
     |> Enum.map(fn client ->
-      items = Enum.flat_map(client.bags, & &1.items)
-      sold_items = Enum.filter(items, &(&1.status == :sold && &1.sold_price != nil))
+      sold_items =
+        client.bags
+        |> Enum.flat_map(& &1.items)
+        |> Enum.filter(&(&1.status == :sold && &1.sold_price != nil))
 
-      total_sales =
-        sold_items
-        |> Enum.reduce(Decimal.new(0), fn item, acc -> Decimal.add(acc, item.sold_price) end)
-
+      total_sales = Enum.reduce(sold_items, Decimal.new(0), &Decimal.add(&2, &1.sold_price))
       client_share = Decimal.div(total_sales, Decimal.new(2))
 
       %{
         id: client.id,
         name: client.name,
         iban: client.iban,
-        total_sales: total_sales,
-        client_share: client_share,
-        sold_items_count: length(sold_items)
+        client_share: client_share
       }
     end)
-    |> Enum.filter(fn c -> Decimal.compare(c.total_sales, Decimal.new(0)) == :gt end)
-    |> Enum.sort_by(& &1.name)
   end
 
   defp get_payout_months(payouts) do
@@ -145,7 +141,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
         <%= if Enum.empty?(@clients) do %>
           <div class="alert alert-info">
-            <span>No clients with sales yet.</span>
+            <span>No clients yet.</span>
           </div>
         <% else %>
           <div class="card bg-base-100 shadow-xl">
@@ -202,7 +198,7 @@ defmodule KirbsWeb.PayoutLive.Index do
                               Send
                             </button>
                           <% else %>
-                            <span class="badge badge-success">Paid</span>
+                            <span class="badge badge-ghost text-base-content/40">Paid</span>
                           <% end %>
                         </td>
                       </tr>
