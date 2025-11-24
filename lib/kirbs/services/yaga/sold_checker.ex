@@ -81,7 +81,7 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
   end
 
   defp order_is_sold?(order) do
-    order["status"] in ["complete", "completed", "in-transit", "delivered"]
+    order["status"] in ["complete", "completed", "in-transit", "delivered", "paid"]
   end
 
   defp process_order(order) do
