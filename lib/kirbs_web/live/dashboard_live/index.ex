@@ -17,21 +17,23 @@ defmodule KirbsWeb.DashboardLive.Index do
     sold_items = Enum.count(items, &(&1.status == :sold))
     failed_uploads = Enum.count(items, &(&1.status == :upload_failed))
 
-    # Calculate revenue
-    total_revenue =
+    # Calculate monthly earnings (our 50% cut)
+    monthly_earnings =
       items
-      |> Enum.filter(&(&1.sold_price != nil))
-      |> Enum.reduce(Decimal.new(0), fn item, acc ->
-        Decimal.add(acc, item.sold_price)
+      |> Enum.filter(&(&1.sold_price != nil && &1.sold_at != nil))
+      |> Enum.group_by(fn item ->
+        date = DateTime.to_date(item.sold_at)
+        {date.year, date.month}
       end)
+      |> Enum.map(fn {{year, month}, month_items} ->
+        total =
+          Enum.reduce(month_items, Decimal.new(0), fn item, acc ->
+            Decimal.add(acc, Decimal.div(item.sold_price, 2))
+          end)
 
-    # Calculate client payouts (50% split)
-    total_payouts =
-      if Decimal.compare(total_revenue, Decimal.new(0)) == :gt do
-        Decimal.div(total_revenue, Decimal.new(2))
-      else
-        Decimal.new(0)
-      end
+        {Date.new!(year, month, 1), total}
+      end)
+      |> Enum.sort_by(fn {date, _} -> date end, Date)
 
     # Check for failed/retryable Oban jobs
     failed_jobs_count =
@@ -62,8 +64,7 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:uploaded_items, uploaded_items)
      |> assign(:sold_items, sold_items)
      |> assign(:failed_uploads, failed_uploads)
-     |> assign(:total_revenue, total_revenue)
-     |> assign(:total_payouts, total_payouts)
+     |> assign(:monthly_earnings_chart, build_monthly_earnings_chart(monthly_earnings))
      |> assign(:failed_jobs_count, failed_jobs_count)
      |> assign(:checking_sold, false)
      |> assign(:chart_data, chart_data)
@@ -200,21 +201,17 @@ defmodule KirbsWeb.DashboardLive.Index do
           </div>
         </div>
         
-    <!-- Financial Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="stats bg-base-100 shadow">
-            <div class="stat">
-              <div class="stat-title">Total Revenue</div>
-              <div class="stat-value text-success">€{@total_revenue}</div>
-              <div class="stat-desc">From sold items</div>
-            </div>
-          </div>
-
-          <div class="stats bg-base-100 shadow">
-            <div class="stat">
-              <div class="stat-title">Total Client Payouts</div>
-              <div class="stat-value text-primary">€{@total_payouts}</div>
-              <div class="stat-desc">50% split</div>
+    <!-- Monthly Earnings -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title">Monthly Earnings</h2>
+            <div class="h-64">
+              <canvas
+                id="monthly-earnings-chart"
+                phx-hook="MonthlyEarningsChart"
+                data-chart-data={Jason.encode!(@monthly_earnings_chart)}
+              >
+              </canvas>
             </div>
           </div>
         </div>
@@ -386,7 +383,7 @@ defmodule KirbsWeb.DashboardLive.Index do
 
     # Build burndown data for each month (accounting for sales before chart window)
     burndown_by_month =
-      Enum.map(dates_by_month, fn {{year, month} = month_key, month_dates} ->
+      Enum.map(dates_by_month, fn {month_key, month_dates} ->
         month_dates_sorted = Enum.sort(month_dates, Date)
         first_chart_date = List.first(month_dates_sorted)
         month_start = Date.beginning_of_month(first_chart_date)
@@ -565,5 +562,12 @@ defmodule KirbsWeb.DashboardLive.Index do
       diff < 604_800 -> "#{div(diff, 86400)}d ago"
       true -> Calendar.strftime(datetime, "%d %b")
     end
+  end
+
+  defp build_monthly_earnings_chart(monthly_earnings) do
+    %{
+      labels: Enum.map(monthly_earnings, fn {date, _} -> Calendar.strftime(date, "%b %Y") end),
+      values: Enum.map(monthly_earnings, fn {_, amount} -> Decimal.to_float(amount) end)
+    }
   end
 end
