@@ -89,7 +89,7 @@ defmodule Kirbs.Services.Yaga.Importer do
       yaga_id: product.yaga_id,
       yaga_slug: product.yaga_slug,
       status: :uploaded_to_yaga,
-      created_at: product.created_at
+      uploaded_at: product.created_at
     }
 
     case Item.create(attrs) do

@@ -18,6 +18,10 @@ defmodule Kirbs.Resources.Item do
     define :update
     define :destroy
     define :clear_ai_data
+    define :top_sold_by_value, args: []
+    define :fastest_sold, args: []
+    define :recently_uploaded, args: []
+    define :recently_sold, args: []
   end
 
   actions do
@@ -38,22 +42,11 @@ defmodule Kirbs.Resources.Item do
       :yaga_id,
       :yaga_slug,
       :upload_error,
+      :uploaded_at,
       :sold_at
     ]
 
-    defaults [:read, :update, :destroy]
-
-    create :create do
-      argument :created_at, :utc_datetime_usec
-
-      change fn changeset, _context ->
-        # Allow setting created_at for imports via argument
-        case Ash.Changeset.get_argument(changeset, :created_at) do
-          nil -> changeset
-          dt -> Ash.Changeset.force_change_attribute(changeset, :created_at, dt)
-        end
-      end
-    end
+    defaults [:create, :read, :update, :destroy]
 
     read :get do
       get_by [:id]
@@ -77,6 +70,26 @@ defmodule Kirbs.Resources.Item do
     read :get_first_item_needing_review do
       prepare build(sort: [created_at: :asc], limit: 1, load: :bag)
       filter expr(status in [:pending, :ai_processed])
+    end
+
+    read :top_sold_by_value do
+      prepare build(sort: [sold_price: :desc], limit: 10, load: [:images])
+      filter expr(status == :sold and not is_nil(sold_price))
+    end
+
+    read :fastest_sold do
+      prepare build(sort: [seconds_to_sell: :asc], limit: 10, load: [:images, :seconds_to_sell])
+      filter expr(status == :sold and not is_nil(uploaded_at) and not is_nil(sold_at))
+    end
+
+    read :recently_uploaded do
+      prepare build(sort: [uploaded_at: :desc], limit: 10, load: [:images])
+      filter expr(status == :uploaded_to_yaga and not is_nil(uploaded_at))
+    end
+
+    read :recently_sold do
+      prepare build(sort: [sold_at: :desc], limit: 10, load: [:images])
+      filter expr(status == :sold and not is_nil(sold_at))
     end
 
     update :clear_ai_data do
@@ -137,6 +150,7 @@ defmodule Kirbs.Resources.Item do
     attribute :yaga_id, :integer
     attribute :yaga_slug, :string
     attribute :upload_error, :string
+    attribute :uploaded_at, :utc_datetime_usec
     attribute :sold_at, :utc_datetime_usec
 
     create_timestamp :created_at
@@ -149,5 +163,11 @@ defmodule Kirbs.Resources.Item do
     end
 
     has_many :images, Kirbs.Resources.Image
+  end
+
+  calculations do
+    calculate :seconds_to_sell,
+              :integer,
+              expr(fragment("EXTRACT(EPOCH FROM (? - ?))::integer", sold_at, uploaded_at))
   end
 end

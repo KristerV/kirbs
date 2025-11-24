@@ -322,7 +322,8 @@ defmodule Kirbs.Services.Yaga.Uploader do
       status: :uploaded_to_yaga,
       yaga_id: product.id,
       yaga_slug: product.slug,
-      upload_error: nil
+      upload_error: nil,
+      uploaded_at: DateTime.utc_now()
     })
   end
 

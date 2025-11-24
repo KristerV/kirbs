@@ -53,8 +53,8 @@ export const DashboardChart = {
         labels: data.labels,
         datasets: [
           {
-            label: "Items Created",
-            data: data.items_created,
+            label: "Items Uploaded",
+            data: data.items_uploaded,
             backgroundColor: "rgba(59, 130, 246, 0.6)",
             borderColor: "rgb(59, 130, 246)",
             borderWidth: 1,
@@ -116,7 +116,7 @@ export const DashboardChart = {
   updated() {
     const data = JSON.parse(this.el.dataset.chartData)
     this.chart.data.labels = data.labels
-    this.chart.data.datasets[0].data = data.items_created
+    this.chart.data.datasets[0].data = data.items_uploaded
     this.chart.data.datasets[1].data = data.items_sold
 
     // Update burndown lines (remove old ones, add new ones)

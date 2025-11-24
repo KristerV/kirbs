@@ -47,6 +47,12 @@ defmodule KirbsWeb.DashboardLive.Index do
     # Calculate upload directory size
     upload_dir_size = get_upload_dir_size()
 
+    # Fetch dashboard lists
+    top_sold_by_value = Item.top_sold_by_value!()
+    fastest_sold = Item.fastest_sold!()
+    recently_uploaded = Item.recently_uploaded!()
+    recently_sold = Item.recently_sold!()
+
     {:ok,
      socket
      |> assign(:total_bags, length(bags))
@@ -61,7 +67,11 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:failed_jobs_count, failed_jobs_count)
      |> assign(:checking_sold, false)
      |> assign(:chart_data, chart_data)
-     |> assign(:upload_dir_size, upload_dir_size)}
+     |> assign(:upload_dir_size, upload_dir_size)
+     |> assign(:top_sold_by_value, top_sold_by_value)
+     |> assign(:fastest_sold, fastest_sold)
+     |> assign(:recently_uploaded, recently_uploaded)
+     |> assign(:recently_sold, recently_sold)}
   end
 
   @impl true
@@ -208,6 +218,123 @@ defmodule KirbsWeb.DashboardLive.Index do
             </div>
           </div>
         </div>
+        
+    <!-- Item Lists -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          <!-- Top Sold by Value -->
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title">Top Sales by Value</h2>
+              <%= if Enum.empty?(@top_sold_by_value) do %>
+                <p class="text-base-content/50">No sold items yet</p>
+              <% else %>
+                <div class="grid grid-cols-5 gap-2">
+                  <%= for item <- @top_sold_by_value do %>
+                    <.link navigate={~p"/items/#{item.id}"} class="flex flex-col hover:opacity-80">
+                      <%= if first_image = List.first(item.images) do %>
+                        <img
+                          src={"/uploads/#{first_image.path}"}
+                          alt=""
+                          class="w-full aspect-square object-cover rounded"
+                        />
+                      <% else %>
+                        <div class="w-full aspect-square bg-base-300 rounded"></div>
+                      <% end %>
+                      <div class="text-xs text-right mt-1 text-success font-medium">
+                        €{item.sold_price}
+                      </div>
+                    </.link>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+    <!-- Fastest Sold -->
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title">Fastest Sales</h2>
+              <%= if Enum.empty?(@fastest_sold) do %>
+                <p class="text-base-content/50">No sold items yet</p>
+              <% else %>
+                <div class="grid grid-cols-5 gap-2">
+                  <%= for item <- @fastest_sold do %>
+                    <.link navigate={~p"/items/#{item.id}"} class="flex flex-col hover:opacity-80">
+                      <%= if first_image = List.first(item.images) do %>
+                        <img
+                          src={"/uploads/#{first_image.path}"}
+                          alt=""
+                          class="w-full aspect-square object-cover rounded"
+                        />
+                      <% else %>
+                        <div class="w-full aspect-square bg-base-300 rounded"></div>
+                      <% end %>
+                      <div class="text-xs text-right mt-1 font-medium">
+                        {format_duration(item.seconds_to_sell)}
+                      </div>
+                    </.link>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+    <!-- Recently Uploaded -->
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title">Recently Uploaded</h2>
+              <%= if Enum.empty?(@recently_uploaded) do %>
+                <p class="text-base-content/50">No uploaded items yet</p>
+              <% else %>
+                <div class="grid grid-cols-5 gap-2">
+                  <%= for item <- @recently_uploaded do %>
+                    <.link navigate={~p"/items/#{item.id}"} class="flex flex-col hover:opacity-80">
+                      <%= if first_image = List.first(item.images) do %>
+                        <img
+                          src={"/uploads/#{first_image.path}"}
+                          alt=""
+                          class="w-full aspect-square object-cover rounded"
+                        />
+                      <% else %>
+                        <div class="w-full aspect-square bg-base-300 rounded"></div>
+                      <% end %>
+                      <div class="text-xs text-right mt-1">
+                        {format_relative_time(item.uploaded_at)}
+                      </div>
+                    </.link>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+    <!-- Recently Sold -->
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title">Recently Sold</h2>
+              <%= if Enum.empty?(@recently_sold) do %>
+                <p class="text-base-content/50">No sold items yet</p>
+              <% else %>
+                <div class="grid grid-cols-5 gap-2">
+                  <%= for item <- @recently_sold do %>
+                    <.link navigate={~p"/items/#{item.id}"} class="flex flex-col hover:opacity-80">
+                      <%= if first_image = List.first(item.images) do %>
+                        <img
+                          src={"/uploads/#{first_image.path}"}
+                          alt=""
+                          class="w-full aspect-square object-cover rounded"
+                        />
+                      <% else %>
+                        <div class="w-full aspect-square bg-base-300 rounded"></div>
+                      <% end %>
+                      <div class="text-xs text-right mt-1">{format_relative_time(item.sold_at)}</div>
+                    </.link>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     """
@@ -222,11 +349,12 @@ defmodule KirbsWeb.DashboardLive.Index do
         Date.add(today, -days_ago)
       end)
 
-    # Group items by created_at date
-    items_by_created =
+    # Group items by uploaded_at date
+    items_by_uploaded =
       items
+      |> Enum.filter(&(&1.uploaded_at != nil))
       |> Enum.group_by(fn item ->
-        item.created_at |> DateTime.to_date()
+        item.uploaded_at |> DateTime.to_date()
       end)
 
     # Group sold items by sold_at date
@@ -240,9 +368,9 @@ defmodule KirbsWeb.DashboardLive.Index do
     # Build data arrays
     labels = Enum.map(dates, &Calendar.strftime(&1, "%d %b"))
 
-    items_created =
+    items_uploaded =
       Enum.map(dates, fn date ->
-        Map.get(items_by_created, date, []) |> length()
+        Map.get(items_by_uploaded, date, []) |> length()
       end)
 
     items_sold =
@@ -367,7 +495,7 @@ defmodule KirbsWeb.DashboardLive.Index do
 
     %{
       labels: labels,
-      items_created: items_created,
+      items_uploaded: items_uploaded,
       items_sold: items_sold,
       burndown_lines: burndown_lines,
       ghost_line: ghost_line
@@ -404,4 +532,38 @@ defmodule KirbsWeb.DashboardLive.Index do
     do: "#{Float.round(bytes / 1024 / 1024, 1)} MB"
 
   defp format_bytes(bytes), do: "#{Float.round(bytes / 1024 / 1024 / 1024, 1)} GB"
+
+  defp format_duration(nil), do: "—"
+
+  defp format_duration(seconds) when seconds < 60, do: "#{seconds}s"
+
+  defp format_duration(seconds) when seconds < 3600 do
+    minutes = div(seconds, 60)
+    "#{minutes}m"
+  end
+
+  defp format_duration(seconds) when seconds < 86400 do
+    hours = div(seconds, 3600)
+    "#{hours}h"
+  end
+
+  defp format_duration(seconds) do
+    days = div(seconds, 86400)
+    "#{days}d"
+  end
+
+  defp format_relative_time(nil), do: "—"
+
+  defp format_relative_time(datetime) do
+    now = DateTime.utc_now()
+    diff = DateTime.diff(now, datetime, :second)
+
+    cond do
+      diff < 60 -> "just now"
+      diff < 3600 -> "#{div(diff, 60)}m ago"
+      diff < 86400 -> "#{div(diff, 3600)}h ago"
+      diff < 604_800 -> "#{div(diff, 86400)}d ago"
+      true -> Calendar.strftime(datetime, "%d %b")
+    end
+  end
 end
