@@ -147,7 +147,7 @@ defmodule KirbsWeb.PayoutLive.Index do
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
               <div class="overflow-x-auto">
-                <table class="table table-zebra">
+                <table class="table">
                   <thead>
                     <tr>
                       <th>Client</th>
