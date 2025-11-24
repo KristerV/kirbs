@@ -17,12 +17,12 @@ defmodule Kirbs.Jobs.CheckSoldItemsJob do
     Logger.info("CheckSoldItemsJob: Starting sold items check")
 
     case SoldChecker.run() do
-      {:ok, %{updated: updated, errors: errors}} ->
+      {:ok, %{marked_sold: marked_sold, marked_unsold: marked_unsold, errors: errors}} ->
         if errors == [] do
-          Logger.info("CheckSoldItemsJob: Updated #{updated} items")
+          Logger.info("CheckSoldItemsJob: Marked #{marked_sold} sold, #{marked_unsold} unsold")
         else
           Logger.warning(
-            "CheckSoldItemsJob: Updated #{updated} items with #{length(errors)} errors: #{inspect(errors)}"
+            "CheckSoldItemsJob: Marked #{marked_sold} sold, #{marked_unsold} unsold with #{length(errors)} errors: #{inspect(errors)}"
           )
         end
 
