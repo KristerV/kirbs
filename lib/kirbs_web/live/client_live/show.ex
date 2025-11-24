@@ -1,13 +1,15 @@
 defmodule KirbsWeb.ClientLive.Show do
   use KirbsWeb, :live_view
 
-  alias Kirbs.Resources.Client
+  alias Kirbs.Resources.{Client, Payout}
   alias Kirbs.Services.ClientMerge
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    client = Ash.get!(Client, id) |> Ash.load!([:bags])
+    client = Ash.get!(Client, id) |> Ash.load!(bags: [:items])
     all_clients = Client.list!() |> Enum.reject(&(&1.id == id))
+    payouts = Payout.list_by_client!(id)
+    payout_summary = calculate_payout_summary(client, payouts)
 
     {:ok,
      socket
@@ -16,7 +18,38 @@ defmodule KirbsWeb.ClientLive.Show do
      |> assign(:show_merge_modal, false)
      |> assign(:all_clients, all_clients)
      |> assign(:selected_merge_client_id, nil)
+     |> assign(:payouts, payouts)
+     |> assign(:payout_summary, payout_summary)
      |> assign(:page_title, client.name)}
+  end
+
+  defp calculate_payout_summary(client, payouts) do
+    items = Enum.flat_map(client.bags, & &1.items)
+    sold_items = Enum.filter(items, &(&1.status == :sold && &1.sold_price != nil))
+
+    total_sales =
+      sold_items
+      |> Enum.reduce(Decimal.new(0), fn item, acc -> Decimal.add(acc, item.sold_price) end)
+
+    client_share = Decimal.div(total_sales, Decimal.new(2))
+
+    total_paid =
+      payouts
+      |> Enum.reduce(Decimal.new(0), fn p, acc -> Decimal.add(acc, p.amount) end)
+
+    unsent = Decimal.sub(client_share, total_paid)
+
+    %{
+      total_sales: total_sales,
+      client_share: client_share,
+      total_paid: total_paid,
+      unsent: unsent,
+      sold_items_count: length(sold_items)
+    }
+  end
+
+  defp format_amount(decimal) do
+    decimal |> Decimal.round(2) |> Decimal.to_string()
   end
 
   @impl true
@@ -183,6 +216,67 @@ defmodule KirbsWeb.ClientLive.Show do
                 <div>
                   <span class="font-semibold">IBAN:</span>
                   <span class="ml-2">{@client.iban || "N/A"}</span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+    <!-- Payout Summary -->
+        <div class="card bg-base-100 shadow-xl mb-6">
+          <div class="card-body">
+            <h2 class="card-title">Payout Summary</h2>
+
+            <div class="stats stats-vertical md:stats-horizontal shadow mt-4 w-full">
+              <div class="stat">
+                <div class="stat-title">Total Sales</div>
+                <div class="stat-value text-lg">{format_amount(@payout_summary.total_sales)}</div>
+                <div class="stat-desc">{@payout_summary.sold_items_count} items sold</div>
+              </div>
+
+              <div class="stat">
+                <div class="stat-title">Client Share (50%)</div>
+                <div class="stat-value text-lg">{format_amount(@payout_summary.client_share)}</div>
+              </div>
+
+              <div class="stat">
+                <div class="stat-title">Total Paid</div>
+                <div class="stat-value text-lg text-success">
+                  {format_amount(@payout_summary.total_paid)}
+                </div>
+              </div>
+
+              <div class="stat">
+                <div class="stat-title">Unsent</div>
+                <div class={[
+                  "stat-value text-lg",
+                  Decimal.compare(@payout_summary.unsent, Decimal.new(0)) == :gt && "text-warning"
+                ]}>
+                  {format_amount(@payout_summary.unsent)}
+                </div>
+              </div>
+            </div>
+
+            <%= if @payouts != [] do %>
+              <div class="mt-4">
+                <h3 class="font-semibold mb-2">Recent Payouts</h3>
+                <div class="overflow-x-auto">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th class="text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <%= for payout <- Enum.take(@payouts, 5) do %>
+                        <tr>
+                          <td>{Calendar.strftime(payout.sent_at, "%Y-%m-%d")}</td>
+                          <td class="text-right">{format_amount(payout.amount)}</td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             <% end %>

@@ -57,6 +57,7 @@ defmodule Kirbs.Resources.Client do
 
   relationships do
     has_many :bags, Kirbs.Resources.Bag
+    has_many :payouts, Kirbs.Resources.Payout
   end
 
   identities do
