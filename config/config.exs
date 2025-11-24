@@ -19,7 +19,9 @@ config :kirbs, Oban,
     {Oban.Plugins.Cron,
      crontab: [
        # Check for sold items every hour
-       {"0 * * * *", Kirbs.Jobs.CheckSoldItemsJob}
+       {"0 * * * *", Kirbs.Jobs.CheckSoldItemsJob},
+       # Compress images daily at 3 AM
+       {"0 3 * * *", Kirbs.Jobs.CompressImagesJob}
      ]}
   ]
 

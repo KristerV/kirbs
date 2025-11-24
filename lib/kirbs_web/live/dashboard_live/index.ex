@@ -44,6 +44,9 @@ defmodule KirbsWeb.DashboardLive.Index do
     # Build chart data for last 30 days
     chart_data = build_chart_data(items)
 
+    # Calculate upload directory size
+    upload_dir_size = get_upload_dir_size()
+
     {:ok,
      socket
      |> assign(:total_bags, length(bags))
@@ -57,7 +60,8 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:total_payouts, total_payouts)
      |> assign(:failed_jobs_count, failed_jobs_count)
      |> assign(:checking_sold, false)
-     |> assign(:chart_data, chart_data)}
+     |> assign(:chart_data, chart_data)
+     |> assign(:upload_dir_size, upload_dir_size)}
   end
 
   @impl true
@@ -120,7 +124,7 @@ defmodule KirbsWeb.DashboardLive.Index do
         </div>
         
     <!-- Overview Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div class="stats bg-base-100 shadow">
             <div class="stat">
               <div class="stat-title">Total Clients</div>
@@ -139,6 +143,13 @@ defmodule KirbsWeb.DashboardLive.Index do
             <div class="stat">
               <div class="stat-title">Total Items</div>
               <div class="stat-value">{@total_items}</div>
+            </div>
+          </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Storage Used</div>
+              <div class="stat-value text-sm">{@upload_dir_size}</div>
             </div>
           </div>
         </div>
@@ -362,4 +373,35 @@ defmodule KirbsWeb.DashboardLive.Index do
       ghost_line: ghost_line
     }
   end
+
+  defp get_upload_dir_size do
+    upload_dir = Application.get_env(:kirbs, :image_upload_dir)
+
+    case File.ls(upload_dir) do
+      {:ok, files} ->
+        total_bytes =
+          files
+          |> Enum.map(&Path.join(upload_dir, &1))
+          |> Enum.filter(&File.regular?/1)
+          |> Enum.reduce(0, fn path, acc ->
+            case File.stat(path) do
+              {:ok, %{size: size}} -> acc + size
+              _ -> acc
+            end
+          end)
+
+        format_bytes(total_bytes)
+
+      _ ->
+        "N/A"
+    end
+  end
+
+  defp format_bytes(bytes) when bytes < 1024, do: "#{bytes} B"
+  defp format_bytes(bytes) when bytes < 1024 * 1024, do: "#{Float.round(bytes / 1024, 1)} KB"
+
+  defp format_bytes(bytes) when bytes < 1024 * 1024 * 1024,
+    do: "#{Float.round(bytes / 1024 / 1024, 1)} MB"
+
+  defp format_bytes(bytes), do: "#{Float.round(bytes / 1024 / 1024 / 1024, 1)} GB"
 end

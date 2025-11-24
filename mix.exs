@@ -41,6 +41,7 @@ defmodule Kirbs.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:vix, "~> 0.35"},
       {:langchain, github: "KristerV/langchain", override: true},
       {:live_select, "~> 1.0"},
       {:git_hooks, "~> 0.8", only: [:dev]},

@@ -11,13 +11,14 @@ defmodule Kirbs.Resources.Image do
   code_interface do
     define :get, args: [:id]
     define :list
+    define :get_uncompressed, args: [:limit]
     define :create
     define :update
     define :destroy
   end
 
   actions do
-    default_accept [:path, :order, :bag_id, :item_id, :is_label]
+    default_accept [:path, :order, :bag_id, :item_id, :is_label, :compressed]
 
     defaults [:read, :destroy]
 
@@ -26,7 +27,7 @@ defmodule Kirbs.Resources.Image do
     end
 
     update :update do
-      accept [:path, :order, :bag_id, :item_id, :is_label]
+      accept [:path, :order, :bag_id, :item_id, :is_label, :compressed]
     end
 
     read :get do
@@ -34,6 +35,15 @@ defmodule Kirbs.Resources.Image do
     end
 
     read :list
+
+    read :get_uncompressed do
+      argument :limit, :integer do
+        allow_nil? false
+      end
+
+      prepare build(limit: arg(:limit))
+      filter expr(compressed == false and item.status == :uploaded_to_yaga)
+    end
   end
 
   attributes do
@@ -49,6 +59,11 @@ defmodule Kirbs.Resources.Image do
     end
 
     attribute :is_label, :boolean do
+      allow_nil? false
+      default false
+    end
+
+    attribute :compressed, :boolean do
       allow_nil? false
       default false
     end
