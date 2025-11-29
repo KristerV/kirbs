@@ -24,7 +24,7 @@ defmodule Kirbs.Jobs.ProcessBagJob do
       {:ok, "Bag processed successfully"}
     else
       {:error, reason} ->
-        {:error, reason}
+        {:error, "Bag #{bag_id}: #{reason}"}
     end
   end
 
