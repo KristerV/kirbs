@@ -162,7 +162,9 @@ defmodule Kirbs.Resources.Item do
       allow_nil? false
     end
 
-    has_many :images, Kirbs.Resources.Image
+    has_many :images, Kirbs.Resources.Image do
+      sort created_at: :asc
+    end
   end
 
   calculations do

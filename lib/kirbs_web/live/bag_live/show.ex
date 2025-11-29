@@ -1,7 +1,7 @@
 defmodule KirbsWeb.BagLive.Show do
   use KirbsWeb, :live_view
 
-  alias Kirbs.Resources.{Bag, Client, Image}
+  alias Kirbs.Resources.{Bag, Client}
   alias Kirbs.Services.FindFirstReviewTarget
   alias Kirbs.Services.Yaga.Importer
 
@@ -10,7 +10,7 @@ defmodule KirbsWeb.BagLive.Show do
     # Subscribe to bag updates
     Phoenix.PubSub.subscribe(Kirbs.PubSub, "bag:#{id}")
 
-    bag = Bag.get!(id) |> Ash.load!([:client, :items, :images])
+    bag = Bag.get!(id) |> Ash.load!([:client, :images, items: [:images]])
     clients = Client.list!()
 
     upload_dir = Application.get_env(:kirbs, :image_upload_dir)
@@ -47,7 +47,7 @@ defmodule KirbsWeb.BagLive.Show do
   def handle_event("select_client", %{"client_id" => client_id}, socket) do
     case Bag.update(socket.assigns.bag, %{client_id: client_id}) do
       {:ok, bag} ->
-        bag = Ash.load!(bag, [:client, :items, :images])
+        bag = Ash.load!(bag, [:client, :images, items: [:images]])
 
         {:noreply,
          socket
@@ -66,7 +66,7 @@ defmodule KirbsWeb.BagLive.Show do
       {:ok, client} ->
         case Bag.update(socket.assigns.bag, %{client_id: client.id}) do
           {:ok, bag} ->
-            bag = Ash.load!(bag, [:client, :items, :images])
+            bag = Ash.load!(bag, [:client, :images, items: [:images]])
             clients = Client.list!()
 
             {:noreply,
@@ -90,7 +90,7 @@ defmodule KirbsWeb.BagLive.Show do
   def handle_event("confirm_client", _params, socket) do
     case Bag.update(socket.assigns.bag, %{status: :reviewed}) do
       {:ok, bag} ->
-        bag = Ash.load!(bag, [:client, :items, :images])
+        bag = Ash.load!(bag, [:client, :images, items: [:images]])
 
         {:noreply,
          socket
@@ -111,7 +111,7 @@ defmodule KirbsWeb.BagLive.Show do
   def handle_event("update_client", params, socket) do
     case Ash.update(socket.assigns.bag.client, params) do
       {:ok, _client} ->
-        bag = Ash.load!(socket.assigns.bag, [:client, :items, :images])
+        bag = Ash.load!(socket.assigns.bag, [:client, :images, items: [:images]])
 
         {:noreply,
          socket
@@ -154,7 +154,7 @@ defmodule KirbsWeb.BagLive.Show do
 
     case Importer.run(socket.assigns.bag.id, links) do
       {:ok, %{imported: count, errors: errors}} ->
-        bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :items, :images])
+        bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :images, items: [:images]])
 
         socket =
           socket
@@ -204,7 +204,7 @@ defmodule KirbsWeb.BagLive.Show do
   @impl true
   def handle_info({:bag_processed, _bag_id}, socket) do
     # Reload bag data when AI processing completes
-    bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :items, :images])
+    bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :images, items: [:images]])
 
     {:noreply, assign(socket, :bag, bag)}
   end
@@ -384,14 +384,13 @@ defmodule KirbsWeb.BagLive.Show do
             <% else %>
               <div class="grid gap-4 mt-4">
                 <%= for item <- @bag.items do %>
-                  <% item_images = Image.list!() |> Enum.filter(&(&1.item_id == item.id)) %>
                   <div class="card bg-base-200">
                     <div class="card-body">
                       <div class="flex gap-4 items-start">
-                        <%= if item_images != [] do %>
+                        <%= if item.images != [] do %>
                           <div class="w-24 h-24 bg-base-300 rounded-lg overflow-hidden flex-shrink-0">
                             <img
-                              src={"/uploads/#{List.first(item_images).path}"}
+                              src={"/uploads/#{List.first(item.images).path}"}
                               alt="Item photo"
                               class="w-full h-full object-cover"
                             />
@@ -399,11 +398,14 @@ defmodule KirbsWeb.BagLive.Show do
                         <% end %>
 
                         <div class="flex-1">
-                          <h3 class="font-semibold">
-                            Item #{String.slice(item.id, 0..7)}
-                          </h3>
+                          <%= if item.size do %>
+                            <p class="font-semibold">{item.size}</p>
+                          <% end %>
+                          <%= if item.brand do %>
+                            <p class="text-sm">{item.brand}</p>
+                          <% end %>
                           <p class="text-sm text-base-content/70">
-                            {length(item_images)} photos
+                            {length(item.images)} photos
                           </p>
                           <div class="flex flex-wrap items-center gap-2 mt-2">
                             <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
