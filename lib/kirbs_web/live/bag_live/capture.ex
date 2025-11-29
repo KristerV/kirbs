@@ -8,7 +8,7 @@ defmodule KirbsWeb.BagLive.Capture do
     socket =
       case params do
         %{"bag_id" => bag_id, "item_id" => item_id} ->
-          bag = Kirbs.Resources.Bag.get!(bag_id)
+          bag = Kirbs.Resources.Bag.get!(bag_id, load: [:item_count])
 
           socket
           |> assign(:phase, :item_photos)
@@ -24,7 +24,7 @@ defmodule KirbsWeb.BagLive.Capture do
           |> assign(:camera_error, nil)
 
         %{"bag_id" => bag_id} ->
-          bag = Kirbs.Resources.Bag.get!(bag_id)
+          bag = Kirbs.Resources.Bag.get!(bag_id, load: [:item_count])
 
           socket
           |> assign(:phase, :item_photos)
@@ -91,9 +91,11 @@ defmodule KirbsWeb.BagLive.Capture do
       with true <- length(socket.assigns.current_item_photos) > 0,
            {:ok, item} <- save_current_item(socket) do
         all_items = socket.assigns.all_items ++ [item]
+        bag = Ash.load!(socket.assigns.current_bag, :item_count, reuse_values?: false)
 
         socket
         |> assign(:all_items, all_items)
+        |> assign(:current_bag, bag)
         |> create_new_item()
       else
         _ -> socket
@@ -145,6 +147,7 @@ defmodule KirbsWeb.BagLive.Capture do
           {:ok, bag} ->
             # Schedule AI processing for bag
             schedule_bag_processing(bag.id)
+            bag = Ash.load!(bag, :item_count)
 
             socket
             |> assign(:phase, :item_photos)
@@ -194,98 +197,81 @@ defmodule KirbsWeb.BagLive.Capture do
         opacity: 0.2;
       }
     </style>
-    <div class="h-[calc(100vh-4rem)] flex flex-col bg-gray-900 text-white overflow-hidden">
-      <%= if @camera_error do %>
-        <div class="bg-red-600 text-white p-4">
-          <div class="container mx-auto">
-            <p class="font-bold">Camera Access Error</p>
-            <p class="text-sm">
-              Unable to access your camera. Please make sure you've granted camera permissions to this site, and that no other application is using the camera.
-            </p>
-            <p class="text-xs mt-2 text-red-100">Technical details: {@camera_error}</p>
+    <div class="h-[calc(100dvh-4rem)] flex flex-col overflow-hidden">
+      <!-- Extra navbar for capture page -->
+      <%= if @current_bag do %>
+        <div class="navbar bg-base-100 border-b border-base-300 min-h-0 py-2 shrink-0">
+          <div class="flex-1 flex items-center gap-2">
+            <a href={~p"/bags/#{@current_bag.id}"} class="btn btn-primary btn-sm">Go to Bag</a>
+            <span class="text-sm">{@current_bag.item_count || 0} items</span>
+          </div>
+          <div class="flex-none">
+            <button phx-click="next_item" class="btn btn-success btn-sm">Next Item</button>
           </div>
         </div>
       <% end %>
-
-      <%= if @phase == :bag_photos do %>
-        <div class="flex-1 flex flex-col min-h-0">
-          <div class="flex-1 bg-black relative min-h-0" id="bag-camera" phx-hook="Camera">
-            <video class="w-full h-full object-contain" autoplay playsinline></video>
-            <div class="camera-flash"></div>
-            <div class="absolute top-4 left-4 text-white text-9xl font-bold">
-              {@bag_step}/3
+      <div class="flex-1 flex flex-col bg-gray-900 text-white overflow-hidden min-h-0">
+        <%= if @camera_error do %>
+          <div class="bg-red-600 text-white p-4">
+            <div class="container mx-auto">
+              <p class="font-bold">Camera Access Error</p>
+              <p class="text-sm">
+                Unable to access your camera. Please make sure you've granted camera permissions to this site, and that no other application is using the camera.
+              </p>
+              <p class="text-xs mt-2 text-red-100">Technical details: {@camera_error}</p>
             </div>
           </div>
+        <% end %>
 
-          <div class="p-4 space-y-4">
-            <button
-              phx-click="request_capture"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-            >
-              Capture
-            </button>
-          </div>
-        </div>
-      <% else %>
-        <div class="flex-1 flex flex-col min-h-0">
-          <div class="flex-1 bg-black relative min-h-0" id="item-camera" phx-hook="Camera">
-            <video class="w-full h-full object-contain" autoplay playsinline></video>
-            <div class="camera-flash"></div>
-            <div class="absolute top-4 left-4 text-white text-9xl font-bold">
-              {length(@current_item_photos)}
+        <%= if @phase == :bag_photos do %>
+          <div class="flex-1 flex flex-col min-h-0">
+            <div class="flex-1 bg-black relative min-h-0" id="bag-camera" phx-hook="Camera">
+              <video class="w-full h-full object-contain" autoplay playsinline></video>
+              <div class="camera-flash"></div>
+              <div class="absolute top-4 left-4 text-white text-9xl font-bold">
+                {@bag_step}/3
+              </div>
             </div>
-          </div>
 
-          <div class="p-4 space-y-4">
-            <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 shrink-0">
               <button
                 phx-click="request_capture"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
               >
                 Capture
               </button>
-
-              <button
-                phx-click="request_label_capture"
-                class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-              >
-                Capture Label
-              </button>
+            </div>
+          </div>
+        <% else %>
+          <div class="flex-1 flex flex-col min-h-0">
+            <div class="flex-1 bg-black relative min-h-0" id="item-camera" phx-hook="Camera">
+              <video class="w-full h-full object-contain" autoplay playsinline></video>
+              <div class="camera-flash"></div>
+              <div class="absolute top-4 left-4 text-white text-4xl font-bold">
+                {length(@current_item_photos)}/{length(@current_item_label_photos)}
+              </div>
             </div>
 
-            <%= if @existing_item_id do %>
-              <button
-                phx-click="end_bag"
-                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
-              >
-                Done
-              </button>
-            <% else %>
+            <div class="p-4 shrink-0">
               <div class="grid grid-cols-2 gap-4">
                 <button
-                  phx-click="end_bag"
-                  class="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+                  phx-click="request_capture"
+                  class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
                 >
-                  End Bag
+                  Capture
                 </button>
 
                 <button
-                  phx-click="next_item"
-                  class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+                  phx-click="request_label_capture"
+                  class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
                 >
-                  Next Item
+                  Capture Label
                 </button>
-              </div>
-            <% end %>
-
-            <div class="text-sm text-gray-400 text-center">
-              <div>
-                Regular: {length(@current_item_photos)} | Labels: {length(@current_item_label_photos)}
               </div>
             </div>
           </div>
-        </div>
-      <% end %>
+        <% end %>
+      </div>
     </div>
     """
   end
