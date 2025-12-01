@@ -249,19 +249,14 @@ defmodule KirbsWeb.PayoutLive.Index do
                           {format_amount(unsent)}
                         </td>
                         <td class="bg-base-200">
-                          <%= cond do %>
-                            <% Decimal.compare(unsent, Decimal.new(0)) == :gt -> %>
-                              <button
-                                class="btn btn-primary btn-sm"
-                                phx-click="open_modal"
-                                phx-value-client-id={client.id}
-                              >
-                                Send
-                              </button>
-                            <% Decimal.compare(client.client_share, Decimal.new(0)) == :gt -> %>
-                              <span class="badge badge-success text-success-content">Paid</span>
-                            <% true -> %>
-                              <span class="text-base-content/30">-</span>
+                          <%= if Decimal.compare(unsent, Decimal.new(0)) == :gt do %>
+                            <button
+                              class="btn btn-primary btn-sm"
+                              phx-click="open_modal"
+                              phx-value-client-id={client.id}
+                            >
+                              Send
+                            </button>
                           <% end %>
                         </td>
                       </tr>
