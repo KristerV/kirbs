@@ -1,3 +1,27 @@
+const barLabelPlugin = {
+  id: 'barLabels',
+  afterDraw(chart) {
+    const ctx = chart.ctx
+    const meta = chart.getDatasetMeta(0)
+
+    ctx.save()
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillStyle = "white"
+    ctx.font = "bold 14px sans-serif"
+
+    meta.data.forEach((bar, i) => {
+      const value = chart.data.datasets[0].data[i]
+      if (value > 0) {
+        const y = bar.y + (bar.base - bar.y) / 2
+        ctx.fillText(`€${Math.round(value)}`, bar.x, y)
+      }
+    })
+
+    ctx.restore()
+  }
+}
+
 export const MonthlyEarningsChart = {
   mounted() {
     const data = JSON.parse(this.el.dataset.chartData)
@@ -20,15 +44,17 @@ export const MonthlyEarningsChart = {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
         plugins: {
           legend: {
             display: false
           },
           tooltip: {
-            callbacks: {
-              label: (context) => `€${context.raw}`
-            }
+            enabled: false
           }
+        },
+        hover: {
+          mode: null
         },
         scales: {
           x: {
@@ -45,35 +71,10 @@ export const MonthlyEarningsChart = {
               callback: (value) => `€${value}`
             }
           }
-        },
-        animation: {
-          onComplete: () => {
-            this.drawLabels()
-          }
         }
-      }
+      },
+      plugins: [barLabelPlugin]
     })
-  },
-
-  drawLabels() {
-    const ctx = this.chart.ctx
-    const meta = this.chart.getDatasetMeta(0)
-
-    ctx.save()
-    ctx.textAlign = "center"
-    ctx.textBaseline = "middle"
-    ctx.fillStyle = "white"
-    ctx.font = "bold 14px sans-serif"
-
-    meta.data.forEach((bar, i) => {
-      const value = this.chart.data.datasets[0].data[i]
-      if (value > 0) {
-        const y = bar.y + (bar.base - bar.y) / 2
-        ctx.fillText(`€${value}`, bar.x, y)
-      }
-    })
-
-    ctx.restore()
   },
 
   updated() {
