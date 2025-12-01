@@ -87,49 +87,41 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   def handle_event("next_item", _params, socket) do
-    socket =
-      with true <- length(socket.assigns.current_item_photos) > 0,
-           {:ok, item} <- save_current_item(socket) do
-        all_items = socket.assigns.all_items ++ [item]
-        bag = Ash.load!(socket.assigns.current_bag, :item_count, reuse_values?: false)
+    schedule_item_processing(socket.assigns.current_item.id)
 
-        socket
-        |> assign(:all_items, all_items)
-        |> assign(:current_bag, bag)
-        |> create_new_item()
-      else
-        _ -> socket
-      end
+    all_items = socket.assigns.all_items ++ [socket.assigns.current_item]
+    bag = Ash.load!(socket.assigns.current_bag, :item_count, reuse_values?: false)
+
+    socket =
+      socket
+      |> assign(:all_items, all_items)
+      |> assign(:current_bag, bag)
+      |> create_new_item()
 
     {:noreply, socket}
   end
 
   def handle_event("end_bag", _params, socket) do
-    socket =
-      if length(socket.assigns.current_item_photos) > 0 do
-        {:ok, item} = save_current_item(socket)
-        assign(socket, :all_items, socket.assigns.all_items ++ [item])
-      else
-        socket
-      end
+    schedule_item_processing(socket.assigns.current_item.id)
 
-    # Determine redirect path based on context
     redirect_path =
       cond do
-        # If adding photos to existing item, go back to that item
         socket.assigns.existing_item_id != nil ->
           ~p"/items/#{socket.assigns.existing_item_id}"
 
-        # If we started with an existing bag, redirect back to it
         socket.assigns.bag_step == 4 ->
           ~p"/bags/#{socket.assigns.current_bag.id}"
 
-        # Otherwise go to bags list
         true ->
           ~p"/bags"
       end
 
     {:noreply, redirect(socket, to: redirect_path)}
+  end
+
+  def handle_event("go_to_bag", _params, socket) do
+    schedule_item_processing(socket.assigns.current_item.id)
+    {:noreply, redirect(socket, to: ~p"/bags/#{socket.assigns.current_bag.id}")}
   end
 
   def handle_event("camera_error", %{"error" => error}, socket) do
@@ -169,12 +161,39 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   defp handle_item_photo(socket, photo_data, is_label) do
-    if is_label do
-      current_item_label_photos = socket.assigns.current_item_label_photos ++ [photo_data]
-      {:noreply, assign(socket, :current_item_label_photos, current_item_label_photos)}
+    # Get or create item
+    {socket, item} = ensure_current_item(socket)
+
+    # Save photo immediately to database
+    {:ok, _image} = Kirbs.Services.PhotoCapture.save_single_photo(item, photo_data, is_label)
+
+    # Update photo counts for display
+    socket =
+      if is_label do
+        update(socket, :current_item_label_photos, &(&1 ++ [photo_data]))
+      else
+        update(socket, :current_item_photos, &(&1 ++ [photo_data]))
+      end
+
+    {:noreply, socket}
+  end
+
+  defp ensure_current_item(socket) do
+    case socket.assigns.current_item do
+      nil ->
+        {:ok, item} = create_item_record(socket)
+        {assign(socket, :current_item, item), item}
+
+      item ->
+        {socket, item}
+    end
+  end
+
+  defp create_item_record(socket) do
+    if socket.assigns.existing_item_id do
+      {:ok, Kirbs.Resources.Item.get!(socket.assigns.existing_item_id)}
     else
-      current_item_photos = socket.assigns.current_item_photos ++ [photo_data]
-      {:noreply, assign(socket, :current_item_photos, current_item_photos)}
+      Kirbs.Resources.Item.create(%{bag_id: socket.assigns.current_bag.id})
     end
   end
 
@@ -202,7 +221,7 @@ defmodule KirbsWeb.BagLive.Capture do
       <%= if @current_bag do %>
         <div class="navbar bg-base-100 border-b border-base-300 min-h-0 py-2 shrink-0">
           <div class="flex-1 flex items-center gap-2">
-            <a href={~p"/bags/#{@current_bag.id}"} class="btn btn-primary btn-sm">Go to Bag</a>
+            <button phx-click="go_to_bag" class="btn btn-primary btn-sm">Go to Bag</button>
             <span class="text-sm">{@current_bag.item_count || 0} items</span>
           </div>
           <div class="flex-none">
@@ -288,41 +307,9 @@ defmodule KirbsWeb.BagLive.Capture do
 
   defp create_new_item(socket) do
     socket
+    |> assign(:current_item, nil)
     |> assign(:current_item_photos, [])
     |> assign(:current_item_label_photos, [])
-  end
-
-  defp save_current_item(socket) do
-    photos = socket.assigns.current_item_photos
-    label_photos = socket.assigns.current_item_label_photos
-
-    # Check if we're adding to an existing item or creating a new one
-    params =
-      if socket.assigns.existing_item_id do
-        %{
-          type: :item,
-          item_id: socket.assigns.existing_item_id,
-          photos: photos,
-          label_photos: label_photos
-        }
-      else
-        %{
-          type: :item,
-          bag_id: socket.assigns.current_bag.id,
-          photos: photos,
-          label_photos: label_photos
-        }
-      end
-
-    case Kirbs.Services.PhotoCapture.run(params) do
-      {:ok, item} ->
-        # Schedule AI processing for item
-        schedule_item_processing(item.id)
-        {:ok, item}
-
-      error ->
-        error
-    end
   end
 
   defp schedule_bag_processing(bag_id) do

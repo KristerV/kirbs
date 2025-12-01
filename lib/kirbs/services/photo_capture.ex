@@ -28,6 +28,13 @@ defmodule Kirbs.Services.PhotoCapture do
     end
   end
 
+  def save_single_photo(item, photo_data, is_label) do
+    upload_dir = get_upload_dir()
+    File.mkdir_p!(upload_dir)
+    order = get_max_order(item, :item)
+    save_photo(item, :item, photo_data, order, upload_dir, is_label)
+  end
+
   defp create_bag do
     Kirbs.Resources.Bag.create(%{})
   end
