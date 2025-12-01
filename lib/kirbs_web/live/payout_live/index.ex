@@ -111,6 +111,28 @@ defmodule KirbsWeb.PayoutLive.Index do
     {String.to_integer(year_str), String.to_integer(month_str)}
   end
 
+  defp lhv_js(client, amount, for_month) do
+    month_name = month_name(for_month.month)
+    description = "Kirbs #{month_name} #{for_month.year}"
+
+    """
+    (function() {
+      function setInput(selector, value) {
+        const el = document.querySelector(selector);
+        if (el) {
+          el.value = value;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('blur', { bubbles: true }));
+        }
+      }
+      setInput('[data-testid="payment-creditor-account-input"]', '#{client.iban}');
+      setInput('[data-testid="payment-amount-input"]', '#{amount}');
+      setInput('[data-testid="payment-description-input"]', '#{description}');
+      setInput('[data-testid="payment-receiver-select"] input', '#{client.name}');
+    })();
+    """
+  end
+
   @impl true
   def handle_event("open_modal", %{"client-id" => client_id}, socket) do
     client = Enum.find(socket.assigns.clients, &(&1.id == client_id))
@@ -254,13 +276,28 @@ defmodule KirbsWeb.PayoutLive.Index do
         <%= if @show_modal && @selected_client do %>
           <div class="modal modal-open">
             <div class="modal-box">
-              <h3 class="font-bold text-lg mb-4">Record Payout</h3>
-              <p class="mb-4">
-                Recording payout for <strong>{@selected_client.name}</strong>
-              </p>
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg">Record Payout</h3>
+                <%= if @selected_client.iban do %>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline"
+                    onclick={"navigator.clipboard.writeText(#{lhv_js(@selected_client, @payout_amount, @for_month) |> Jason.encode!()}); this.textContent='Copied!'; setTimeout(() => this.textContent='LHV JS', 1500)"}
+                  >
+                    LHV JS
+                  </button>
+                <% end %>
+              </div>
+
+              <div class="form-control mb-4">
+                <label class="label">
+                  <span class="label-text">Name</span>
+                </label>
+                <div class="bg-base-200 p-2 rounded">{@selected_client.name}</div>
+              </div>
 
               <%= if @selected_client.iban do %>
-                <div class="mb-4">
+                <div class="form-control mb-4">
                   <label class="label">
                     <span class="label-text">IBAN</span>
                   </label>
@@ -285,7 +322,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
                 <div class="form-control mb-4">
                   <label class="label">
-                    <span class="label-text">Date Sent</span>
+                    <span class="label-text">Date</span>
                   </label>
                   <input
                     type="date"
@@ -298,7 +335,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
                 <div class="form-control mb-4">
                   <label class="label">
-                    <span class="label-text">For Month</span>
+                    <span class="label-text">Month</span>
                   </label>
                   <input
                     type="month"
