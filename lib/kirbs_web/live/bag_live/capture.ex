@@ -102,7 +102,9 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   def handle_event("end_bag", _params, socket) do
-    schedule_item_processing(socket.assigns.current_item.id)
+    if socket.assigns.current_item do
+      schedule_item_processing(socket.assigns.current_item.id)
+    end
 
     redirect_path =
       cond do
@@ -120,7 +122,10 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   def handle_event("go_to_bag", _params, socket) do
-    schedule_item_processing(socket.assigns.current_item.id)
+    if socket.assigns.current_item do
+      schedule_item_processing(socket.assigns.current_item.id)
+    end
+
     {:noreply, redirect(socket, to: ~p"/bags/#{socket.assigns.current_bag.id}")}
   end
 
