@@ -1,21 +1,22 @@
 const barLabelPlugin = {
   id: 'barLabels',
-  afterDraw(chart) {
+  afterDatasetsDraw(chart) {
     const ctx = chart.ctx
-    const meta = chart.getDatasetMeta(0)
-
     ctx.save()
     ctx.textAlign = "center"
-    ctx.textBaseline = "middle"
-    ctx.fillStyle = "white"
-    ctx.font = "bold 14px sans-serif"
+    ctx.textBaseline = "bottom"
+    ctx.font = "bold 16px sans-serif"
+    ctx.fillStyle = "#fff"
 
-    meta.data.forEach((bar, i) => {
-      const value = chart.data.datasets[0].data[i]
-      if (value > 0) {
-        const y = bar.y + (bar.base - bar.y) / 2
-        ctx.fillText(`€${Math.round(value)}`, bar.x, y)
-      }
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex)
+      meta.data.forEach((bar, i) => {
+        const value = dataset.data[i]
+        if (value > 0) {
+          const label = datasetIndex === 2 ? `€${Math.round(value)}` : value
+          ctx.fillText(label, bar.x, bar.y - 8)
+        }
+      })
     })
 
     ctx.restore()
@@ -25,36 +26,46 @@ const barLabelPlugin = {
 export const MonthlyEarningsChart = {
   mounted() {
     const data = JSON.parse(this.el.dataset.chartData)
-
     const ctx = this.el.getContext("2d")
 
     this.chart = new Chart(ctx, {
       type: "bar",
       data: {
         labels: data.labels,
-        datasets: [{
-          data: data.values,
-          backgroundColor: data.values.map((_, i) =>
-            i === data.values.length - 1 ? "rgb(34, 197, 94)" : "rgba(34, 197, 94, 0.5)"
-          ),
-          borderRadius: 8,
-          barThickness: 60
-        }]
+        datasets: [
+          {
+            label: "Uploaded",
+            data: data.uploaded,
+            backgroundColor: "rgb(100, 140, 190)",
+            borderRadius: 4,
+            yAxisID: "y"
+          },
+          {
+            label: "Sold",
+            data: data.sold_count,
+            backgroundColor: "rgb(110, 190, 140)",
+            borderRadius: 4,
+            yAxisID: "y"
+          },
+          {
+            label: "Profit (€)",
+            data: data.sold_profit,
+            backgroundColor: "rgb(34, 197, 94)",
+            borderRadius: 4,
+            yAxisID: "y1"
+          }
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            enabled: false
-          }
-        },
         hover: {
           mode: null
+        },
+        interaction: {
+          mode: "index",
+          intersect: false
         },
         scales: {
           x: {
@@ -63,13 +74,39 @@ export const MonthlyEarningsChart = {
             }
           },
           y: {
+            type: "linear",
+            display: true,
+            position: "left",
             beginAtZero: true,
+            title: {
+              display: true,
+              text: "Items"
+            },
             grid: {
               color: "rgba(255, 255, 255, 0.1)"
-            },
-            ticks: {
-              callback: (value) => `€${value}`
             }
+          },
+          y1: {
+            type: "linear",
+            display: true,
+            position: "right",
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: "Profit (€)"
+            },
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: "bottom"
+          },
+          tooltip: {
+            enabled: false
           }
         }
       },
@@ -80,10 +117,9 @@ export const MonthlyEarningsChart = {
   updated() {
     const data = JSON.parse(this.el.dataset.chartData)
     this.chart.data.labels = data.labels
-    this.chart.data.datasets[0].data = data.values
-    this.chart.data.datasets[0].backgroundColor = data.values.map((_, i) =>
-      i === data.values.length - 1 ? "rgb(34, 197, 94)" : "rgba(34, 197, 94, 0.5)"
-    )
+    this.chart.data.datasets[0].data = data.uploaded
+    this.chart.data.datasets[1].data = data.sold_count
+    this.chart.data.datasets[2].data = data.sold_profit
     this.chart.update()
   },
 
