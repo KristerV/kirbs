@@ -16,7 +16,7 @@ defmodule Kirbs.Resources.Payout do
   end
 
   actions do
-    default_accept [:client_id, :amount, :sent_at]
+    default_accept [:client_id, :amount, :sent_at, :for_month]
 
     defaults [:create, :read, :destroy]
 
@@ -46,6 +46,10 @@ defmodule Kirbs.Resources.Payout do
     end
 
     attribute :sent_at, :utc_datetime_usec do
+      allow_nil? false
+    end
+
+    attribute :for_month, :date do
       allow_nil? false
     end
 

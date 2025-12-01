@@ -18,7 +18,20 @@ defmodule KirbsWeb.PayoutLive.Index do
      |> assign(:show_modal, false)
      |> assign(:selected_client, nil)
      |> assign(:payout_amount, nil)
-     |> assign(:payout_date, Date.utc_today())}
+     |> assign(:payout_date, Date.utc_today())
+     |> assign(:for_month, default_for_month())}
+  end
+
+  defp default_for_month do
+    today = Date.utc_today()
+
+    if today.day <= 10 do
+      # First 10 days: default to previous month
+      today |> Date.beginning_of_month() |> Date.add(-1) |> Date.beginning_of_month()
+    else
+      # After day 10: default to current month
+      Date.beginning_of_month(today)
+    end
   end
 
   defp load_clients do
@@ -46,7 +59,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
   defp get_payout_months(payouts) do
     payouts
-    |> Enum.map(fn p -> {p.sent_at.year, p.sent_at.month} end)
+    |> Enum.map(fn p -> {p.for_month.year, p.for_month.month} end)
     |> Enum.uniq()
     |> Enum.sort()
   end
@@ -55,8 +68,8 @@ defmodule KirbsWeb.PayoutLive.Index do
     payouts
     |> Enum.filter(fn p ->
       p.client_id == client_id &&
-        p.sent_at.year == year &&
-        p.sent_at.month == month
+        p.for_month.year == year &&
+        p.for_month.month == month
     end)
     |> Enum.reduce(Decimal.new(0), fn p, acc -> Decimal.add(acc, p.amount) end)
   end
@@ -85,6 +98,19 @@ defmodule KirbsWeb.PayoutLive.Index do
     )
   end
 
+  defp format_month_input(date) do
+    # Format for HTML month input: "2024-11"
+    year = date.year |> Integer.to_string()
+    month = date.month |> Integer.to_string() |> String.pad_leading(2, "0")
+    "#{year}-#{month}"
+  end
+
+  defp parse_month_input(str) do
+    # Parse "2024-11" format
+    [year_str, month_str] = String.split(str, "-")
+    {String.to_integer(year_str), String.to_integer(month_str)}
+  end
+
   @impl true
   def handle_event("open_modal", %{"client-id" => client_id}, socket) do
     client = Enum.find(socket.assigns.clients, &(&1.id == client_id))
@@ -95,7 +121,8 @@ defmodule KirbsWeb.PayoutLive.Index do
      |> assign(:show_modal, true)
      |> assign(:selected_client, client)
      |> assign(:payout_amount, format_amount(unsent))
-     |> assign(:payout_date, Date.utc_today())}
+     |> assign(:payout_date, Date.utc_today())
+     |> assign(:for_month, default_for_month())}
   end
 
   def handle_event("close_modal", _params, socket) do
@@ -105,16 +132,27 @@ defmodule KirbsWeb.PayoutLive.Index do
      |> assign(:selected_client, nil)}
   end
 
-  def handle_event("record_payout", %{"amount" => amount_str, "date" => date_str}, socket) do
+  def handle_event(
+        "record_payout",
+        %{"amount" => amount_str, "date" => date_str, "for_month" => for_month_str},
+        socket
+      ) do
     client = socket.assigns.selected_client
     amount = Decimal.new(amount_str)
     date = Date.from_iso8601!(date_str)
+    {for_year, for_month} = parse_month_input(for_month_str)
+    for_month_date = Date.new!(for_year, for_month, 1)
 
     sent_at =
       date
       |> DateTime.new!(~T[12:00:00], "Etc/UTC")
 
-    case Payout.create(%{client_id: client.id, amount: amount, sent_at: sent_at}) do
+    case Payout.create(%{
+           client_id: client.id,
+           amount: amount,
+           sent_at: sent_at,
+           for_month: for_month_date
+         }) do
       {:ok, _payout} ->
         payouts = Payout.list!()
         months = get_payout_months(payouts)
@@ -189,16 +227,19 @@ defmodule KirbsWeb.PayoutLive.Index do
                           {format_amount(unsent)}
                         </td>
                         <td class="bg-base-200">
-                          <%= if Decimal.compare(unsent, Decimal.new(0)) == :gt do %>
-                            <button
-                              class="btn btn-primary btn-sm"
-                              phx-click="open_modal"
-                              phx-value-client-id={client.id}
-                            >
-                              Send
-                            </button>
-                          <% else %>
-                            <span class="badge badge-ghost text-base-content/40">Paid</span>
+                          <%= cond do %>
+                            <% Decimal.compare(unsent, Decimal.new(0)) == :gt -> %>
+                              <button
+                                class="btn btn-primary btn-sm"
+                                phx-click="open_modal"
+                                phx-value-client-id={client.id}
+                              >
+                                Send
+                              </button>
+                            <% Decimal.compare(client.client_share, Decimal.new(0)) == :gt -> %>
+                              <span class="badge badge-success text-success-content">Paid</span>
+                            <% true -> %>
+                              <span class="text-base-content/30">-</span>
                           <% end %>
                         </td>
                       </tr>
@@ -251,6 +292,19 @@ defmodule KirbsWeb.PayoutLive.Index do
                     class="input input-bordered w-full"
                     value={Date.to_iso8601(@payout_date)}
                     name="date"
+                    required
+                  />
+                </div>
+
+                <div class="form-control mb-4">
+                  <label class="label">
+                    <span class="label-text">For Month</span>
+                  </label>
+                  <input
+                    type="month"
+                    class="input input-bordered w-full"
+                    value={format_month_input(@for_month)}
+                    name="for_month"
                     required
                   />
                 </div>
