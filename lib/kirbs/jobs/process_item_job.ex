@@ -4,7 +4,7 @@ defmodule Kirbs.Jobs.ProcessItemJob do
   Extracts item info from label photos and updates the item.
   """
 
-  use Oban.Worker, queue: :process_item, max_attempts: 3
+  use Oban.Worker, queue: :ai, max_attempts: 3
 
   alias Kirbs.Services.Ai.ItemInfoExtract
 

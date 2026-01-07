@@ -4,7 +4,7 @@ defmodule Kirbs.Jobs.ProcessBagJob do
   Extracts client info from the third photo and matches/creates client.
   """
 
-  use Oban.Worker, queue: :default, max_attempts: 3
+  use Oban.Worker, queue: :ai, max_attempts: 3
 
   alias Kirbs.Services.Ai.{BagClientExtract, ClientMatch}
   alias Kirbs.Resources.Bag
