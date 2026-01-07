@@ -129,6 +129,7 @@ defmodule Kirbs.YagaTaxonomy do
     names
     |> Enum.map(&color_to_id/1)
     |> Enum.reject(&is_nil/1)
+    |> Enum.take(2)
   end
 
   @doc """
