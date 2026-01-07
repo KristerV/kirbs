@@ -13,7 +13,7 @@ config :ash_oban, pro?: false
 config :kirbs, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10, ai: 3],
+  queues: [default: 10, ai: 1],
   repo: Kirbs.Repo,
   plugins: [
     {Oban.Plugins.Cron,
