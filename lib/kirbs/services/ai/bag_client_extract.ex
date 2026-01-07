@@ -97,6 +97,9 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
 
         {:ok, text_content}
 
+      {:error, _chain, %LangChain.LangChainError{} = error} ->
+        {:error, "AI extraction failed: #{error.message}"}
+
       {:error, reason} ->
         {:error, "AI extraction failed: #{inspect(reason)}"}
     end
