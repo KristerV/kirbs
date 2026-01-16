@@ -17,6 +17,7 @@ defmodule KirbsWeb.PayoutLive.Index do
      |> assign(:months, months)
      |> assign(:show_modal, false)
      |> assign(:selected_client, nil)
+     |> assign(:selected_payout, nil)
      |> assign(:payout_amount, nil)
      |> assign(:payout_date, Date.utc_today())
      |> assign(:for_month, default_for_month())}
@@ -71,7 +72,6 @@ defmodule KirbsWeb.PayoutLive.Index do
         p.for_month.year == year &&
         p.for_month.month == month
     end)
-    |> Enum.reduce(Decimal.new(0), fn p, acc -> Decimal.add(acc, p.amount) end)
   end
 
   defp client_total_paid(payouts, client_id) do
@@ -142,16 +142,43 @@ defmodule KirbsWeb.PayoutLive.Index do
      socket
      |> assign(:show_modal, true)
      |> assign(:selected_client, client)
+     |> assign(:selected_payout, nil)
      |> assign(:payout_amount, format_amount(unsent))
      |> assign(:payout_date, Date.utc_today())
      |> assign(:for_month, default_for_month())}
+  end
+
+  def handle_event("edit_payout", %{"payout-id" => payout_id}, socket) do
+    payout = Enum.find(socket.assigns.payouts, &(&1.id == payout_id))
+    client = Enum.find(socket.assigns.clients, &(&1.id == payout.client_id))
+    sent_date = DateTime.to_date(payout.sent_at)
+
+    {:noreply,
+     socket
+     |> assign(:show_modal, true)
+     |> assign(:selected_client, client)
+     |> assign(:selected_payout, payout)
+     |> assign(:payout_amount, format_amount(payout.amount))
+     |> assign(:payout_date, sent_date)
+     |> assign(:for_month, payout.for_month)}
   end
 
   def handle_event("close_modal", _params, socket) do
     {:noreply,
      socket
      |> assign(:show_modal, false)
-     |> assign(:selected_client, nil)}
+     |> assign(:selected_client, nil)
+     |> assign(:selected_payout, nil)}
+  end
+
+  def handle_event("form_changed", %{"amount" => amount, "for_month" => for_month_str}, socket) do
+    {for_year, for_month} = parse_month_input(for_month_str)
+    for_month_date = Date.new!(for_year, for_month, 1)
+
+    {:noreply,
+     socket
+     |> assign(:payout_amount, amount)
+     |> assign(:for_month, for_month_date)}
   end
 
   def handle_event(
@@ -169,15 +196,29 @@ defmodule KirbsWeb.PayoutLive.Index do
       date
       |> DateTime.new!(~T[12:00:00], "Etc/UTC")
 
-    case Payout.create(%{
-           client_id: client.id,
-           amount: amount,
-           sent_at: sent_at,
-           for_month: for_month_date
-         }) do
+    result =
+      case socket.assigns.selected_payout do
+        nil ->
+          Payout.create(%{
+            client_id: client.id,
+            amount: amount,
+            sent_at: sent_at,
+            for_month: for_month_date
+          })
+
+        payout ->
+          Payout.update(payout, %{
+            amount: amount,
+            sent_at: sent_at,
+            for_month: for_month_date
+          })
+      end
+
+    case result do
       {:ok, _payout} ->
         payouts = Payout.list!()
         months = get_payout_months(payouts)
+        action = if socket.assigns.selected_payout, do: "updated", else: "recorded"
 
         {:noreply,
          socket
@@ -185,10 +226,11 @@ defmodule KirbsWeb.PayoutLive.Index do
          |> assign(:months, months)
          |> assign(:show_modal, false)
          |> assign(:selected_client, nil)
-         |> put_flash(:info, "Payout recorded for #{client.name}")}
+         |> assign(:selected_payout, nil)
+         |> put_flash(:info, "Payout #{action} for #{client.name}")}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to record payout")}
+        {:noreply, put_flash(socket, :error, "Failed to save payout")}
     end
   end
 
@@ -230,10 +272,19 @@ defmodule KirbsWeb.PayoutLive.Index do
                           </.link>
                         </td>
                         <%= for {year, month} <- @months do %>
-                          <% month_amount = client_payouts_for_month(@payouts, client.id, year, month) %>
+                          <% month_payouts =
+                            client_payouts_for_month(@payouts, client.id, year, month) %>
                           <td class="text-right">
-                            <%= if Decimal.compare(month_amount, Decimal.new(0)) == :gt do %>
-                              {format_amount(month_amount)}
+                            <%= if Enum.any?(month_payouts) do %>
+                              <%= for payout <- month_payouts do %>
+                                <button
+                                  class="link link-hover"
+                                  phx-click="edit_payout"
+                                  phx-value-payout-id={payout.id}
+                                >
+                                  {format_amount(payout.amount)}
+                                </button>
+                              <% end %>
                             <% else %>
                               <span class="text-base-content/30">-</span>
                             <% end %>
@@ -272,7 +323,9 @@ defmodule KirbsWeb.PayoutLive.Index do
           <div class="modal modal-open">
             <div class="modal-box">
               <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-lg">Record Payout</h3>
+                <h3 class="font-bold text-lg">
+                  {if @selected_payout, do: "Edit Payout", else: "Record Payout"}
+                </h3>
                 <%= if @selected_client.iban do %>
                   <button
                     type="button"
@@ -300,7 +353,7 @@ defmodule KirbsWeb.PayoutLive.Index do
                 </div>
               <% end %>
 
-              <form phx-submit="record_payout">
+              <form phx-submit="record_payout" phx-change="form_changed">
                 <div class="form-control mb-4">
                   <label class="label">
                     <span class="label-text">Amount</span>
@@ -317,7 +370,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
                 <div class="form-control mb-4">
                   <label class="label">
-                    <span class="label-text">Date</span>
+                    <span class="label-text">Sent On</span>
                   </label>
                   <input
                     type="date"
@@ -330,7 +383,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
                 <div class="form-control mb-4">
                   <label class="label">
-                    <span class="label-text">Month</span>
+                    <span class="label-text">For Period</span>
                   </label>
                   <input
                     type="month"
@@ -344,7 +397,7 @@ defmodule KirbsWeb.PayoutLive.Index do
                 <div class="modal-action">
                   <button type="button" class="btn" phx-click="close_modal">Cancel</button>
                   <button type="submit" class="btn btn-primary">
-                    Record Payout
+                    {if @selected_payout, do: "Update Payout", else: "Record Payout"}
                   </button>
                 </div>
               </form>

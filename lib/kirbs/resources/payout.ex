@@ -13,12 +13,13 @@ defmodule Kirbs.Resources.Payout do
     define :list
     define :list_by_client, args: [:client_id]
     define :create
+    define :update
   end
 
   actions do
     default_accept [:client_id, :amount, :sent_at, :for_month]
 
-    defaults [:create, :read, :destroy]
+    defaults [:create, :read, :update, :destroy]
 
     read :get do
       get_by [:id]
