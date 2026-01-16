@@ -107,8 +107,19 @@ defmodule KirbsWeb.PayoutLive.Index do
 
   defp parse_month_input(str) do
     # Parse "2024-11" format
-    [year_str, month_str] = String.split(str, "-")
-    {String.to_integer(year_str), String.to_integer(month_str)}
+    case String.split(str, "-") do
+      [year_str, month_str] ->
+        with {year, ""} <- Integer.parse(year_str),
+             {month, ""} <- Integer.parse(month_str),
+             true <- month >= 1 and month <= 12 do
+          {:ok, {year, month}}
+        else
+          _ -> :error
+        end
+
+      _ ->
+        :error
+    end
   end
 
   defp lhv_js(client, amount, for_month) do
@@ -172,13 +183,18 @@ defmodule KirbsWeb.PayoutLive.Index do
   end
 
   def handle_event("form_changed", %{"amount" => amount, "for_month" => for_month_str}, socket) do
-    {for_year, for_month} = parse_month_input(for_month_str)
-    for_month_date = Date.new!(for_year, for_month, 1)
+    socket = assign(socket, :payout_amount, amount)
 
-    {:noreply,
-     socket
-     |> assign(:payout_amount, amount)
-     |> assign(:for_month, for_month_date)}
+    socket =
+      case parse_month_input(for_month_str) do
+        {:ok, {for_year, for_month}} ->
+          assign(socket, :for_month, Date.new!(for_year, for_month, 1))
+
+        :error ->
+          socket
+      end
+
+    {:noreply, socket}
   end
 
   def handle_event(
@@ -189,8 +205,12 @@ defmodule KirbsWeb.PayoutLive.Index do
     client = socket.assigns.selected_client
     amount = Decimal.new(amount_str)
     date = Date.from_iso8601!(date_str)
-    {for_year, for_month} = parse_month_input(for_month_str)
-    for_month_date = Date.new!(for_year, for_month, 1)
+
+    for_month_date =
+      case parse_month_input(for_month_str) do
+        {:ok, {for_year, for_month}} -> Date.new!(for_year, for_month, 1)
+        :error -> socket.assigns.for_month
+      end
 
     sent_at =
       date
