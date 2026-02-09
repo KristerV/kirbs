@@ -1,5 +1,5 @@
 const barLabelPlugin = {
-  id: 'barLabels',
+  id: 'dailyBarLabels',
   afterDatasetsDraw(chart) {
     const ctx = chart.ctx
     ctx.save()
@@ -13,7 +13,7 @@ const barLabelPlugin = {
       meta.data.forEach((bar, i) => {
         const value = dataset.data[i]
         if (value > 0) {
-          const label = datasetIndex === 3 ? `€${Math.round(value)}` : value
+          const label = datasetIndex === 2 ? `€${Math.round(value)}` : value
           ctx.fillText(label, bar.x, bar.y - 8)
         }
       })
@@ -23,7 +23,7 @@ const barLabelPlugin = {
   }
 }
 
-export const MonthlyEarningsChart = {
+export const DailyChart = {
   mounted() {
     const data = JSON.parse(this.el.dataset.chartData)
     const ctx = this.el.getContext("2d")
@@ -35,28 +35,21 @@ export const MonthlyEarningsChart = {
         datasets: [
           {
             label: "Bags",
-            data: data.bags_count,
+            data: data.bags,
             backgroundColor: "rgb(60, 100, 170)",
             borderRadius: 4,
             yAxisID: "y"
           },
           {
-            label: "Uploaded",
-            data: data.uploaded,
+            label: "Items",
+            data: data.items,
             backgroundColor: "rgb(140, 175, 210)",
             borderRadius: 4,
             yAxisID: "y"
           },
           {
-            label: "Sold",
-            data: data.sold_count,
-            backgroundColor: "rgb(110, 190, 140)",
-            borderRadius: 4,
-            yAxisID: "y"
-          },
-          {
             label: "Profit (€)",
-            data: data.sold_profit,
+            data: data.profit,
             backgroundColor: "rgb(34, 197, 94)",
             borderRadius: 4,
             yAxisID: "y1"
@@ -87,7 +80,7 @@ export const MonthlyEarningsChart = {
             beginAtZero: true,
             title: {
               display: true,
-              text: "Items"
+              text: "Count"
             },
             grid: {
               color: "rgba(255, 255, 255, 0.1)"
@@ -119,16 +112,6 @@ export const MonthlyEarningsChart = {
       },
       plugins: [barLabelPlugin]
     })
-  },
-
-  updated() {
-    const data = JSON.parse(this.el.dataset.chartData)
-    this.chart.data.labels = data.labels
-    this.chart.data.datasets[0].data = data.bags_count
-    this.chart.data.datasets[1].data = data.uploaded
-    this.chart.data.datasets[2].data = data.sold_count
-    this.chart.data.datasets[3].data = data.sold_profit
-    this.chart.update()
   },
 
   destroyed() {

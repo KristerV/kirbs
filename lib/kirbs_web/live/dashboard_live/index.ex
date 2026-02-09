@@ -3,16 +3,31 @@ defmodule KirbsWeb.DashboardLive.Index do
 
   import Ecto.Query
   alias Kirbs.Resources.Item
+  alias Kirbs.Resources.Bag
   alias Kirbs.Repo
 
   @impl true
   def mount(_params, _session, socket) do
     items = Item.list!()
+    bags = Bag.list!()
 
     # Count items by status
     needs_review = Enum.count(items, &(&1.status in [:pending, :ai_processed, :reviewed]))
     uploaded_items = Enum.count(items, &(&1.status == :uploaded_to_yaga))
     sold_items = Enum.count(items, &(&1.status == :sold))
+
+    # Average bag value
+    sold_total =
+      items
+      |> Enum.filter(&(&1.sold_price != nil))
+      |> Enum.reduce(Decimal.new(0), fn item, acc -> Decimal.add(acc, item.sold_price) end)
+
+    avg_bag_value =
+      if length(bags) > 0 do
+        sold_total |> Decimal.div(length(bags)) |> Decimal.round(2) |> Decimal.to_float()
+      else
+        0.0
+      end
 
     # Check for failed/retryable Oban jobs
     failed_jobs_count =
@@ -26,7 +41,6 @@ defmodule KirbsWeb.DashboardLive.Index do
     upload_dir_size = get_upload_dir_size()
 
     # Fetch dashboard lists
-    top_sold_by_value = Item.top_sold_by_value!()
     fastest_sold = Item.fastest_sold!()
     recently_sold = Item.recently_sold!()
 
@@ -35,10 +49,11 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:needs_review, needs_review)
      |> assign(:uploaded_items, uploaded_items)
      |> assign(:sold_items, sold_items)
-     |> assign(:monthly_earnings_chart, build_monthly_earnings_chart(items))
+     |> assign(:avg_bag_value, avg_bag_value)
+     |> assign(:monthly_earnings_chart, build_monthly_earnings_chart(items, bags))
+     |> assign(:daily_chart, build_daily_chart(items, bags))
      |> assign(:failed_jobs_count, failed_jobs_count)
      |> assign(:upload_dir_size, upload_dir_size)
-     |> assign(:top_sold_by_value, top_sold_by_value)
      |> assign(:fastest_sold, fastest_sold)
      |> assign(:recently_sold, recently_sold)}
   end
@@ -73,7 +88,7 @@ defmodule KirbsWeb.DashboardLive.Index do
         <% end %>
         
     <!-- Overview Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div class="stats bg-base-100 shadow">
             <div class="stat">
               <div class="stat-title">Needs Review</div>
@@ -101,6 +116,13 @@ defmodule KirbsWeb.DashboardLive.Index do
               <div class="stat-value text-sm">{@upload_dir_size}</div>
             </div>
           </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Avg Bag Value</div>
+              <div class="stat-value text-sm">&euro;{@avg_bag_value}</div>
+            </div>
+          </div>
         </div>
         
     <!-- Monthly Earnings -->
@@ -118,38 +140,24 @@ defmodule KirbsWeb.DashboardLive.Index do
           </div>
         </div>
         
-    <!-- Item Lists -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          <!-- Top Sold by Value -->
-          <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-              <h2 class="card-title">Top Sales by Value</h2>
-              <%= if Enum.empty?(@top_sold_by_value) do %>
-                <p class="text-base-content/50">No sold items yet</p>
-              <% else %>
-                <div class="grid grid-cols-5 gap-2">
-                  <%= for item <- @top_sold_by_value do %>
-                    <.link navigate={~p"/items/#{item.id}"} class="flex flex-col hover:opacity-80">
-                      <%= if first_image = List.first(item.images) do %>
-                        <img
-                          src={"/uploads/#{first_image.path}"}
-                          alt=""
-                          class="w-full aspect-square object-cover rounded"
-                        />
-                      <% else %>
-                        <div class="w-full aspect-square bg-base-300 rounded"></div>
-                      <% end %>
-                      <div class="text-xs text-right mt-1 text-success font-medium">
-                        €{item.sold_price}
-                      </div>
-                    </.link>
-                  <% end %>
-                </div>
-              <% end %>
+    <!-- Last 7 Days -->
+        <div class="card bg-base-100 shadow-xl mt-8">
+          <div class="card-body">
+            <h2 class="card-title">Last 7 Days</h2>
+            <div class="h-64">
+              <canvas
+                id="daily-chart"
+                phx-hook="DailyChart"
+                data-chart-data={Jason.encode!(@daily_chart)}
+              >
+              </canvas>
             </div>
           </div>
-          
-    <!-- Fastest Sold -->
+        </div>
+        
+    <!-- Item Lists -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          <!-- Fastest Sold -->
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
               <h2 class="card-title">Fastest Sales</h2>
@@ -275,7 +283,17 @@ defmodule KirbsWeb.DashboardLive.Index do
     end
   end
 
-  defp build_monthly_earnings_chart(items) do
+  defp build_monthly_earnings_chart(items, bags) do
+    # Group bags by month
+    bags_by_month =
+      bags
+      |> Enum.group_by(fn bag ->
+        date = DateTime.to_date(bag.created_at)
+        {date.year, date.month}
+      end)
+      |> Enum.map(fn {key, month_bags} -> {key, length(month_bags)} end)
+      |> Map.new()
+
     # Group uploaded items by month
     uploaded_by_month =
       items
@@ -313,7 +331,7 @@ defmodule KirbsWeb.DashboardLive.Index do
 
     # Get all months that have any data
     all_months =
-      (Map.keys(uploaded_by_month) ++ Map.keys(sold_by_month))
+      (Map.keys(bags_by_month) ++ Map.keys(uploaded_by_month) ++ Map.keys(sold_by_month))
       |> Enum.uniq()
       |> Enum.sort()
 
@@ -322,6 +340,7 @@ defmodule KirbsWeb.DashboardLive.Index do
         Date.new!(year, month, 1) |> Calendar.strftime("%b %Y")
       end)
 
+    bags_count = Enum.map(all_months, fn key -> Map.get(bags_by_month, key, 0) end)
     uploaded = Enum.map(all_months, fn key -> Map.get(uploaded_by_month, key, 0) end)
 
     sold_count =
@@ -332,9 +351,56 @@ defmodule KirbsWeb.DashboardLive.Index do
 
     %{
       labels: labels,
+      bags_count: bags_count,
       uploaded: uploaded,
       sold_count: sold_count,
       sold_profit: sold_profit
+    }
+  end
+
+  defp build_daily_chart(items, bags) do
+    today = Date.utc_today()
+    days = Enum.map(6..0//-1, fn offset -> Date.add(today, -offset) end)
+
+    bags_by_day =
+      bags
+      |> Enum.group_by(fn bag -> DateTime.to_date(bag.created_at) end)
+
+    items_by_day =
+      items
+      |> Enum.group_by(fn item -> DateTime.to_date(item.created_at) end)
+
+    sold_by_day =
+      items
+      |> Enum.filter(&(&1.sold_at != nil))
+      |> Enum.group_by(fn item -> DateTime.to_date(item.sold_at) end)
+
+    labels =
+      Enum.map(days, fn date ->
+        Calendar.strftime(date, "%a %d")
+      end)
+
+    bags_data = Enum.map(days, fn day -> length(Map.get(bags_by_day, day, [])) end)
+    items_data = Enum.map(days, fn day -> length(Map.get(items_by_day, day, [])) end)
+
+    profit_data =
+      Enum.map(days, fn day ->
+        Map.get(sold_by_day, day, [])
+        |> Enum.reduce(Decimal.new(0), fn item, acc ->
+          if item.sold_price do
+            Decimal.add(acc, Decimal.div(item.sold_price, 2))
+          else
+            acc
+          end
+        end)
+        |> Decimal.to_float()
+      end)
+
+    %{
+      labels: labels,
+      bags: bags_data,
+      items: items_data,
+      profit: profit_data
     }
   end
 end
