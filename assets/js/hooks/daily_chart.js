@@ -13,8 +13,7 @@ const barLabelPlugin = {
       meta.data.forEach((bar, i) => {
         const value = dataset.data[i]
         if (value > 0) {
-          const label = datasetIndex === 2 ? `€${Math.round(value)}` : value
-          ctx.fillText(label, bar.x, bar.y - 8)
+          ctx.fillText(value, bar.x, bar.y - 8)
         }
       })
     })
@@ -46,13 +45,6 @@ export const DailyChart = {
             backgroundColor: "rgb(140, 175, 210)",
             borderRadius: 4,
             yAxisID: "y"
-          },
-          {
-            label: "Profit (€)",
-            data: data.profit,
-            backgroundColor: "rgb(34, 197, 94)",
-            borderRadius: 4,
-            yAxisID: "y1"
           }
         ]
       },
@@ -86,19 +78,6 @@ export const DailyChart = {
               color: "rgba(255, 255, 255, 0.1)"
             }
           },
-          y1: {
-            type: "linear",
-            display: true,
-            position: "right",
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: "Profit (€)"
-            },
-            grid: {
-              drawOnChartArea: false
-            }
-          }
         },
         plugins: {
           legend: {

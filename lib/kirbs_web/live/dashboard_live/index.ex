@@ -370,11 +370,6 @@ defmodule KirbsWeb.DashboardLive.Index do
       items
       |> Enum.group_by(fn item -> DateTime.to_date(item.created_at) end)
 
-    sold_by_day =
-      items
-      |> Enum.filter(&(&1.sold_at != nil))
-      |> Enum.group_by(fn item -> DateTime.to_date(item.sold_at) end)
-
     labels =
       Enum.map(days, fn date ->
         Calendar.strftime(date, "%a %d")
@@ -383,24 +378,10 @@ defmodule KirbsWeb.DashboardLive.Index do
     bags_data = Enum.map(days, fn day -> length(Map.get(bags_by_day, day, [])) end)
     items_data = Enum.map(days, fn day -> length(Map.get(items_by_day, day, [])) end)
 
-    profit_data =
-      Enum.map(days, fn day ->
-        Map.get(sold_by_day, day, [])
-        |> Enum.reduce(Decimal.new(0), fn item, acc ->
-          if item.sold_price do
-            Decimal.add(acc, Decimal.div(item.sold_price, 2))
-          else
-            acc
-          end
-        end)
-        |> Decimal.to_float()
-      end)
-
     %{
       labels: labels,
       bags: bags_data,
-      items: items_data,
-      profit: profit_data
+      items: items_data
     }
   end
 end
