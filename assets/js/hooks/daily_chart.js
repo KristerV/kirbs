@@ -40,6 +40,13 @@ export const DailyChart = {
             yAxisID: "y"
           },
           {
+            label: "Bags with Items",
+            data: data.bags_with_items,
+            backgroundColor: "rgb(96, 165, 250)",
+            borderRadius: 4,
+            yAxisID: "y"
+          },
+          {
             label: "Items",
             data: data.items,
             backgroundColor: "rgb(140, 175, 210)",
