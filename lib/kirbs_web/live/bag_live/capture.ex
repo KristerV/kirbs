@@ -227,6 +227,7 @@ defmodule KirbsWeb.BagLive.Capture do
         <div class="navbar bg-base-100 border-b border-base-300 min-h-0 py-2 shrink-0">
           <div class="flex-1 flex items-center gap-2">
             <button phx-click="go_to_bag" class="btn btn-primary btn-sm">Go to Bag</button>
+            <span class="text-lg font-bold">Bag {@current_bag.number}</span>
             <span class="text-sm">{@current_bag.item_count || 0} items</span>
           </div>
           <div class="flex-none">
