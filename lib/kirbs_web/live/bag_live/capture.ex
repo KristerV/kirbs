@@ -58,6 +58,11 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   @impl true
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("request_capture", _params, socket) do
     {:noreply, push_event(socket, "capture_photo", %{})}
   end
