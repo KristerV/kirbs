@@ -143,7 +143,7 @@ defmodule KirbsWeb.DashboardLive.Index do
     <!-- Last 7 Days -->
         <div class="card bg-base-100 shadow-xl mt-8">
           <div class="card-body">
-            <h2 class="card-title">Last 7 Days</h2>
+            <h2 class="card-title">Last 14 Days</h2>
             <div class="h-64">
               <canvas
                 id="daily-chart"
@@ -360,7 +360,7 @@ defmodule KirbsWeb.DashboardLive.Index do
 
   defp build_daily_chart(items, bags) do
     today = Date.utc_today()
-    days = Enum.map(6..0//-1, fn offset -> Date.add(today, -offset) end)
+    days = Enum.map(13..0//-1, fn offset -> Date.add(today, -offset) end)
 
     bags_by_day =
       bags

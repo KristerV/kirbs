@@ -59,6 +59,11 @@ export const DailyChart = {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
+        layout: {
+          padding: {
+            top: 30
+          }
+        },
         hover: {
           mode: null
         },
