@@ -22,8 +22,8 @@ export const Camera = {
       const constraints = {
         video: {
           facingMode: "environment", // Use back camera on mobile
-          width: { ideal: 4096 },
-          height: { ideal: 4096 }
+          width: { ideal: 2560 },
+          height: { ideal: 2560 }
         },
         audio: false
       }
@@ -76,7 +76,7 @@ export const Camera = {
         })
       }
       reader.readAsDataURL(blob)
-    }, "image/jpeg", 0.9)
+    }, "image/jpeg", 0.78)
   },
 
   showFlash() {

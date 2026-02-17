@@ -166,28 +166,38 @@ defmodule KirbsWeb.BagLive.Capture do
   end
 
   defp handle_item_photo(socket, photo_data, is_label) do
-    # Get or create item
     {socket, item} = ensure_current_item(socket)
 
-    # Save photo immediately to database
-    {:ok, _image} = Kirbs.Services.PhotoCapture.save_single_photo(item, photo_data, is_label)
+    case Kirbs.Services.PhotoCapture.save_single_photo(item, photo_data, is_label) do
+      {:ok, _image} ->
+        socket =
+          if is_label do
+            update(socket, :current_item_label_photos, &(&1 ++ [photo_data]))
+          else
+            update(socket, :current_item_photos, &(&1 ++ [photo_data]))
+          end
 
-    # Update photo counts for display
-    socket =
-      if is_label do
-        update(socket, :current_item_label_photos, &(&1 ++ [photo_data]))
-      else
-        update(socket, :current_item_photos, &(&1 ++ [photo_data]))
-      end
+        {:noreply, socket}
 
-    {:noreply, socket}
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Photo save failed, please retake")}
+    end
   end
 
   defp ensure_current_item(socket) do
     case socket.assigns.current_item do
       nil ->
         {:ok, item} = create_item_record(socket)
-        {assign(socket, :current_item, item), item}
+
+        socket =
+          socket
+          |> assign(:current_item, item)
+          |> assign(:existing_item_id, item.id)
+          |> push_patch(
+            to: ~p"/bags/capture?bag_id=#{socket.assigns.current_bag.id}&item_id=#{item.id}"
+          )
+
+        {socket, item}
 
       item ->
         {socket, item}
@@ -314,8 +324,10 @@ defmodule KirbsWeb.BagLive.Capture do
   defp create_new_item(socket) do
     socket
     |> assign(:current_item, nil)
+    |> assign(:existing_item_id, nil)
     |> assign(:current_item_photos, [])
     |> assign(:current_item_label_photos, [])
+    |> push_patch(to: ~p"/bags/capture?bag_id=#{socket.assigns.current_bag.id}")
   end
 
   defp schedule_bag_processing(bag_id) do
