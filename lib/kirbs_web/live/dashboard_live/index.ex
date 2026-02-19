@@ -375,15 +375,15 @@ defmodule KirbsWeb.DashboardLive.Index do
         Calendar.strftime(date, "%a %d")
       end)
 
-    bag_ids_with_items = items |> Enum.map(& &1.bag_id) |> MapSet.new()
-
     bags_data = Enum.map(days, fn day -> length(Map.get(bags_by_day, day, [])) end)
     items_data = Enum.map(days, fn day -> length(Map.get(items_by_day, day, [])) end)
 
     bags_with_items_data =
       Enum.map(days, fn day ->
-        Map.get(bags_by_day, day, [])
-        |> Enum.count(fn bag -> MapSet.member?(bag_ids_with_items, bag.id) end)
+        Map.get(items_by_day, day, [])
+        |> Enum.map(& &1.bag_id)
+        |> Enum.uniq()
+        |> length()
       end)
 
     %{
