@@ -31,9 +31,12 @@ defmodule KirbsWeb.DashboardLive.Index do
         0.0
       end
 
+    cutoff = DateTime.utc_now() |> DateTime.add(-20, :day)
+    mature_bags = Enum.filter(bags, &(DateTime.compare(&1.created_at, cutoff) == :lt))
+
     avg_bag_value =
-      if length(bags) > 0 do
-        sold_total |> Decimal.div(length(bags)) |> Decimal.round(2) |> Decimal.to_float()
+      if length(mature_bags) > 0 do
+        sold_total |> Decimal.div(length(mature_bags)) |> Decimal.round(2) |> Decimal.to_float()
       else
         0.0
       end
