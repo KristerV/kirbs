@@ -4,6 +4,7 @@ defmodule KirbsWeb.DashboardLive.Index do
   import Ecto.Query
   alias Kirbs.Resources.Item
   alias Kirbs.Resources.Bag
+  alias Kirbs.Resources.Payout
   alias Kirbs.Repo
 
   @impl true
@@ -11,20 +12,59 @@ defmodule KirbsWeb.DashboardLive.Index do
     items = Item.list!()
     bags = Bag.list!()
 
-    # Count items by status
-    needs_review = Enum.count(items, &(&1.status in [:pending, :ai_processed, :reviewed]))
-    uploaded_items = Enum.count(items, &(&1.status == :uploaded_to_yaga))
-    sold_items = Enum.count(items, &(&1.status == :sold))
+    sold_items_list = Enum.filter(items, &(&1.status == :sold && &1.sold_price != nil))
+    sold_count = length(sold_items_list)
 
-    # Average bag value
     sold_total =
-      items
-      |> Enum.filter(&(&1.sold_price != nil))
-      |> Enum.reduce(Decimal.new(0), fn item, acc -> Decimal.add(acc, item.sold_price) end)
+      Enum.reduce(sold_items_list, Decimal.new(0), fn item, acc ->
+        Decimal.add(acc, item.sold_price)
+      end)
+
+    # Row 1: Money stats
+    total_profit =
+      sold_total |> Decimal.div(2) |> Decimal.round(2) |> Decimal.to_float()
+
+    avg_item_value =
+      if sold_count > 0 do
+        sold_total |> Decimal.div(sold_count) |> Decimal.round(2) |> Decimal.to_float()
+      else
+        0.0
+      end
 
     avg_bag_value =
       if length(bags) > 0 do
         sold_total |> Decimal.div(length(bags)) |> Decimal.round(2) |> Decimal.to_float()
+      else
+        0.0
+      end
+
+    uploaded_count = Enum.count(items, &(&1.status == :uploaded_to_yaga))
+
+    sell_through_rate =
+      if uploaded_count + sold_count > 0 do
+        Float.round(sold_count / (uploaded_count + sold_count) * 100, 1)
+      else
+        0.0
+      end
+
+    # Unsent payouts
+    payouts = Payout.list!()
+    total_paid = Enum.reduce(payouts, Decimal.new(0), fn p, acc -> Decimal.add(acc, p.amount) end)
+    client_share = Decimal.div(sold_total, 2)
+
+    unsent_payouts =
+      Decimal.sub(client_share, total_paid) |> Decimal.round(2) |> Decimal.to_float()
+
+    # Row 2: Processing stats
+    needs_review = Enum.count(items, &(&1.status in [:pending, :ai_processed, :reviewed]))
+
+    # Avg items per bag (excluding empty bags)
+    items_by_bag = Enum.group_by(items, & &1.bag_id)
+    non_empty_bags = Enum.count(items_by_bag)
+
+    avg_items_per_bag =
+      if non_empty_bags > 0 do
+        Float.round(length(items) / non_empty_bags, 1)
       else
         0.0
       end
@@ -46,14 +86,19 @@ defmodule KirbsWeb.DashboardLive.Index do
 
     {:ok,
      socket
-     |> assign(:needs_review, needs_review)
-     |> assign(:uploaded_items, uploaded_items)
-     |> assign(:sold_items, sold_items)
+     |> assign(:total_profit, total_profit)
+     |> assign(:avg_item_value, avg_item_value)
      |> assign(:avg_bag_value, avg_bag_value)
+     |> assign(:sell_through_rate, sell_through_rate)
+     |> assign(:unsent_payouts, unsent_payouts)
+     |> assign(:needs_review, needs_review)
+     |> assign(:uploaded_items, uploaded_count)
+     |> assign(:avg_items_per_bag, avg_items_per_bag)
+     |> assign(:upload_dir_size, upload_dir_size)
      |> assign(:monthly_earnings_chart, build_monthly_earnings_chart(items, bags))
+     |> assign(:seasonal_chart, build_seasonal_chart(items))
      |> assign(:daily_chart, build_daily_chart(items, bags))
      |> assign(:failed_jobs_count, failed_jobs_count)
-     |> assign(:upload_dir_size, upload_dir_size)
      |> assign(:fastest_sold, fastest_sold)
      |> assign(:recently_sold, recently_sold)}
   end
@@ -87,33 +132,19 @@ defmodule KirbsWeb.DashboardLive.Index do
           </div>
         <% end %>
         
-    <!-- Overview Stats -->
+    <!-- Money Stats -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div class="stats bg-base-100 shadow">
             <div class="stat">
-              <div class="stat-title">Needs Review</div>
-              <div class="stat-value text-warning">{@needs_review}</div>
+              <div class="stat-title">Total Profit</div>
+              <div class="stat-value text-sm text-green-400">&euro;{@total_profit}</div>
             </div>
           </div>
 
           <div class="stats bg-base-100 shadow">
             <div class="stat">
-              <div class="stat-title">Uploaded to Yaga</div>
-              <div class="stat-value text-blue-400">{@uploaded_items}</div>
-            </div>
-          </div>
-
-          <div class="stats bg-base-100 shadow">
-            <div class="stat">
-              <div class="stat-title">Sold</div>
-              <div class="stat-value text-green-400">{@sold_items}</div>
-            </div>
-          </div>
-
-          <div class="stats bg-base-100 shadow">
-            <div class="stat">
-              <div class="stat-title">Storage Used</div>
-              <div class="stat-value text-sm">{@upload_dir_size}</div>
+              <div class="stat-title">Avg Item Value</div>
+              <div class="stat-value text-sm">&euro;{@avg_item_value}</div>
             </div>
           </div>
 
@@ -121,6 +152,20 @@ defmodule KirbsWeb.DashboardLive.Index do
             <div class="stat">
               <div class="stat-title">Avg Bag Value</div>
               <div class="stat-value text-sm">&euro;{@avg_bag_value}</div>
+            </div>
+          </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Sell-through</div>
+              <div class="stat-value text-sm">{@sell_through_rate}%</div>
+            </div>
+          </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Unsent Payouts</div>
+              <div class="stat-value text-sm text-warning">&euro;{@unsent_payouts}</div>
             </div>
           </div>
         </div>
@@ -140,8 +185,54 @@ defmodule KirbsWeb.DashboardLive.Index do
           </div>
         </div>
         
-    <!-- Last 7 Days -->
+    <!-- Seasonal Chart -->
         <div class="card bg-base-100 shadow-xl mt-8">
+          <div class="card-body">
+            <h2 class="card-title">Seasonal Comparison</h2>
+            <div class="h-64">
+              <canvas
+                id="seasonal-chart"
+                phx-hook="SeasonalChart"
+                data-chart-data={Jason.encode!(@seasonal_chart)}
+              >
+              </canvas>
+            </div>
+          </div>
+        </div>
+        
+    <!-- Processing Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 mb-8">
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Needs Review</div>
+              <div class="stat-value text-warning">{@needs_review}</div>
+            </div>
+          </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Uploaded to Yaga</div>
+              <div class="stat-value text-blue-400">{@uploaded_items}</div>
+            </div>
+          </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Avg Items / Bag</div>
+              <div class="stat-value text-sm">{@avg_items_per_bag}</div>
+            </div>
+          </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Storage Used</div>
+              <div class="stat-value text-sm">{@upload_dir_size}</div>
+            </div>
+          </div>
+        </div>
+        
+    <!-- Last 14 Days -->
+        <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
             <h2 class="card-title">Last 14 Days</h2>
             <div class="h-64">
@@ -356,6 +447,49 @@ defmodule KirbsWeb.DashboardLive.Index do
       sold_count: sold_count,
       sold_profit: sold_profit
     }
+  end
+
+  defp build_seasonal_chart(items) do
+    month_labels = ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+
+    sold_items = Enum.filter(items, &(&1.sold_at != nil && &1.sold_price != nil))
+
+    # Group by year and month, sum profit (50%)
+    by_year_month =
+      sold_items
+      |> Enum.group_by(fn item ->
+        date = DateTime.to_date(item.sold_at)
+        {date.year, date.month}
+      end)
+      |> Enum.map(fn {{year, month}, month_items} ->
+        profit =
+          Enum.reduce(month_items, Decimal.new(0), fn item, acc ->
+            Decimal.add(acc, Decimal.div(item.sold_price, 2))
+          end)
+
+        {year, month, Decimal.to_float(profit)}
+      end)
+
+    years =
+      by_year_month
+      |> Enum.map(fn {year, _, _} -> year end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    datasets =
+      Enum.map(years, fn year ->
+        data =
+          Enum.map(1..12, fn month ->
+            case Enum.find(by_year_month, fn {y, m, _} -> y == year && m == month end) do
+              {_, _, profit} -> profit
+              nil -> nil
+            end
+          end)
+
+        %{year: year, data: data}
+      end)
+
+    %{labels: month_labels, datasets: datasets}
   end
 
   defp build_daily_chart(items, bags) do
