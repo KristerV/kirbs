@@ -21,8 +21,8 @@ defmodule Kirbs.Jobs.ProcessItemJob do
 
       {:ok, "Item processed successfully"}
     else
-      {:error, reason} ->
-        {:error, reason}
+      {:cancel, reason} -> {:cancel, reason}
+      {:error, reason} -> {:error, reason}
     end
   end
 
