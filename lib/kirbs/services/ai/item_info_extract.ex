@@ -191,7 +191,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
       {:error, _chain, %LangChain.LangChainError{} = error} ->
         Logger.error("Gemini API error: #{error.message}. Original: #{inspect(error.original)}")
-        {:error, "AI extraction failed: #{error.message}"}
+        {:error, "AI extraction failed: #{error.message}. Original: #{inspect(error.original)}"}
 
       {:error, reason} ->
         {:error, "AI extraction failed: #{inspect(reason)}"}
@@ -221,11 +221,8 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
         case json_str do
           nil ->
-            Logger.error(
-              "Failed to extract JSON from Gemini response: #{String.slice(response_text, 0..500)}"
-            )
-
-            {:error, "Could not find JSON in AI response"}
+            {:error,
+             "Could not find JSON in AI response. Response: #{String.slice(response_text, 0..500)}"}
 
           json ->
             case Jason.decode(json) do
@@ -233,11 +230,8 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
                 parse_extracted_data(data)
 
               {:error, err} ->
-                Logger.error(
-                  "Failed to parse JSON from Gemini: #{inspect(err)}. JSON string: #{json}"
-                )
-
-                {:error, "Could not parse AI response"}
+                {:error,
+                 "Could not parse AI response JSON: #{inspect(err)}. Extracted: #{String.slice(json, 0..500)}"}
             end
         end
     end

@@ -98,7 +98,7 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
         {:ok, text_content}
 
       {:error, _chain, %LangChain.LangChainError{} = error} ->
-        {:error, "AI extraction failed: #{error.message}"}
+        {:error, "AI extraction failed: #{error.message}. Original: #{inspect(error.original)}"}
 
       {:error, reason} ->
         {:error, "AI extraction failed: #{inspect(reason)}"}
@@ -132,11 +132,13 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
                  }}
 
               _ ->
-                {:error, "Could not parse AI response"}
+                {:error,
+                 "Could not parse AI response. Response: #{String.slice(response_text, 0..500)}"}
             end
 
           _ ->
-            {:error, "Could not find JSON in AI response"}
+            {:error,
+             "Could not find JSON in AI response. Response: #{String.slice(response_text, 0..500)}"}
         end
     end
   end
