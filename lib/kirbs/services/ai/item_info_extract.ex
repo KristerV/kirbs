@@ -190,8 +190,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
         {:ok, text_content}
 
       {:error, _chain, %LangChain.LangChainError{} = error} ->
-        Logger.error("Gemini API error: #{error.message}. Original: #{inspect(error.original)}")
-        {:error, "AI extraction failed: #{error.message}. Original: #{inspect(error.original)}"}
+        {:error, format_ai_error(error)}
 
       {:error, reason} ->
         {:error, "AI extraction failed: #{inspect(reason)}"}
@@ -221,8 +220,8 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
         case json_str do
           nil ->
-            {:error,
-             "Could not find JSON in AI response. Response: #{String.slice(response_text, 0..500)}"}
+            {:cancel,
+             "Could not extract item info from photos. AI response: #{String.slice(response_text, 0..500)}"}
 
           json ->
             case Jason.decode(json) do
@@ -230,7 +229,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
                 parse_extracted_data(data)
 
               {:error, err} ->
-                {:error,
+                {:cancel,
                  "Could not parse AI response JSON: #{inspect(err)}. Extracted: #{String.slice(json, 0..500)}"}
             end
         end
@@ -329,5 +328,15 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
   defp update_item(item, extracted) do
     Ash.update(item, extracted)
+  end
+
+  defp format_ai_error(%LangChain.LangChainError{
+         original: %{"promptFeedback" => %{"blockReason" => reason}}
+       }) do
+    "AI extraction blocked by Gemini safety filter: #{reason}"
+  end
+
+  defp format_ai_error(%LangChain.LangChainError{message: message, original: original}) do
+    "AI extraction failed: #{message}. Original: #{inspect(original)}"
   end
 end
