@@ -14,6 +14,7 @@ defmodule Kirbs.Resources.Item do
     define :get_by_bag, args: [:bag_id]
     define :get_items_needing_review, args: []
     define :get_first_item_needing_review, args: []
+    define :get_first_item_needing_review_in_bag, args: [:bag_id]
     define :create
     define :update
     define :destroy
@@ -70,6 +71,15 @@ defmodule Kirbs.Resources.Item do
     read :get_first_item_needing_review do
       prepare build(sort: [created_at: :asc], limit: 1, load: :bag)
       filter expr(status in [:pending, :ai_processed])
+    end
+
+    read :get_first_item_needing_review_in_bag do
+      argument :bag_id, :uuid do
+        allow_nil? false
+      end
+
+      prepare build(sort: [created_at: :asc], limit: 1, load: :bag)
+      filter expr(bag_id == ^arg(:bag_id) and status in [:pending, :ai_processed])
     end
 
     read :top_sold_by_value do

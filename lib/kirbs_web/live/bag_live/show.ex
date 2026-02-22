@@ -3,6 +3,7 @@ defmodule KirbsWeb.BagLive.Show do
 
   alias Kirbs.Resources.{Bag, Client}
   alias Kirbs.Services.FindFirstReviewTarget
+  alias Kirbs.Services.FindNextBagItemToReview
   alias Kirbs.Services.Yaga.Importer
 
   @impl true
@@ -181,6 +182,18 @@ defmodule KirbsWeb.BagLive.Show do
          socket
          |> assign(:importing, false)
          |> put_flash(:error, "Import failed: #{reason}")}
+    end
+  end
+
+  @impl true
+  def handle_event("review_bag", _params, socket) do
+    case FindNextBagItemToReview.run(socket.assigns.bag.id) do
+      {:ok, nil} ->
+        {:noreply, put_flash(socket, :info, "No items to review in this bag!")}
+
+      {:ok, item_id} ->
+        {:noreply,
+         push_navigate(socket, to: ~p"/items/#{item_id}?bag_id=#{socket.assigns.bag.id}")}
     end
   end
 
@@ -368,6 +381,9 @@ defmodule KirbsWeb.BagLive.Show do
             <div class="flex justify-between items-center">
               <h2 class="card-title">Items ({length(@bag.items)})</h2>
               <div class="flex gap-2">
+                <button class="btn btn-secondary btn-sm" phx-click="review_bag">
+                  Review Bag
+                </button>
                 <button class="btn btn-secondary btn-sm" phx-click="show_import_modal">
                   Import from Yaga
                 </button>

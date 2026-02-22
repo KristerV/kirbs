@@ -5,6 +5,7 @@ defmodule KirbsWeb.ItemLive.Show do
   alias Kirbs.Resources.{Item, Image}
   alias Kirbs.YagaTaxonomy
   alias Kirbs.Services.FindFirstReviewTarget
+  alias Kirbs.Services.FindNextBagItemToReview
 
   @impl true
   def mount(params, _session, socket) do
@@ -88,7 +89,8 @@ defmodule KirbsWeb.ItemLive.Show do
        |> assign(:material_options, material_options)
        |> assign(:size_options, size_options)
        |> assign(:delete_confirmation, false)
-       |> assign(:selected_image, nil)}
+       |> assign(:selected_image, nil)
+       |> assign(:review_bag_id, params["bag_id"])}
     end
   end
 
@@ -223,25 +225,7 @@ defmodule KirbsWeb.ItemLive.Show do
         |> Kirbs.Jobs.UploadItemJob.new()
         |> Oban.insert()
 
-        case FindFirstReviewTarget.run() do
-          {:ok, nil} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Item uploaded and all done reviewing!")
-             |> push_navigate(to: ~p"/dashboard")}
-
-          {:ok, {:bag, bag_id}} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Item saved and upload started!")
-             |> push_navigate(to: ~p"/bags/#{bag_id}")}
-
-          {:ok, {:item, item_id}} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Item saved and upload started!")
-             |> push_navigate(to: ~p"/items/#{item_id}")}
-        end
+        navigate_to_next_review(socket)
 
       {:error, error} ->
         {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
@@ -443,6 +427,46 @@ defmodule KirbsWeb.ItemLive.Show do
 
       _ ->
         params
+    end
+  end
+
+  defp navigate_to_next_review(socket) do
+    case socket.assigns.review_bag_id do
+      nil ->
+        case FindFirstReviewTarget.run() do
+          {:ok, nil} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Item uploaded and all done reviewing!")
+             |> push_navigate(to: ~p"/dashboard")}
+
+          {:ok, {:bag, bag_id}} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Item saved and upload started!")
+             |> push_navigate(to: ~p"/bags/#{bag_id}")}
+
+          {:ok, {:item, item_id}} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Item saved and upload started!")
+             |> push_navigate(to: ~p"/items/#{item_id}")}
+        end
+
+      bag_id ->
+        case FindNextBagItemToReview.run(bag_id) do
+          {:ok, nil} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "All items in this bag reviewed!")
+             |> push_navigate(to: ~p"/bags/#{bag_id}")}
+
+          {:ok, item_id} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Item saved and upload started!")
+             |> push_navigate(to: ~p"/items/#{item_id}?bag_id=#{bag_id}")}
+        end
     end
   end
 
