@@ -26,7 +26,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
   defp load_item(item_id) do
     case Ash.get(Item, item_id, load: [:images]) do
       {:ok, item} -> {:ok, item}
-      {:error, _} -> {:error, "Item not found"}
+      {:error, _} -> {:cancel, "Item #{item_id} not found"}
     end
   end
 

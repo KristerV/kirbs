@@ -18,7 +18,7 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
   defp load_bag(bag_id) do
     case Ash.get(Bag, bag_id, load: [:images]) do
       {:ok, bag} -> {:ok, bag}
-      {:error, _} -> {:error, "Bag not found"}
+      {:error, _} -> {:cancel, "Bag #{bag_id} not found"}
     end
   end
 
