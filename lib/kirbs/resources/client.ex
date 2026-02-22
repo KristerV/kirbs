@@ -12,6 +12,9 @@ defmodule Kirbs.Resources.Client do
     define :get, args: [:id]
     define :list
     define :find_by_phone, args: [:phone]
+    define :find_by_email, args: [:email]
+    define :find_by_iban, args: [:iban]
+    define :find_by_name, args: [:name]
     define :create
     define :update
   end
@@ -30,17 +33,29 @@ defmodule Kirbs.Resources.Client do
     read :find_by_phone do
       get_by [:phone]
     end
+
+    read :find_by_email do
+      get_by [:email]
+    end
+
+    read :find_by_iban do
+      get_by [:iban]
+    end
+
+    read :find_by_name do
+      get_by [:name]
+    end
   end
 
   attributes do
     uuid_primary_key :id
 
     attribute :name, :string do
-      allow_nil? false
+      allow_nil? true
     end
 
     attribute :phone, :string do
-      allow_nil? false
+      allow_nil? true
     end
 
     attribute :email, :string do
@@ -61,6 +76,6 @@ defmodule Kirbs.Resources.Client do
   end
 
   identities do
-    identity :unique_phone, [:phone]
+    identity :unique_client, [:name, :phone, :email, :iban]
   end
 end

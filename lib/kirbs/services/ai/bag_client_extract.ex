@@ -106,40 +106,13 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
   end
 
   defp parse_response(response_text) do
-    # Try to extract JSON from the response
-    case Jason.decode(response_text) do
-      {:ok, %{"name" => name, "phone" => phone} = data} ->
-        {:ok,
-         %{
-           name: name,
-           phone: phone,
-           email: data["email"],
-           iban: data["iban"]
-         }}
-
-      {:error, _} ->
-        # Try to find JSON in the text
-        case Regex.run(~r/\{.*\}/s, response_text) do
-          [json_str] ->
-            case Jason.decode(json_str) do
-              {:ok, %{"name" => name, "phone" => phone} = data} ->
-                {:ok,
-                 %{
-                   name: name,
-                   phone: phone,
-                   email: data["email"],
-                   iban: data["iban"]
-                 }}
-
-              _ ->
-                {:cancel,
-                 "Could not parse AI response. Response: #{String.slice(response_text, 0..500)}"}
-            end
-
-          _ ->
-            {:cancel,
-             "Could not extract client info from photo. AI response: #{String.slice(response_text, 0..500)}"}
-        end
+    with [json_str] <- Regex.run(~r/\{.*\}/s, response_text),
+         {:ok, %{"name" => name} = data} <- Jason.decode(json_str) do
+      {:ok, %{name: name, phone: data["phone"], email: data["email"], iban: data["iban"]}}
+    else
+      _ ->
+        {:cancel,
+         "Could not extract client info from photo. AI response: #{String.slice(response_text, 0..500)}"}
     end
   end
 
