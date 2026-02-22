@@ -10,19 +10,26 @@ defmodule Kirbs.Jobs.ProcessItemJob do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"item_id" => item_id}}) do
-    with {:ok, item} <- ItemInfoExtract.run(item_id),
-         {:ok, _item} <- mark_as_processed(item) do
-      # Broadcast completion to LiveView
-      Phoenix.PubSub.broadcast(
-        Kirbs.PubSub,
-        "item:#{item_id}",
-        {:item_processed, item_id}
-      )
+    case ItemInfoExtract.run(item_id) do
+      {:ok, item} ->
+        mark_as_processed(item)
 
-      {:ok, "Item processed successfully"}
-    else
-      {:cancel, reason} -> {:cancel, reason}
-      {:error, reason} -> {:error, reason}
+        Phoenix.PubSub.broadcast(
+          Kirbs.PubSub,
+          "item:#{item_id}",
+          {:item_processed, item_id}
+        )
+
+        {:ok, "Item #{item_id} processed"}
+
+      {:error, :not_found} ->
+        {:ok, "Item #{item_id} not found, skipping"}
+
+      {:cancel, reason} ->
+        {:cancel, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

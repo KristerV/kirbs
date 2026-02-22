@@ -14,15 +14,15 @@ defmodule Kirbs.Jobs.ProcessBagJob do
     with {:ok, extracted_info} <- BagClientExtract.run(bag_id),
          {:ok, client} <- ClientMatch.run(extracted_info),
          {:ok, _bag} <- update_bag_with_client(bag_id, client.id) do
-      # Broadcast completion to LiveView
       Phoenix.PubSub.broadcast(
         Kirbs.PubSub,
         "bag:#{bag_id}",
         {:bag_processed, bag_id}
       )
 
-      {:ok, "Bag processed successfully"}
+      {:ok, "Bag #{bag_id} processed"}
     else
+      {:error, :not_found} -> {:ok, "Bag #{bag_id} not found, skipping"}
       {:cancel, reason} -> {:cancel, reason}
       {:error, reason} -> {:error, "Bag #{bag_id}: #{reason}"}
     end
