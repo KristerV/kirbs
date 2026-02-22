@@ -3,22 +3,58 @@ defmodule KirbsWeb.BagLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    bags =
-      Kirbs.Resources.Bag
-      |> Ash.Query.load([
-        :item_count,
-        :bag_needs_review,
-        :items_needing_review_count,
-        :client,
-        :images
-      ])
-      |> Ash.Query.sort(number: :asc)
-      |> Ash.read!()
+    {:ok, assign(socket, :page_title, "Bags")}
+  end
 
-    {:ok,
+  @impl true
+  def handle_params(params, _uri, socket) do
+    page = max((params["page"] || "1") |> String.to_integer(), 1)
+    search = params["search"] || ""
+
+    {bags, total_pages} = load_bags(search, page)
+
+    {:noreply,
      socket
      |> assign(:bags, bags)
-     |> assign(:page_title, "Bags")}
+     |> assign(:page, page)
+     |> assign(:total_pages, total_pages)
+     |> assign(:search, search)}
+  end
+
+  defp load_bags(search, page) do
+    offset = (page - 1) * 20
+
+    loads = [:item_count, :bag_needs_review, :items_needing_review_count, :client, :images]
+
+    query =
+      case Integer.parse(search) do
+        {number, ""} ->
+          Kirbs.Resources.Bag
+          |> Ash.Query.for_read(:search_by_number, %{number: number})
+
+        _ ->
+          Kirbs.Resources.Bag
+          |> Ash.Query.for_read(:list_paginated)
+      end
+      |> Ash.Query.load(loads)
+
+    result = Ash.read!(query, page: [offset: offset, limit: 20, count: true])
+
+    total_count = result.count || 0
+    total_pages = max(ceil(total_count / 20), 1)
+
+    {result.results, total_pages}
+  end
+
+  @impl true
+  def handle_event("search", %{"search" => value}, socket) do
+    params = if value == "", do: %{}, else: %{"search" => value}
+    {:noreply, push_patch(socket, to: ~p"/bags?#{params}")}
+  end
+
+  @impl true
+  def handle_event("clear_search", _params, socket) do
+    {:noreply, push_patch(socket, to: ~p"/bags")}
   end
 
   @impl true
@@ -28,9 +64,25 @@ defmodule KirbsWeb.BagLive.Index do
       <div class="max-w-6xl mx-auto p-6">
         <h1 class="text-3xl font-bold mb-6">Bags</h1>
 
+        <div class="mb-4">
+          <form phx-submit="search" class="flex gap-2">
+            <input
+              type="number"
+              name="search"
+              value={@search}
+              placeholder="Search by bag number..."
+              class="input input-bordered w-full max-w-xs"
+            />
+            <button type="submit" class="btn btn-primary">Search</button>
+            <%= if @search != "" do %>
+              <button type="button" phx-click="clear_search" class="btn btn-ghost">Clear</button>
+            <% end %>
+          </form>
+        </div>
+
         <%= if Enum.empty?(@bags) do %>
           <div class="alert alert-info">
-            <span>No bags yet. Start by creating a new bag!</span>
+            <span>No bags found.</span>
           </div>
         <% else %>
           <%!-- Desktop table view --%>
@@ -145,9 +197,41 @@ defmodule KirbsWeb.BagLive.Index do
               </div>
             <% end %>
           </div>
+
+          <%!-- Pagination --%>
+          <div class="flex justify-center items-center gap-4 mt-6">
+            <%= if @page > 1 do %>
+              <.link
+                patch={~p"/bags?#{pagination_params(@page - 1, @search)}"}
+                class="btn btn-sm"
+              >
+                Previous
+              </.link>
+            <% else %>
+              <button class="btn btn-sm" disabled>Previous</button>
+            <% end %>
+
+            <span class="text-sm">Page {@page} of {@total_pages}</span>
+
+            <%= if @page < @total_pages do %>
+              <.link
+                patch={~p"/bags?#{pagination_params(@page + 1, @search)}"}
+                class="btn btn-sm"
+              >
+                Next
+              </.link>
+            <% else %>
+              <button class="btn btn-sm" disabled>Next</button>
+            <% end %>
+          </div>
         <% end %>
       </div>
     </div>
     """
+  end
+
+  defp pagination_params(page, search) do
+    params = %{"page" => page}
+    if search == "", do: params, else: Map.put(params, "search", search)
   end
 end

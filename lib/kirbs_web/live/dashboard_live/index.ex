@@ -10,7 +10,7 @@ defmodule KirbsWeb.DashboardLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     items = Item.list!()
-    bags = Bag.list!()
+    bags = Bag |> Ash.read!()
 
     sold_items_list = Enum.filter(items, &(&1.status == :sold && &1.sold_price != nil))
     sold_count = length(sold_items_list)

@@ -10,7 +10,8 @@ defmodule Kirbs.Resources.Bag do
 
   code_interface do
     define :get, args: [:id]
-    define :list
+    define :list_paginated
+    define :search_by_number, args: [:number]
     define :get_bags_needing_review, args: []
     define :get_first_bag_needing_review, args: []
     define :create
@@ -26,8 +27,20 @@ defmodule Kirbs.Resources.Bag do
       get_by [:id]
     end
 
-    read :list do
-      prepare build(sort: [number: :asc])
+    read :list_paginated do
+      prepare build(sort: [number: :desc])
+
+      pagination offset?: true, countable: true, default_limit: 20
+    end
+
+    read :search_by_number do
+      argument :number, :integer, allow_nil?: false
+
+      prepare build(sort: [number: :desc])
+
+      filter expr(number == ^arg(:number))
+
+      pagination offset?: true, countable: true, default_limit: 20
     end
 
     read :get_bags_needing_review do
