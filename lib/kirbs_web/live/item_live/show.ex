@@ -95,15 +95,8 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
-  def handle_event("save_item", %{"item" => item_params, "action" => "save_and_upload"}, socket) do
-    # Redirect to save_and_upload handler
-    handle_event("save_and_upload", %{"item" => item_params}, socket)
-  end
-
-  @impl true
-  def handle_event("save_item", %{"item" => item_params, "action" => "save_upload_next"}, socket) do
-    # Redirect to save_upload_next handler
-    handle_event("save_upload_next", %{"item" => item_params}, socket)
+  def handle_event("save_item", %{"item" => item_params, "action" => "save_next"}, socket) do
+    handle_event("save_next", %{"item" => item_params}, socket)
   end
 
   @impl true
@@ -158,10 +151,19 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
-  def handle_event("save_and_upload", %{"item" => item_params}, socket) do
-    # Parse array fields
+  def handle_event("save_next", %{"item" => item_params}, socket) do
     colors = parse_live_select_array(item_params["colors"])
     materials = parse_live_select_array(item_params["materials"])
+
+    has_images = socket.assigns.images != []
+    category_filled = item_params["suggested_category"] not in [nil, ""]
+    quality_filled = item_params["quality"] not in [nil, ""]
+    listed_price_filled = item_params["listed_price"] not in [nil, ""]
+
+    is_complete =
+      has_images && category_filled && quality_filled && listed_price_filled
+
+    new_status = if is_complete, do: "reviewed", else: "pending"
 
     update_params =
       item_params
@@ -175,56 +177,12 @@ defmodule KirbsWeb.ItemLive.Show do
       ])
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
-      |> Map.put("status", "reviewed")
+      |> Map.put("status", new_status)
       |> convert_to_atoms()
       |> convert_decimal()
 
     case Item.update(socket.assigns.item, update_params) do
-      {:ok, item} ->
-        # Queue upload job
-        %{item_id: item.id}
-        |> Kirbs.Jobs.UploadItemJob.new()
-        |> Oban.insert()
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Item saved and upload started!")
-         |> assign(:item, item)}
-
-      {:error, error} ->
-        {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
-    end
-  end
-
-  @impl true
-  def handle_event("save_upload_next", %{"item" => item_params}, socket) do
-    # Parse array fields
-    colors = parse_live_select_array(item_params["colors"])
-    materials = parse_live_select_array(item_params["materials"])
-
-    update_params =
-      item_params
-      |> Map.take([
-        "brand",
-        "size",
-        "description",
-        "quality",
-        "suggested_category",
-        "listed_price"
-      ])
-      |> Map.put("colors", colors)
-      |> Map.put("materials", materials)
-      |> Map.put("status", "reviewed")
-      |> convert_to_atoms()
-      |> convert_decimal()
-
-    case Item.update(socket.assigns.item, update_params) do
-      {:ok, item} ->
-        # Queue upload job
-        %{item_id: item.id}
-        |> Kirbs.Jobs.UploadItemJob.new()
-        |> Oban.insert()
-
+      {:ok, _item} ->
         navigate_to_next_review(socket)
 
       {:error, error} ->
@@ -437,19 +395,19 @@ defmodule KirbsWeb.ItemLive.Show do
           {:ok, nil} ->
             {:noreply,
              socket
-             |> put_flash(:info, "Item uploaded and all done reviewing!")
+             |> put_flash(:info, "Item saved! All done reviewing.")
              |> push_navigate(to: ~p"/dashboard")}
 
           {:ok, {:bag, bag_id}} ->
             {:noreply,
              socket
-             |> put_flash(:info, "Item saved and upload started!")
+             |> put_flash(:info, "Item saved!")
              |> push_navigate(to: ~p"/bags/#{bag_id}")}
 
           {:ok, {:item, item_id}} ->
             {:noreply,
              socket
-             |> put_flash(:info, "Item saved and upload started!")
+             |> put_flash(:info, "Item saved!")
              |> push_navigate(to: ~p"/items/#{item_id}")}
         end
 
@@ -464,7 +422,7 @@ defmodule KirbsWeb.ItemLive.Show do
           {:ok, item_id} ->
             {:noreply,
              socket
-             |> put_flash(:info, "Item saved and upload started!")
+             |> put_flash(:info, "Item saved!")
              |> push_navigate(to: ~p"/items/#{item_id}?bag_id=#{bag_id}")}
         end
     end
@@ -784,19 +742,10 @@ defmodule KirbsWeb.ItemLive.Show do
             <button
               type="submit"
               name="action"
-              value="save_and_upload"
-              class="btn btn-primary"
-              disabled={@item.status == :uploaded_to_yaga}
-            >
-              Save and Upload
-            </button>
-            <button
-              type="submit"
-              name="action"
-              value="save_upload_next"
+              value="save_next"
               class="btn btn-primary"
             >
-              Save, Upload, Next
+              Save & Next
             </button>
           </div>
         </form>
