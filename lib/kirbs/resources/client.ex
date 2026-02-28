@@ -76,6 +76,6 @@ defmodule Kirbs.Resources.Client do
   end
 
   identities do
-    identity :unique_client, [:name, :phone, :email, :iban]
+    identity :unique_client, [:name, :phone, :email, :iban], nils_distinct?: false
   end
 end
