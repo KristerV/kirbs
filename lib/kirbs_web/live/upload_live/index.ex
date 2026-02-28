@@ -95,63 +95,56 @@ defmodule KirbsWeb.UploadLive.Index do
             </div>
           </div>
         <% else %>
-          <div class="card bg-base-100 shadow-xl">
-            <div class="card-body p-0">
-              <div class="overflow-x-auto">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Photo</th>
-                      <th>Brand</th>
-                      <th>Bag</th>
-                      <th>AI Price</th>
-                      <th>Listed Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <%= for item <- @items do %>
-                      <tr>
-                        <td>
-                          <.link navigate={~p"/items/#{item.id}"}>
-                            <% img = first_non_label_image(item) %>
-                            <%= if img do %>
-                              <div class="avatar">
-                                <div class="w-16 h-16 rounded">
-                                  <img src={"/uploads/#{img.path}"} alt="Item" />
-                                </div>
-                              </div>
-                            <% else %>
-                              <div class="w-16 h-16 bg-base-200 rounded flex items-center justify-center text-xs">
-                                No photo
-                              </div>
-                            <% end %>
-                          </.link>
-                        </td>
-                        <td class="font-medium">{item.brand || "—"}</td>
-                        <td>{item.bag.bag_number}</td>
-                        <td>
-                          <%= if item.ai_suggested_price do %>
-                            {item.ai_suggested_price}€
-                          <% else %>
-                            —
-                          <% end %>
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            step="0.01"
-                            class="input input-bordered input-sm w-24"
-                            value={Map.get(@price_overrides, item.id, item.listed_price)}
-                            phx-blur="update_price"
-                            phx-value-item-id={item.id}
-                          />
-                        </td>
-                      </tr>
+          <div class="flex flex-col gap-4 items-center">
+            <%= for item <- @items do %>
+              <div class="card card-side bg-base-100 shadow-xl items-center w-fit">
+                <.link navigate={~p"/items/#{item.id}"}>
+                  <% img = first_non_label_image(item) %>
+                  <%= if img do %>
+                    <figure class="w-40 h-40 shrink-0">
+                      <img
+                        src={"/uploads/#{img.path}"}
+                        alt="Item"
+                        class="w-full h-full object-cover"
+                      />
+                    </figure>
+                  <% else %>
+                    <figure class="w-40 h-40 shrink-0 bg-base-200 flex items-center justify-center">
+                      <span class="text-sm">No photo</span>
+                    </figure>
+                  <% end %>
+                </.link>
+                <div class="card-body py-4 justify-center gap-1">
+                  <p>{item.brand || "—"}</p>
+                  <p>{item.size || "—"}</p>
+                  <p>{Enum.join(item.materials || [], ", ")}</p>
+                  <p>
+                    AI:
+                    <%= if item.ai_suggested_price do %>
+                      {item.ai_suggested_price}€
+                    <% else %>
+                      —
                     <% end %>
-                  </tbody>
-                </table>
+                  </p>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      class="input input-bordered input-sm w-24"
+                      value={Map.get(@price_overrides, item.id, item.listed_price)}
+                      phx-blur="update_price"
+                      phx-value-item-id={item.id}
+                    /> €
+                  </div>
+                </div>
               </div>
-            </div>
+            <% end %>
+          </div>
+
+          <div class="flex justify-end mt-6">
+            <button class="btn btn-primary" phx-click="upload_all">
+              Upload All ({length(@items)})
+            </button>
           </div>
         <% end %>
       </div>
