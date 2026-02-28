@@ -16,6 +16,7 @@ defmodule Kirbs.Resources.Bag do
     define :get_first_bag_needing_review, args: []
     define :create
     define :update
+    define :destroy
   end
 
   actions do

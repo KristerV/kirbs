@@ -1,7 +1,7 @@
 defmodule KirbsWeb.BagLive.Show do
   use KirbsWeb, :live_view
 
-  alias Kirbs.Resources.{Bag, Client}
+  alias Kirbs.Resources.{Bag, Client, Image}
   alias Kirbs.Services.FindFirstReviewTarget
   alias Kirbs.Services.FindNextBagItemToReview
   alias Kirbs.Services.Yaga.Importer
@@ -26,7 +26,8 @@ defmodule KirbsWeb.BagLive.Show do
      |> assign(:editing_client, false)
      |> assign(:show_import_modal, false)
      |> assign(:import_links, "")
-     |> assign(:importing, false)}
+     |> assign(:importing, false)
+     |> assign(:delete_confirmation, false)}
   end
 
   @impl true
@@ -215,6 +216,46 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
+  def handle_event("delete_bag", _params, socket) do
+    if socket.assigns.delete_confirmation do
+      bag = socket.assigns.bag
+      upload_dir = Application.get_env(:kirbs, :image_upload_dir)
+
+      # Delete item images and items
+      Enum.each(bag.items, fn item ->
+        Enum.each(item.images, fn image ->
+          File.rm(Path.join(upload_dir, image.path))
+          Image.destroy(image)
+        end)
+
+        Ash.destroy!(item)
+      end)
+
+      # Delete bag images
+      Enum.each(bag.images, fn image ->
+        File.rm(Path.join(upload_dir, image.path))
+        Image.destroy(image)
+      end)
+
+      case Bag.destroy(bag) do
+        :ok ->
+          {:noreply,
+           socket
+           |> put_flash(:info, "Bag deleted successfully")
+           |> push_navigate(to: ~p"/bags")}
+
+        {:error, _error} ->
+          {:noreply,
+           socket
+           |> assign(:delete_confirmation, false)
+           |> put_flash(:error, "Failed to delete bag")}
+      end
+    else
+      {:noreply, assign(socket, :delete_confirmation, true)}
+    end
+  end
+
+  @impl true
   def handle_info({:bag_processed, _bag_id}, socket) do
     # Reload bag data when AI processing completes
     bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :images, items: [:images]])
@@ -230,6 +271,12 @@ defmodule KirbsWeb.BagLive.Show do
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Bag #{@bag.number}</h1>
           <div class="flex gap-2">
+            <button
+              class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: "btn-ghost"}"}
+              phx-click="delete_bag"
+            >
+              {if @delete_confirmation, do: "Confirm Delete?", else: "Delete"}
+            </button>
             <button class="btn btn-accent" phx-click="review_next">
               Review Next
             </button>
