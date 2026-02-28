@@ -35,7 +35,19 @@ defmodule Kirbs.Services.Ai.ClientMatch do
     if Enum.all?(Map.values(attrs), &is_nil/1) do
       {:error, "Cannot create client with no information"}
     else
-      Ash.create(Client, attrs)
+      case Ash.create(Client, attrs) do
+        {:ok, client} -> {:ok, client}
+        {:error, _} -> find_existing(info)
+      end
+    end
+  end
+
+  defp find_existing(info) do
+    with :not_found <- find_by(:phone, info[:phone]),
+         :not_found <- find_by(:email, info[:email]),
+         :not_found <- find_by(:iban, info[:iban]),
+         :not_found <- find_by(:name, info[:name]) do
+      {:error, "Client could not be created or found"}
     end
   end
 end

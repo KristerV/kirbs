@@ -43,7 +43,9 @@ defmodule Kirbs.Resources.Client do
     end
 
     read :find_by_name do
-      get_by [:name]
+      get? true
+      argument :name, :string, allow_nil?: false
+      filter expr(fragment("lower(?) = lower(?)", name, ^arg(:name)))
     end
   end
 
