@@ -59,7 +59,8 @@ defmodule KirbsWeb.DashboardLive.Index do
       Decimal.sub(client_share, total_paid) |> Decimal.round(2) |> Decimal.to_float()
 
     # Row 2: Processing stats
-    needs_review = Enum.count(items, &(&1.status in [:pending, :ai_processed, :reviewed]))
+    needs_review = Enum.count(items, &(&1.status in [:pending, :ai_processed]))
+    needs_upload = Enum.count(items, &(&1.status == :reviewed))
 
     # Avg items per bag (excluding empty bags)
     items_by_bag = Enum.group_by(items, & &1.bag_id)
@@ -95,6 +96,7 @@ defmodule KirbsWeb.DashboardLive.Index do
      |> assign(:sell_through_rate, sell_through_rate)
      |> assign(:unsent_payouts, unsent_payouts)
      |> assign(:needs_review, needs_review)
+     |> assign(:needs_upload, needs_upload)
      |> assign(:uploaded_items, uploaded_count)
      |> assign(:avg_items_per_bag, avg_items_per_bag)
      |> assign(:upload_dir_size, upload_dir_size)
@@ -204,11 +206,18 @@ defmodule KirbsWeb.DashboardLive.Index do
         </div>
         
     <!-- Processing Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 mb-8">
           <div class="stats bg-base-100 shadow">
             <div class="stat">
               <div class="stat-title">Needs Review</div>
               <div class="stat-value text-warning">{@needs_review}</div>
+            </div>
+          </div>
+
+          <div class="stats bg-base-100 shadow">
+            <div class="stat">
+              <div class="stat-title">Needs Upload</div>
+              <div class="stat-value text-orange-400">{@needs_upload}</div>
             </div>
           </div>
 
