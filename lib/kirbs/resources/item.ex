@@ -24,6 +24,7 @@ defmodule Kirbs.Resources.Item do
     define :recently_uploaded, args: []
     define :recently_sold, args: []
     define :list_reviewed_by_bag, args: [:bag_id]
+    define :list_by_combination_group, args: [:combination_group]
   end
 
   actions do
@@ -45,7 +46,8 @@ defmodule Kirbs.Resources.Item do
       :yaga_slug,
       :upload_error,
       :uploaded_at,
-      :sold_at
+      :sold_at,
+      :combination_group
     ]
 
     defaults [:create, :read, :update, :destroy]
@@ -109,6 +111,12 @@ defmodule Kirbs.Resources.Item do
       filter expr(bag_id == ^arg(:bag_id) and status == :reviewed)
     end
 
+    read :list_by_combination_group do
+      argument :combination_group, :uuid, allow_nil?: false
+      prepare build(load: [:bag])
+      filter expr(combination_group == ^arg(:combination_group))
+    end
+
     update :clear_ai_data do
       accept []
       require_atomic? false
@@ -162,6 +170,9 @@ defmodule Kirbs.Resources.Item do
                     :upload_failed
                   ]
     end
+
+    # Combinations
+    attribute :combination_group, :uuid
 
     # Yaga integration
     attribute :yaga_id, :integer

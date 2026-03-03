@@ -6,7 +6,7 @@ defmodule KirbsWeb.UploadLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, load_next_bag(socket)}
+    {:ok, socket |> assign(:selected, MapSet.new()) |> load_next_bag()}
   end
 
   @impl true
@@ -46,6 +46,47 @@ defmodule KirbsWeb.UploadLive.Index do
     end
   end
 
+  @impl true
+  def handle_event("toggle_select", %{"id" => item_id}, socket) do
+    selected =
+      if MapSet.member?(socket.assigns.selected, item_id) do
+        MapSet.delete(socket.assigns.selected, item_id)
+      else
+        MapSet.put(socket.assigns.selected, item_id)
+      end
+
+    {:noreply, assign(socket, :selected, selected)}
+  end
+
+  @impl true
+  def handle_event("link_combination", _params, socket) do
+    group = Ash.UUID.generate()
+
+    for item <- socket.assigns.items,
+        MapSet.member?(socket.assigns.selected, item.id) do
+      Item.update(item, %{combination_group: group})
+    end
+
+    {:noreply, socket |> assign(:selected, MapSet.new()) |> reload_items()}
+  end
+
+  @impl true
+  def handle_event("unlink_combination", %{"group" => group}, socket) do
+    for item <- socket.assigns.items,
+        item.combination_group == group do
+      Item.update(item, %{combination_group: nil})
+    end
+
+    {:noreply, reload_items(socket)}
+  end
+
+  defp reload_items(socket) do
+    case socket.assigns.bag do
+      nil -> socket
+      bag -> assign(socket, :items, Item.list_reviewed_by_bag!(bag.id))
+    end
+  end
+
   defp load_next_bag(socket) do
     case Bag.get_first_bag_ready_for_upload!() do
       [] ->
@@ -53,6 +94,7 @@ defmodule KirbsWeb.UploadLive.Index do
         |> assign(:bag, nil)
         |> assign(:items, [])
         |> assign(:price_overrides, %{})
+        |> assign(:selected, MapSet.new())
 
       [bag] ->
         items = Item.list_reviewed_by_bag!(bag.id)
@@ -61,6 +103,7 @@ defmodule KirbsWeb.UploadLive.Index do
         |> assign(:bag, bag)
         |> assign(:items, items)
         |> assign(:price_overrides, %{})
+        |> assign(:selected, MapSet.new())
     end
   end
 
@@ -80,6 +123,27 @@ defmodule KirbsWeb.UploadLive.Index do
 
   defp first_non_label_image(item) do
     Enum.find(item.images, fn img -> !img.is_label end)
+  end
+
+  defp combination_groups(items) do
+    items
+    |> Enum.filter(& &1.combination_group)
+    |> Enum.group_by(& &1.combination_group)
+  end
+
+  @group_colors ~w(border-primary border-secondary border-accent border-info border-success border-warning)
+
+  defp group_border_class(nil, _items), do: ""
+
+  defp group_border_class(group, items) do
+    groups =
+      items
+      |> Enum.map(& &1.combination_group)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    idx = Enum.find_index(groups, &(&1 == group)) || 0
+    Enum.at(@group_colors, rem(idx, length(@group_colors)))
   end
 
   @impl true
@@ -117,9 +181,37 @@ defmodule KirbsWeb.UploadLive.Index do
             </div>
           </div>
 
+          <div class="flex items-center gap-2 mb-4">
+            <button
+              class="btn btn-sm btn-outline"
+              phx-click="link_combination"
+              disabled={MapSet.size(@selected) < 2}
+            >
+              Link combination ({MapSet.size(@selected)})
+            </button>
+            <%= for {group, _items} <- combination_groups(@items) do %>
+              <button
+                class={"btn btn-sm btn-outline #{group_border_class(group, @items)}"}
+                phx-click="unlink_combination"
+                phx-value-group={group}
+              >
+                Unlink
+              </button>
+            <% end %>
+          </div>
+
           <div class="flex flex-col gap-4 items-center">
             <%= for item <- @items do %>
-              <div class="card card-side bg-base-100 shadow-xl items-center w-fit">
+              <div class={"card card-side bg-base-100 shadow-xl items-center w-fit border-2 #{group_border_class(item.combination_group, @items)}"}>
+                <div class="flex items-center pl-2">
+                  <input
+                    type="checkbox"
+                    class="checkbox"
+                    checked={MapSet.member?(@selected, item.id)}
+                    phx-click="toggle_select"
+                    phx-value-id={item.id}
+                  />
+                </div>
                 <.link navigate={~p"/items/#{item.id}"}>
                   <% img = first_non_label_image(item) %>
                   <%= if img do %>
@@ -158,6 +250,11 @@ defmodule KirbsWeb.UploadLive.Index do
                       phx-value-item-id={item.id}
                     /> €
                   </div>
+                  <%= if item.combination_group do %>
+                    <span class={"badge badge-sm #{group_border_class(item.combination_group, @items)}"}>
+                      combo
+                    </span>
+                  <% end %>
                 </div>
               </div>
             <% end %>
