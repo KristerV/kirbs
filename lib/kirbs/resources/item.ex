@@ -23,7 +23,7 @@ defmodule Kirbs.Resources.Item do
     define :fastest_sold, args: []
     define :recently_uploaded, args: []
     define :recently_sold, args: []
-    define :list_reviewed, args: []
+    define :list_reviewed_by_bag, args: [:bag_id]
   end
 
   actions do
@@ -103,9 +103,10 @@ defmodule Kirbs.Resources.Item do
       filter expr(status == :sold and not is_nil(sold_at))
     end
 
-    read :list_reviewed do
-      prepare build(sort: [created_at: :asc], limit: 10, load: [:images, :bag])
-      filter expr(status == :reviewed)
+    read :list_reviewed_by_bag do
+      argument :bag_id, :uuid, allow_nil?: false
+      prepare build(sort: [created_at: :asc], load: [:images])
+      filter expr(bag_id == ^arg(:bag_id) and status == :reviewed)
     end
 
     update :clear_ai_data do

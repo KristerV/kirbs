@@ -1,16 +1,12 @@
 defmodule KirbsWeb.UploadLive.Index do
   use KirbsWeb, :live_view
 
+  alias Kirbs.Resources.Bag
   alias Kirbs.Resources.Item
 
   @impl true
   def mount(_params, _session, socket) do
-    items = Item.list_reviewed!()
-
-    {:ok,
-     socket
-     |> assign(:items, items)
-     |> assign(:price_overrides, %{})}
+    {:ok, load_next_bag(socket)}
   end
 
   @impl true
@@ -33,6 +29,8 @@ defmodule KirbsWeb.UploadLive.Index do
     if has_empty do
       {:noreply, put_flash(socket, :error, "All items must have a listed price.")}
     else
+      bag = socket.assigns.bag
+
       for item <- socket.assigns.items do
         maybe_update_price(item, socket.assigns.price_overrides[item.id])
 
@@ -41,13 +39,28 @@ defmodule KirbsWeb.UploadLive.Index do
         |> Oban.insert()
       end
 
-      items = Item.list_reviewed!()
-
       {:noreply,
        socket
-       |> assign(:items, items)
-       |> assign(:price_overrides, %{})
-       |> put_flash(:info, "All items queued for upload!")}
+       |> load_next_bag()
+       |> put_flash(:info, "Bag ##{bag.number} queued for upload!")}
+    end
+  end
+
+  defp load_next_bag(socket) do
+    case Bag.get_first_bag_ready_for_upload!() do
+      [] ->
+        socket
+        |> assign(:bag, nil)
+        |> assign(:items, [])
+        |> assign(:price_overrides, %{})
+
+      [bag] ->
+        items = Item.list_reviewed_by_bag!(bag.id)
+
+        socket
+        |> assign(:bag, bag)
+        |> assign(:items, items)
+        |> assign(:price_overrides, %{})
     end
   end
 
@@ -76,14 +89,14 @@ defmodule KirbsWeb.UploadLive.Index do
       <div class="max-w-6xl mx-auto p-6">
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Upload to Yaga</h1>
-          <%= if @items != [] do %>
+          <%= if @bag do %>
             <button class="btn btn-primary" phx-click="upload_all">
               Upload All ({length(@items)})
             </button>
           <% end %>
         </div>
 
-        <%= if @items == [] do %>
+        <%= if is_nil(@bag) do %>
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body text-center">
               <p class="text-lg">All items uploaded!</p>
@@ -95,6 +108,15 @@ defmodule KirbsWeb.UploadLive.Index do
             </div>
           </div>
         <% else %>
+          <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body py-4">
+              <h2 class="card-title">Bag #{@bag.number}</h2>
+              <%= if @bag.client do %>
+                <p>{@bag.client.name} — {@bag.client.phone}</p>
+              <% end %>
+            </div>
+          </div>
+
           <div class="flex flex-col gap-4 items-center">
             <%= for item <- @items do %>
               <div class="card card-side bg-base-100 shadow-xl items-center w-fit">
