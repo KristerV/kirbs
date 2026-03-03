@@ -41,11 +41,8 @@ defmodule Kirbs.Services.Yaga.Uploader do
   defp validate_item(item) do
     errors = []
 
-    # Filter out label images - only count actual item photos
-    item_images = Enum.reject(item.images || [], & &1.is_label)
-
     errors =
-      if Enum.empty?(item_images) do
+      if Enum.empty?(item.images || []) do
         ["at least 1 photo required" | errors]
       else
         errors
@@ -106,10 +103,8 @@ defmodule Kirbs.Services.Yaga.Uploader do
   end
 
   defp upload_photos(jwt, product, item) do
-    # Filter out label images - only upload actual item photos
     images =
       item.images
-      |> Enum.reject(& &1.is_label)
       |> Enum.sort_by(& &1.order)
 
     with {:ok, file_names} <- upload_photos_to_s3(jwt, product, images),
