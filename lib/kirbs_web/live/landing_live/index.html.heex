@@ -596,8 +596,13 @@
       <div class="guide">
         <h3>📦 Müügi lihtne juhend</h3>
         <ol>
-          <li>Pakenda riided ära</li>
-          <li>Lisa sisse paber oma nime, kontaktandmete ja pangakontoga</li>
+          <li>
+            <a href="#" phx-click="show_modal" phx-value-type="register" class="modal-link">
+              Registreeri oma info
+            </a>
+            — selleks, et me teaksime, kelle riided saabusid
+          </li>
+          <li>Pakenda riided ära ja lisa sisse paber oma telefoni numbriga</li>
           <li>
             Saada pakk
             <a href="#" phx-click="show_modal" phx-value-type="parcel" class="modal-link">
@@ -654,6 +659,98 @@
       </div>
     </section>
   </div>
+
+  <%= if @show_modal == "register" do %>
+    <div class="modal-overlay" phx-click="close_modal">
+      <div class="modal-content" phx-click="ignore">
+        <button class="modal-close" phx-click="close_modal">&times;</button>
+        <%= if @registration_success do %>
+          <h3>✅ {@registration_message}</h3>
+          <p style="text-align: center; margin-top: 20px;">
+            Nüüd pane riided pakki ja lisa sisse paber oma telefoni numbriga.
+          </p>
+        <% else %>
+          <h3>📝 Registreeri oma andmed</h3>
+          <form
+            phx-submit="register_client"
+            phx-change="validate_registration"
+            style="display: flex; flex-direction: column; gap: 15px;"
+          >
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">
+                Nimi
+              </label>
+              <input
+                type="text"
+                name="registration[name]"
+                required
+                style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 1em; transition: border-color 0.2s;"
+              />
+              <%= if @registration_errors["name"] do %>
+                <p style="color: #e74c3c; font-size: 0.85em; margin-top: 4px;">
+                  {@registration_errors["name"]}
+                </p>
+              <% end %>
+            </div>
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">
+                Telefon
+              </label>
+              <input
+                type="text"
+                name="registration[phone]"
+                required
+                style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 1em; transition: border-color 0.2s;"
+              />
+              <%= if @registration_errors["phone"] do %>
+                <p style="color: #e74c3c; font-size: 0.85em; margin-top: 4px;">
+                  {@registration_errors["phone"]}
+                </p>
+              <% end %>
+            </div>
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">
+                E-mail
+              </label>
+              <input
+                type="email"
+                name="registration[email]"
+                required
+                style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 1em; transition: border-color 0.2s;"
+              />
+              <%= if @registration_errors["email"] do %>
+                <p style="color: #e74c3c; font-size: 0.85em; margin-top: 4px;">
+                  {@registration_errors["email"]}
+                </p>
+              <% end %>
+            </div>
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">
+                IBAN
+              </label>
+              <input
+                type="text"
+                name="registration[iban]"
+                required
+                style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 1em; transition: border-color 0.2s;"
+              />
+              <%= if @registration_errors["iban"] do %>
+                <p style="color: #e74c3c; font-size: 0.85em; margin-top: 4px;">
+                  {@registration_errors["iban"]}
+                </p>
+              <% end %>
+            </div>
+            <button
+              type="submit"
+              style="background: linear-gradient(135deg, #FF7F3F, #FFB366); color: white; border: none; padding: 14px; border-radius: 10px; font-size: 1.1em; font-weight: 600; cursor: pointer; margin-top: 10px; transition: opacity 0.2s;"
+            >
+              Registreeri
+            </button>
+          </form>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
   <%= if @show_modal == "parcel" do %>
     <div class="modal-overlay" phx-click="close_modal">

@@ -17,12 +17,19 @@ defmodule Kirbs.Resources.Client do
     define :find_by_name, args: [:name]
     define :create
     define :update
+    define :register
   end
 
   actions do
-    default_accept [:name, :phone, :email, :iban]
+    default_accept [:name, :phone, :email, :iban, :source]
 
     defaults [:create, :read, :update, :destroy]
+
+    create :register do
+      accept [:name, :phone, :email, :iban]
+      validate present([:name, :phone, :email, :iban])
+      change set_attribute(:source, "online")
+    end
 
     read :get do
       get_by [:id]
@@ -65,6 +72,10 @@ defmodule Kirbs.Resources.Client do
     end
 
     attribute :iban, :string do
+      allow_nil? true
+    end
+
+    attribute :source, :string do
       allow_nil? true
     end
 
