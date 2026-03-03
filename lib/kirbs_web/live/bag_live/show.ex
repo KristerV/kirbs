@@ -1,7 +1,7 @@
 defmodule KirbsWeb.BagLive.Show do
   use KirbsWeb, :live_view
 
-  alias Kirbs.Resources.{Bag, Client, Image}
+  alias Kirbs.Resources.{Bag, Client, Image, Item}
   alias Kirbs.Services.FindFirstReviewTarget
   alias Kirbs.Services.FindNextBagItemToReview
   alias Kirbs.Services.Yaga.Importer
@@ -27,7 +27,8 @@ defmodule KirbsWeb.BagLive.Show do
      |> assign(:show_import_modal, false)
      |> assign(:import_links, "")
      |> assign(:importing, false)
-     |> assign(:delete_confirmation, false)}
+     |> assign(:delete_confirmation, false)
+     |> assign(:selected, MapSet.new())}
   end
 
   @impl true
@@ -256,6 +257,45 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
+  def handle_event("toggle_select", %{"id" => item_id}, socket) do
+    selected =
+      if MapSet.member?(socket.assigns.selected, item_id) do
+        MapSet.delete(socket.assigns.selected, item_id)
+      else
+        MapSet.put(socket.assigns.selected, item_id)
+      end
+
+    {:noreply, assign(socket, :selected, selected)}
+  end
+
+  @impl true
+  def handle_event("link_combination", _params, socket) do
+    group = Ash.UUID.generate()
+
+    for item <- socket.assigns.bag.items,
+        MapSet.member?(socket.assigns.selected, item.id) do
+      Item.update(item, %{combination_group: group})
+    end
+
+    {:noreply, socket |> assign(:selected, MapSet.new()) |> reload_bag()}
+  end
+
+  @impl true
+  def handle_event("unlink_combination", %{"group" => group}, socket) do
+    for item <- socket.assigns.bag.items,
+        item.combination_group == group do
+      Item.update(item, %{combination_group: nil})
+    end
+
+    {:noreply, reload_bag(socket)}
+  end
+
+  defp reload_bag(socket) do
+    bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :images, items: [:images]])
+    assign(socket, :bag, bag)
+  end
+
+  @impl true
   def handle_info({:bag_processed, _bag_id}, socket) do
     # Reload bag data when AI processing completes
     bag = Bag.get!(socket.assigns.bag.id) |> Ash.load!([:client, :images, items: [:images]])
@@ -440,6 +480,25 @@ defmodule KirbsWeb.BagLive.Show do
               </div>
             </div>
 
+            <div class="flex items-center gap-2 mt-4">
+              <button
+                class="btn btn-sm btn-outline"
+                phx-click="link_combination"
+                disabled={MapSet.size(@selected) < 2}
+              >
+                Link combination ({MapSet.size(@selected)})
+              </button>
+              <%= for {group, _items} <- combination_groups(@bag.items) do %>
+                <button
+                  class={"btn btn-sm btn-outline #{group_border_class(group, @bag.items)}"}
+                  phx-click="unlink_combination"
+                  phx-value-group={group}
+                >
+                  Unlink
+                </button>
+              <% end %>
+            </div>
+
             <%= if @bag.items == [] do %>
               <div class="alert alert-info mt-4">
                 <span>No items in this bag</span>
@@ -447,9 +506,18 @@ defmodule KirbsWeb.BagLive.Show do
             <% else %>
               <div class="grid gap-4 mt-4">
                 <%= for item <- @bag.items do %>
-                  <div class="card bg-base-200">
+                  <div class={"card bg-base-200 border-2 #{group_border_class(item.combination_group, @bag.items)}"}>
                     <div class="card-body">
                       <div class="flex gap-4 items-start">
+                        <div class="flex items-center">
+                          <input
+                            type="checkbox"
+                            class="checkbox"
+                            checked={MapSet.member?(@selected, item.id)}
+                            phx-click="toggle_select"
+                            phx-value-id={item.id}
+                          />
+                        </div>
                         <%= if item.images != [] do %>
                           <div class="w-24 h-24 bg-base-300 rounded-lg overflow-hidden flex-shrink-0">
                             <img
@@ -474,6 +542,11 @@ defmodule KirbsWeb.BagLive.Show do
                             <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
                               {item.status}
                             </div>
+                            <%= if item.combination_group do %>
+                              <span class={"badge badge-sm #{group_border_class(item.combination_group, @bag.items)}"}>
+                                combo
+                              </span>
+                            <% end %>
                             <%= if item.status == :sold && item.sold_price do %>
                               <span class="text-sm text-success font-semibold">
                                 €{item.sold_price}
@@ -647,6 +720,27 @@ defmodule KirbsWeb.BagLive.Show do
       </div>
     </div>
     """
+  end
+
+  defp combination_groups(items) do
+    items
+    |> Enum.filter(& &1.combination_group)
+    |> Enum.group_by(& &1.combination_group)
+  end
+
+  @group_colors ~w(border-primary border-secondary border-accent border-info border-success border-warning)
+
+  defp group_border_class(nil, _items), do: ""
+
+  defp group_border_class(group, items) do
+    groups =
+      items
+      |> Enum.map(& &1.combination_group)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    idx = Enum.find_index(groups, &(&1 == group)) || 0
+    Enum.at(@group_colors, rem(idx, length(@group_colors)))
   end
 
   defp status_badge_class(:sold), do: "badge-success"
