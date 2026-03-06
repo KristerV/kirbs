@@ -105,7 +105,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
   defp upload_photos(jwt, product, item) do
     images =
       item.images
-      |> Enum.sort_by(& &1.order)
+      |> Enum.sort_by(fn img -> {img.is_label, img.order} end)
 
     with {:ok, file_names} <- upload_photos_to_s3(jwt, product, images),
          {:ok, _} <- attach_all_images(jwt, product.id, file_names) do
