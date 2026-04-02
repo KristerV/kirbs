@@ -539,9 +539,19 @@ defmodule KirbsWeb.BagLive.Show do
                             {length(item.images)} photos
                           </p>
                           <div class="flex flex-wrap items-center gap-2 mt-2">
-                            <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
-                              {item.status}
-                            </div>
+                            <%= if item.status == :uploaded_to_yaga && item.yaga_slug do %>
+                              <a
+                                href={"https://www.yaga.ee/kirbs-ee/toode/#{item.yaga_slug}"}
+                                target="_blank"
+                                class={"badge badge-sm #{status_badge_class(item.status)} underline hover:opacity-80"}
+                              >
+                                {item.status} ↗
+                              </a>
+                            <% else %>
+                              <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
+                                {item.status}
+                              </div>
+                            <% end %>
                             <%= if item.combination_group do %>
                               <span class={"badge badge-sm #{group_border_class(item.combination_group, @bag.items)}"}>
                                 combo
