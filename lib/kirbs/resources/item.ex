@@ -50,7 +50,26 @@ defmodule Kirbs.Resources.Item do
       :combination_group
     ]
 
-    defaults [:create, :read, :update, :destroy]
+    defaults [:create, :read, :destroy]
+
+    update :update do
+      require_atomic? false
+
+      change fn changeset, _context ->
+        # Prevent status from being demoted past the upload boundary.
+        # Once an item is uploaded/sold/discarded, only explicit status
+        # transitions (e.g. mark_sold, clear_ai_data) should change it.
+        protected = [:uploaded_to_yaga, :sold, :discarded]
+        current = changeset.data.status
+        new = Ash.Changeset.get_attribute(changeset, :status)
+
+        if current in protected and new not in protected do
+          Ash.Changeset.force_change_attribute(changeset, :status, current)
+        else
+          changeset
+        end
+      end
+    end
 
     read :get do
       get_by [:id]
