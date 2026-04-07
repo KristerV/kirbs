@@ -6,7 +6,9 @@ defmodule KirbsWeb.ClientLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    client = Ash.get!(Client, id) |> Ash.load!(bags: [:items])
+    client =
+      Ash.get!(Client, id) |> Ash.load!(bags: [:item_count, :sold_items_count, :sold_total])
+
     all_clients = Client.list!() |> Enum.reject(&(&1.id == id))
     payouts = Payout.list_by_client!(id)
     payout_summary = calculate_payout_summary(client, payouts)
@@ -24,12 +26,11 @@ defmodule KirbsWeb.ClientLive.Show do
   end
 
   defp calculate_payout_summary(client, payouts) do
-    items = Enum.flat_map(client.bags, & &1.items)
-    sold_items = Enum.filter(items, &(&1.status == :sold && &1.sold_price != nil))
-
     total_sales =
-      sold_items
-      |> Enum.reduce(Decimal.new(0), fn item, acc -> Decimal.add(acc, item.sold_price) end)
+      client.bags
+      |> Enum.reduce(Decimal.new(0), fn bag, acc ->
+        Decimal.add(acc, bag.sold_total || Decimal.new(0))
+      end)
 
     client_share = Decimal.div(total_sales, Decimal.new(2))
 
@@ -39,12 +40,14 @@ defmodule KirbsWeb.ClientLive.Show do
 
     unsent = Decimal.sub(client_share, total_paid)
 
+    sold_items_count = Enum.sum(Enum.map(client.bags, & &1.sold_items_count))
+
     %{
       total_sales: total_sales,
       client_share: client_share,
       total_paid: total_paid,
       unsent: unsent,
-      sold_items_count: length(sold_items)
+      sold_items_count: sold_items_count
     }
   end
 
@@ -61,7 +64,7 @@ defmodule KirbsWeb.ClientLive.Show do
   def handle_event("update_client", params, socket) do
     case Ash.update(socket.assigns.client, params) do
       {:ok, client} ->
-        client = Ash.load!(client, [:bags])
+        client = Ash.load!(client, bags: [:item_count, :sold_items_count, :sold_total])
 
         {:noreply,
          socket
@@ -298,6 +301,7 @@ defmodule KirbsWeb.ClientLive.Show do
                   <thead>
                     <tr>
                       <th>Bag Number</th>
+                      <th>Items</th>
                       <th>Created At</th>
                       <th>Actions</th>
                     </tr>
@@ -306,6 +310,7 @@ defmodule KirbsWeb.ClientLive.Show do
                     <%= for bag <- @client.bags do %>
                       <tr>
                         <td>#{bag.number}</td>
+                        <td>{bag.item_count}</td>
                         <td>{Calendar.strftime(bag.created_at, "%Y-%m-%d %H:%M")}</td>
                         <td>
                           <.link navigate={~p"/bags/#{bag.id}"} class="btn btn-primary btn-sm">

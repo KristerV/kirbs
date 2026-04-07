@@ -112,5 +112,13 @@ defmodule Kirbs.Resources.Bag do
     count :items_needing_review_count, :items do
       filter expr(status in [:pending, :ai_processed])
     end
+
+    count :sold_items_count, :items do
+      filter expr(status == :sold and not is_nil(sold_price))
+    end
+
+    sum :sold_total, :items, :sold_price do
+      filter expr(status == :sold and not is_nil(sold_price))
+    end
   end
 end
