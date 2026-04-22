@@ -5,7 +5,7 @@ defmodule Kirbs.Jobs.CheckSoldItemsJob do
   """
 
   use Oban.Worker,
-    queue: :default,
+    queue: :yaga,
     max_attempts: 3
 
   require Logger

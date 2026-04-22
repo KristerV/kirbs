@@ -5,7 +5,7 @@ defmodule Kirbs.Jobs.UploadItemJob do
   """
 
   use Oban.Worker,
-    queue: :default,
+    queue: :yaga,
     max_attempts: 3,
     unique: [period: 60, keys: [:item_id]]
 

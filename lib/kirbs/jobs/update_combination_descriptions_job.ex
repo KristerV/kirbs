@@ -1,6 +1,6 @@
 defmodule Kirbs.Jobs.UpdateCombinationDescriptionsJob do
   use Oban.Worker,
-    queue: :default,
+    queue: :yaga,
     max_attempts: 3,
     unique: [period: 60, keys: [:combination_group]]
 
