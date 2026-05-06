@@ -1,6 +1,22 @@
 defmodule Kirbs.Services.Yaga.SoldChecker do
   @moduledoc """
   Checks Yaga product and orders APIs to detect sold/unsold items and update their status.
+
+  ## Escrow
+
+  Yaga holds buyer payments in escrow until the buyer confirms receipt (or it
+  auto-completes). Order status progression on Yaga:
+
+      paid → in-transit → delivered → complete
+
+  Funds only land in our Yaga wallet (and become withdrawable) once the order
+  reaches `complete`. Earlier states show as `pending_amount` — the buyer paid,
+  but the money is not ours yet.
+
+  Accounting needs to mirror "money is actually mine", so we only mark an item
+  `:sold` once its order is `complete`/`completed`, and we stamp `sold_at` from
+  the order's `complete_at`. Items in earlier states stay `:uploaded_to_yaga`
+  and get picked up on a later sync once they finalize.
   """
 
   alias Kirbs.Resources.Item
@@ -119,18 +135,21 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
       |> Enum.reduce(%{}, fn product, acc ->
         slug = product["slug"]
         yaga_id = product["id"]
-        status = product["status"]
         listed_price = product["price"]
 
-        order_data = Map.get(orders_by_yaga_id, yaga_id, %{})
-        sold_price = order_data[:price] || listed_price
-        sold_at = order_data[:paid_at] || DateTime.utc_now()
+        case Map.get(orders_by_yaga_id, yaga_id) do
+          nil ->
+            # No escrow-cleared order for this product yet. Treat as not-sold
+            # for our purposes; an in-escrow order will flip it on a later run.
+            Map.put(acc, slug, %{status: "published", sold_price: nil, sold_at: nil})
 
-        Map.put(acc, slug, %{
-          status: status,
-          sold_price: sold_price,
-          sold_at: sold_at
-        })
+          %{price: price, complete_at: complete_at} ->
+            Map.put(acc, slug, %{
+              status: "sold",
+              sold_price: price || listed_price,
+              sold_at: complete_at
+            })
+        end
       end)
 
     {:ok, status_map}
@@ -143,14 +162,25 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
       product = order["product"]
       yaga_id = product["id"]
       price = product["price"]
-      paid_at = parse_datetime(order["paid_at"] || order["paidAt"])
+      complete_at = parse_datetime(complete_at_value(order))
 
-      Map.put(acc, yaga_id, %{price: price, paid_at: paid_at})
+      if complete_at do
+        Map.put(acc, yaga_id, %{price: price, complete_at: complete_at})
+      else
+        acc
+      end
     end)
   end
 
+  # Only orders that have cleared escrow count as sold. See moduledoc.
   defp order_is_sold?(order) do
-    order["status"] in ["complete", "completed", "in-transit", "delivered", "paid"]
+    order["status"] in ["complete", "completed"]
+  end
+
+  defp complete_at_value(order) do
+    order["complete_at"] || order["completeAt"] ||
+      get_in(order, ["status_changes", "complete_at"]) ||
+      get_in(order, ["statusChanges", "completeAt"])
   end
 
   # Sync items with status map

@@ -64,20 +64,53 @@
               <ul class="menu menu-horizontal px-1">
                 <li><a href="/dashboard">Dashboard</a></li>
                 <li><a href="/clients">Clients</a></li>
-                <li><a href="/payouts">Payouts</a></li>
-                <li><a href="/bags">Bags</a></li>
-                <li><a href="/review">Review</a></li>
-                <li><a href="/upload">Upload</a></li>
-                <li><a href="/settings">Settings</a></li>
-                <li>
-                  <details>
-                    <summary>System</summary>
-                    <ul class="bg-base-200 rounded-t-none p-2 z-50">
-                      <li><a href="/admin/dashboard">LiveDashboard</a></li>
-                      <li><a href="/admin/oban">Oban</a></li>
-                      <li><a href="/admin">Ash Admin</a></li>
-                    </ul>
-                  </details>
+                <li class="dropdown dropdown-hover">
+                  <div tabindex="0" role="button" class="flex items-center gap-1">
+                    Inventory
+                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                      <path d="M5.5 7.5l4.5 4.5 4.5-4.5z" />
+                    </svg>
+                  </div>
+                  <ul
+                    tabindex="0"
+                    class="dropdown-content menu bg-base-200 rounded-box z-50 p-2 w-44"
+                  >
+                    <li><a href="/bags">Bags</a></li>
+                    <li><a href="/review">Review</a></li>
+                    <li><a href="/upload">Upload</a></li>
+                  </ul>
+                </li>
+                <li class="dropdown dropdown-hover">
+                  <div tabindex="0" role="button" class="flex items-center gap-1">
+                    Money
+                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                      <path d="M5.5 7.5l4.5 4.5 4.5-4.5z" />
+                    </svg>
+                  </div>
+                  <ul
+                    tabindex="0"
+                    class="dropdown-content menu bg-base-200 rounded-box z-50 p-2 w-44"
+                  >
+                    <li><a href="/payouts">Payouts</a></li>
+                    <li><a href="/accounting">Accounting</a></li>
+                  </ul>
+                </li>
+                <li class="dropdown dropdown-hover dropdown-end">
+                  <div tabindex="0" role="button" class="flex items-center gap-1">
+                    System
+                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                      <path d="M5.5 7.5l4.5 4.5 4.5-4.5z" />
+                    </svg>
+                  </div>
+                  <ul
+                    tabindex="0"
+                    class="dropdown-content menu bg-base-200 rounded-box z-50 p-2 w-48"
+                  >
+                    <li><a href="/settings">Settings</a></li>
+                    <li><a href="/admin/dashboard">LiveDashboard</a></li>
+                    <li><a href="/admin/oban">Oban</a></li>
+                    <li><a href="/admin">Ash Admin</a></li>
+                  </ul>
                 </li>
               </ul>
             </div>
@@ -94,16 +127,31 @@
           <ul class="menu bg-base-200 min-h-full w-80 p-4">
             <li><a href="/dashboard">Dashboard</a></li>
             <li><a href="/clients">Clients</a></li>
-            <li><a href="/payouts">Payouts</a></li>
-            <li><a href="/bags">Bags</a></li>
-            <li><a href="/bags/capture">New Bag</a></li>
-            <li><a href="/review">Review</a></li>
-            <li><a href="/upload">Upload</a></li>
-            <li><a href="/settings">Settings</a></li>
+            <li>
+              <details open>
+                <summary>Inventory</summary>
+                <ul>
+                  <li><a href="/bags">Bags</a></li>
+                  <li><a href="/bags/capture">New Bag</a></li>
+                  <li><a href="/review">Review</a></li>
+                  <li><a href="/upload">Upload</a></li>
+                </ul>
+              </details>
+            </li>
+            <li>
+              <details open>
+                <summary>Money</summary>
+                <ul>
+                  <li><a href="/payouts">Payouts</a></li>
+                  <li><a href="/accounting">Accounting</a></li>
+                </ul>
+              </details>
+            </li>
             <li>
               <details>
                 <summary>System</summary>
                 <ul>
+                  <li><a href="/settings">Settings</a></li>
                   <li><a href="/admin/dashboard">LiveDashboard</a></li>
                   <li><a href="/admin/oban">Oban</a></li>
                   <li><a href="/admin">Ash Admin</a></li>

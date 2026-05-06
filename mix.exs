@@ -42,6 +42,7 @@ defmodule Kirbs.MixProject do
   defp deps do
     [
       {:vix, "~> 0.35"},
+      {:tzdata, "~> 1.1"},
       {:langchain, github: "KristerV/langchain", override: true},
       {:live_select, "~> 1.0"},
       {:git_hooks, "~> 0.8", only: [:dev]},

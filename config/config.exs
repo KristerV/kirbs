@@ -8,6 +8,7 @@
 import Config
 
 config :ex_cldr, default_backend: Kirbs.Cldr
+config :elixir, :time_zone_database, Tzdata.TimeZoneDatabase
 config :ash_oban, pro?: false
 
 config :kirbs, Oban,
@@ -21,7 +22,9 @@ config :kirbs, Oban,
        # Check for sold items every hour
        {"0 * * * *", Kirbs.Jobs.CheckSoldItemsJob},
        # Compress images daily at 3 AM
-       {"0 3 * * *", Kirbs.Jobs.CompressImagesJob}
+       {"0 3 * * *", Kirbs.Jobs.CompressImagesJob},
+       # Monthly Yaga withdraw at midnight on the 1st (Tallinn)
+       {"0 0 1 * *", Kirbs.Jobs.YagaMonthlyWithdrawJob}
      ]}
   ]
 

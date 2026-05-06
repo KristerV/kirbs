@@ -56,6 +56,7 @@ defmodule KirbsWeb.Router do
       live "/clients", ClientLive.Index, :index
       live "/clients/:id", ClientLive.Show, :show
       live "/payouts", PayoutLive.Index, :index
+      live "/accounting", AccountingLive.Index, :index
       live "/settings", SettingsLive.Index, :index
     end
   end
