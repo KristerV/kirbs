@@ -2,7 +2,7 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
   use KirbsWeb, :live_view
 
   alias Kirbs.Resources.Item
-  alias Kirbs.Services.Yaga.WarehouseSaleDetector
+  alias Kirbs.Services.Yaga.{StatusChecker, WarehouseSaleDetector}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -43,18 +43,29 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
   @impl true
   def handle_event("open_modal", %{"item-id" => item_id}, socket) do
     candidate = Enum.find(socket.assigns.candidates, &(&1.item.id == item_id))
+    detail = fetch_detail(candidate.yaga_slug)
 
     sold_at_date =
-      case candidate.yaga_updated_at do
-        nil -> Date.utc_today()
-        dt -> DateTime.to_date(dt)
+      cond do
+        detail[:updated_at] -> DateTime.to_date(detail.updated_at)
+        candidate.yaga_updated_at -> DateTime.to_date(candidate.yaga_updated_at)
+        true -> Date.utc_today()
       end
+
+    price = detail[:price] || candidate.listed_price
 
     {:noreply,
      socket
      |> assign(:selected, candidate)
-     |> assign(:form_price, candidate.listed_price && Decimal.to_string(candidate.listed_price))
+     |> assign(:form_price, price && to_string(price))
      |> assign(:form_sold_at, Date.to_iso8601(sold_at_date))}
+  end
+
+  defp fetch_detail(slug) do
+    case StatusChecker.run(slug) do
+      {:ok, data} -> data
+      _ -> %{}
+    end
   end
 
   def handle_event("close_modal", _params, socket) do

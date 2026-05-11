@@ -16,11 +16,25 @@ defmodule Kirbs.Services.Yaga.StatusChecker do
 
     with {:ok, %{status: 200, body: %{"status" => "success", "data" => data}}} <-
            Req.get(url, headers: headers) do
-      {:ok, %{status: data["status"], price: data["price"]}}
+      {:ok,
+       %{
+         status: data["status"],
+         price: data["price"],
+         updated_at: parse_datetime(data["updated_at"] || data["updatedAt"])
+       }}
     else
       {:ok, %{status: 404}} -> {:error, :not_found}
       {:ok, %{status: status}} -> {:error, "HTTP #{status}"}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  defp parse_datetime(nil), do: nil
+
+  defp parse_datetime(str) when is_binary(str) do
+    case DateTime.from_iso8601(str) do
+      {:ok, dt, _} -> dt
+      _ -> nil
     end
   end
 end
