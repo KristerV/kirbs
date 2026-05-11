@@ -61,13 +61,6 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
      |> assign(:form_sold_at, Date.to_iso8601(sold_at_date))}
   end
 
-  defp fetch_detail(slug) do
-    case StatusChecker.run(slug) do
-      {:ok, data} -> data
-      _ -> %{}
-    end
-  end
-
   def handle_event("close_modal", _params, socket) do
     {:noreply, assign(socket, :selected, nil)}
   end
@@ -97,6 +90,13 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Failed: #{inspect(reason)}")}
+    end
+  end
+
+  defp fetch_detail(slug) do
+    case StatusChecker.run(slug) do
+      {:ok, data} -> data
+      _ -> %{}
     end
   end
 
