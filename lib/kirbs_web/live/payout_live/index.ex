@@ -3,6 +3,7 @@ defmodule KirbsWeb.PayoutLive.Index do
 
   alias Kirbs.Accounting
   alias Kirbs.Resources.{Client, Payout}
+  alias Kirbs.Services.Accounting.{ComputeClientCarryover, ComputeOpenMonthAmounts}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -14,6 +15,8 @@ defmodule KirbsWeb.PayoutLive.Index do
         payouts,
         Enum.flat_map(clients, & &1.sold_items)
       )
+
+    clients = Enum.map(clients, &enrich_with_open_amounts(&1, payouts, months))
 
     {:ok,
      socket
@@ -51,6 +54,29 @@ defmodule KirbsWeb.PayoutLive.Index do
         sold_items: sold_items
       }
     end)
+  end
+
+  defp enrich_with_open_amounts(client, payouts, months) do
+    client_payouts = Enum.filter(payouts, &(&1.client_id == client.id))
+
+    open_months =
+      months
+      |> Enum.filter(&Accounting.post_cutoff_month?/1)
+      |> Enum.reject(fn {y, m} ->
+        Enum.any?(client_payouts, &(&1.for_month.year == y and &1.for_month.month == m))
+      end)
+
+    {:ok, carryover} =
+      ComputeClientCarryover.run(%{items: client.sold_items, payouts: client_payouts})
+
+    {:ok, open_amounts} =
+      ComputeOpenMonthAmounts.run(%{
+        items: client.sold_items,
+        open_months: open_months,
+        carryover: carryover
+      })
+
+    Map.put(client, :open_amounts, open_amounts)
   end
 
   defp client_payouts_for_month(payouts, client_id, year, month) do
@@ -129,7 +155,7 @@ defmodule KirbsWeb.PayoutLive.Index do
         {:paid, month_payouts}
 
       Accounting.post_cutoff_month?({year, month}) ->
-        owed = Accounting.client_owed_for_month(client.sold_items, {year, month})
+        owed = Map.get(client.open_amounts, {year, month}, Decimal.new(0))
 
         cond do
           Decimal.compare(owed, Decimal.new(0)) != :gt -> :empty
@@ -246,10 +272,13 @@ defmodule KirbsWeb.PayoutLive.Index do
             Enum.flat_map(socket.assigns.clients, & &1.sold_items)
           )
 
+        clients = Enum.map(socket.assigns.clients, &enrich_with_open_amounts(&1, payouts, months))
+
         action = if socket.assigns.selected_payout, do: "updated", else: "recorded"
 
         {:noreply,
          socket
+         |> assign(:clients, clients)
          |> assign(:payouts, payouts)
          |> assign(:months, months)
          |> assign(:show_modal, false)
