@@ -35,19 +35,30 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
     end
   end
 
-  # Fetch all products from product API
+  # Fetch all products from product API.
+  #
+  # Yaga's product endpoint only honors one `status` filter per request, so we
+  # run two separate sweeps (sold + published) and merge. The previous combined
+  # request silently dropped sold items, leaving warehouse sales invisible.
 
   defp fetch_all_products(jwt) do
-    fetch_products_page(jwt, 0, [])
+    with {:ok, sold} <- fetch_all_with_status(jwt, "sold"),
+         {:ok, published} <- fetch_all_with_status(jwt, "published") do
+      {:ok, sold ++ published}
+    end
   end
 
-  defp fetch_products_page(jwt, offset, acc) do
-    case fetch_products(jwt, offset) do
+  defp fetch_all_with_status(jwt, status) do
+    fetch_products_page(jwt, status, 0, [])
+  end
+
+  defp fetch_products_page(jwt, status, offset, acc) do
+    case fetch_products(jwt, status, offset) do
       {:ok, %{list: list, total: total}} ->
         all_products = acc ++ list
 
         if length(all_products) < total do
-          fetch_products_page(jwt, offset + length(list), all_products)
+          fetch_products_page(jwt, status, offset + length(list), all_products)
         else
           {:ok, all_products}
         end
@@ -57,7 +68,7 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
     end
   end
 
-  defp fetch_products(jwt, offset) do
+  defp fetch_products(jwt, status, offset) do
     headers = [
       {"authorization", "Bearer #{jwt}"},
       {"x-language", "et"},
@@ -66,14 +77,14 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
     ]
 
     url = "#{@base_url}/api/product/"
-    params = [status: "sold", status: "published", shopId: @shop_id, offset: offset, limit: 100]
+    params = [status: status, shopId: @shop_id, offset: offset, limit: 100]
 
     case Req.get(url, headers: headers, params: params) do
       {:ok, %{status: 200, body: %{"status" => "success", "data" => data}}} ->
         {:ok, %{list: data["list"], total: data["total"]}}
 
-      {:ok, %{status: status, body: body}} ->
-        {:error, "Failed to fetch products: HTTP #{status} - #{inspect(body)}"}
+      {:ok, %{status: http_status, body: body}} ->
+        {:error, "Failed to fetch products: HTTP #{http_status} - #{inspect(body)}"}
 
       {:error, error} ->
         {:error, "Network error fetching products: #{inspect(error)}"}
@@ -135,20 +146,28 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
       |> Enum.reduce(%{}, fn product, acc ->
         slug = product["slug"]
         yaga_id = product["id"]
+        yaga_status = product["status"]
         listed_price = product["price"]
+        order = Map.get(orders_by_yaga_id, yaga_id)
 
-        case Map.get(orders_by_yaga_id, yaga_id) do
-          nil ->
-            # No escrow-cleared order for this product yet. Treat as not-sold
-            # for our purposes; an in-escrow order will flip it on a later run.
-            Map.put(acc, slug, %{status: "published", sold_price: nil, sold_at: nil})
-
-          %{price: price, complete_at: complete_at} ->
+        cond do
+          # Cleared escrow → trust the order's price and complete_at.
+          order != nil ->
             Map.put(acc, slug, %{
               status: "sold",
-              sold_price: price || listed_price,
-              sold_at: complete_at
+              sold_price: order.price || listed_price,
+              sold_at: order.complete_at
             })
+
+          # Yaga lists it as sold but no completed order on our side. Could be
+          # in-escrow or a warehouse sale. Either way, don't auto-flip — leave
+          # the item alone and surface it in the warehouse-sales review.
+          yaga_status == "sold" ->
+            acc
+
+          # Anything else (published, etc.) → mark unsold if we had it as sold.
+          true ->
+            Map.put(acc, slug, %{status: "published", sold_price: nil, sold_at: nil})
         end
       end)
 

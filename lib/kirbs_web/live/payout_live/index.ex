@@ -326,7 +326,12 @@ defmodule KirbsWeb.PayoutLive.Index do
       <div class="max-w-7xl mx-auto p-6">
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-3xl font-bold">Payouts</h1>
-          <.link navigate={~p"/accounting"} class="btn btn-ghost btn-sm">Accounting →</.link>
+          <div class="flex gap-2">
+            <.link navigate={~p"/warehouse-sales"} class="btn btn-ghost btn-sm">
+              Warehouse sales →
+            </.link>
+            <.link navigate={~p"/accounting"} class="btn btn-ghost btn-sm">Accounting →</.link>
+          </div>
         </div>
 
         <%= if Enum.empty?(@clients) do %>
