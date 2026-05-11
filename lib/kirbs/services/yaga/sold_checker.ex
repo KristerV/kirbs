@@ -212,6 +212,9 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
       %{status: "sold"} = data when item.status == :uploaded_to_yaga ->
         mark_as_sold(item, data)
 
+      %{status: "sold"} = data when item.status == :sold and is_nil(item.sold_at) ->
+        mark_as_sold(item, data)
+
       %{status: "published"} when item.status == :sold ->
         mark_as_unsold(item)
 
