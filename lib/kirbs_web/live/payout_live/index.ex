@@ -67,7 +67,11 @@ defmodule KirbsWeb.PayoutLive.Index do
       end)
 
     {:ok, carryover} =
-      ComputeClientCarryover.run(%{items: client.sold_items, payouts: client_payouts})
+      ComputeClientCarryover.run(%{
+        items: client.sold_items,
+        payouts: client_payouts,
+        open_months: open_months
+      })
 
     {:ok, open_amounts} =
       ComputeOpenMonthAmounts.run(%{
@@ -97,6 +101,15 @@ defmodule KirbsWeb.PayoutLive.Index do
     decimal
     |> Decimal.round(2)
     |> Decimal.to_string()
+  end
+
+  defp format_cell(%{earnings: earnings, carryover: carryover}) do
+    if Decimal.compare(carryover, Decimal.new(0)) == :eq do
+      format_amount(earnings)
+    else
+      sign = if Decimal.compare(carryover, Decimal.new(0)) == :gt, do: "+", else: ""
+      "#{format_amount(earnings)} (#{sign}#{format_amount(carryover)})"
+    end
   end
 
   defp month_name(month) do
@@ -146,6 +159,13 @@ defmodule KirbsWeb.PayoutLive.Index do
     """
   end
 
+  # A cell is worth showing if either the total is positive or the carryover
+  # is non-zero (so the user sees a negative carryover even when no payment).
+  defp show_cell?(%{total: total, carryover: carryover}) do
+    Decimal.compare(total, Decimal.new(0)) == :gt or
+      Decimal.compare(carryover, Decimal.new(0)) != :eq
+  end
+
   # Decide what to render in a (client, month) cell.
   defp cell_state(client, payouts, {year, month}) do
     month_payouts = client_payouts_for_month(payouts, client.id, year, month)
@@ -155,12 +175,20 @@ defmodule KirbsWeb.PayoutLive.Index do
         {:paid, month_payouts}
 
       Accounting.post_cutoff_month?({year, month}) ->
-        owed = Map.get(client.open_amounts, {year, month}, Decimal.new(0))
+        cell = Map.get(client.open_amounts, {year, month})
 
         cond do
-          Decimal.compare(owed, Decimal.new(0)) != :gt -> :empty
-          Accounting.current_month?({year, month}) -> {:owed_in_progress, owed}
-          true -> {:owed, owed}
+          is_nil(cell) ->
+            :empty
+
+          show_cell?(cell) and Accounting.current_month?({year, month}) ->
+            {:owed_in_progress, cell}
+
+          show_cell?(cell) ->
+            {:owed, cell}
+
+          true ->
+            :empty
         end
 
       true ->
@@ -446,23 +474,25 @@ defmodule KirbsWeb.PayoutLive.Index do
             {format_amount(payout.amount)}
           </button>
         <% end %>
-      <% {:owed, owed} -> %>
+      <% {:owed, cell} -> %>
         <div class="flex items-center justify-end gap-2">
-          <span class="text-warning font-semibold">{format_amount(owed)}</span>
-          <button
-            class="btn btn-primary btn-xs"
-            phx-click="open_send_modal"
-            phx-value-client-id={@client.id}
-            phx-value-amount={format_amount(owed)}
-            phx-value-year={@year}
-            phx-value-month={@month}
-          >
-            Send
-          </button>
+          <span class="text-warning font-semibold">{format_cell(cell)}</span>
+          <%= if Decimal.compare(cell.total, Decimal.new(0)) == :gt do %>
+            <button
+              class="btn btn-primary btn-xs"
+              phx-click="open_send_modal"
+              phx-value-client-id={@client.id}
+              phx-value-amount={format_amount(cell.total)}
+              phx-value-year={@year}
+              phx-value-month={@month}
+            >
+              Send
+            </button>
+          <% end %>
         </div>
-      <% {:owed_in_progress, owed} -> %>
+      <% {:owed_in_progress, cell} -> %>
         <span class="text-warning font-semibold" title="Month still in progress">
-          {format_amount(owed)}
+          {format_cell(cell)}
         </span>
       <% :empty -> %>
         <span class="text-base-content/30">-</span>
