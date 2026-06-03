@@ -53,6 +53,7 @@ defmodule Kirbs.Resources.Item do
     defaults [:create, :read, :destroy]
 
     update :update do
+      primary? true
       require_atomic? false
 
       change fn changeset, _context ->
