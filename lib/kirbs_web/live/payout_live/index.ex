@@ -334,6 +334,22 @@ defmodule KirbsWeb.PayoutLive.Index do
           </div>
         </div>
 
+        <div class="alert alert-info mb-6">
+          <div class="text-sm">
+            <p class="font-semibold">How to read a cell</p>
+            <p>
+              Cells show that month's <span class="font-semibold">earnings</span>
+              (the client's 50% share of items sold). When a number in parentheses follows,
+              it's the <span class="font-semibold">carryover</span>
+              balance rolled in from prior periods — e.g. <span class="font-mono">6.50 (-13.50)</span>
+              means 6.50 earned this month against a -13.50 deficit carried over.
+              A <span class="font-mono">(-…)</span>
+              carryover means the client is still in the red; a <span class="font-mono">(+…)</span>
+              means they have credit. The amount actually owed is <span class="font-mono">max(0, earnings + carryover)</span>.
+            </p>
+          </div>
+        </div>
+
         <%= if Enum.empty?(@clients) do %>
           <div class="alert alert-info">
             <span>No clients yet.</span>
