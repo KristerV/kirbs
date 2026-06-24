@@ -137,6 +137,20 @@ defmodule KirbsWeb.BagLive.Show do
   end
 
   @impl true
+  def handle_event("run_ai_items", _params, socket) do
+    pending_items = Enum.filter(socket.assigns.bag.items, &(&1.status == :pending))
+
+    Enum.each(pending_items, fn item ->
+      %{item_id: item.id}
+      |> Kirbs.Jobs.ProcessItemJob.new()
+      |> Oban.insert()
+    end)
+
+    {:noreply,
+     put_flash(socket, :info, "Scheduled AI for #{length(pending_items)} pending item(s)")}
+  end
+
+  @impl true
   def handle_event("show_import_modal", _params, socket) do
     {:noreply, assign(socket, show_import_modal: true, import_links: "")}
   end
@@ -468,6 +482,14 @@ defmodule KirbsWeb.BagLive.Show do
             <div class="flex justify-between items-center">
               <h2 class="card-title">Items ({length(@bag.items)})</h2>
               <div class="flex gap-2">
+                <% pending_count = Enum.count(@bag.items, &(&1.status == :pending)) %>
+                <button
+                  class="btn btn-accent btn-sm"
+                  phx-click="run_ai_items"
+                  disabled={pending_count == 0}
+                >
+                  Run AI on Items ({pending_count})
+                </button>
                 <button class="btn btn-secondary btn-sm" phx-click="review_bag">
                   Review Bag
                 </button>
