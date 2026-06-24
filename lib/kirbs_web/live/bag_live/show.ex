@@ -322,9 +322,9 @@ defmodule KirbsWeb.BagLive.Show do
     ~H"""
     <div class="bg-base-300 min-h-screen">
       <div class="max-w-6xl mx-auto p-6">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <h1 class="text-3xl font-bold">Bag #{@bag.number}</h1>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button
               class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: "btn-ghost"}"}
               phx-click="delete_bag"
@@ -361,9 +361,9 @@ defmodule KirbsWeb.BagLive.Show do
     <!-- Client Info -->
         <div class="card bg-base-100 shadow-xl mb-6">
           <div class="card-body">
-            <div class="flex justify-between items-start">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
               <h2 class="card-title">Client Information</h2>
-              <div class="flex flex-wrap gap-2 justify-end">
+              <div class="flex flex-wrap gap-2 sm:justify-end">
                 <button class="btn btn-accent btn-sm" phx-click="run_ai">
                   Run AI
                 </button>
@@ -479,9 +479,9 @@ defmodule KirbsWeb.BagLive.Show do
     <!-- Items List -->
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="card-title">Items ({length(@bag.items)})</h2>
-              <div class="flex gap-2">
+              <div class="flex flex-wrap gap-2">
                 <% pending_count = Enum.count(@bag.items, &(&1.status == :pending)) %>
                 <button
                   class="btn btn-accent btn-sm"
@@ -529,7 +529,7 @@ defmodule KirbsWeb.BagLive.Show do
               <div class="grid gap-4 mt-4">
                 <%= for item <- @bag.items do %>
                   <div class={"card bg-base-200 border-2 #{group_border_class(item.combination_group, @bag.items)}"}>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                       <div class="flex gap-4 items-start">
                         <div class="flex items-center">
                           <input
@@ -541,7 +541,7 @@ defmodule KirbsWeb.BagLive.Show do
                           />
                         </div>
                         <%= if item.images != [] do %>
-                          <div class="w-24 h-24 bg-base-300 rounded-lg overflow-hidden flex-shrink-0">
+                          <div class="w-16 h-16 sm:w-24 sm:h-24 bg-base-300 rounded-lg overflow-hidden flex-shrink-0">
                             <img
                               src={"/uploads/#{List.first(item.images).path}"}
                               alt="Item photo"
@@ -550,7 +550,7 @@ defmodule KirbsWeb.BagLive.Show do
                           </div>
                         <% end %>
 
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                           <%= if item.size do %>
                             <p class="font-semibold">{item.size}</p>
                           <% end %>
