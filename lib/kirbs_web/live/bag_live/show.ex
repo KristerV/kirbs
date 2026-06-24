@@ -530,68 +530,73 @@ defmodule KirbsWeb.BagLive.Show do
                 <%= for item <- @bag.items do %>
                   <div class={"card bg-base-200 border-2 #{group_border_class(item.combination_group, @bag.items)}"}>
                     <div class="card-body p-4">
-                      <div class="flex gap-4 items-start">
-                        <div class="flex items-center">
-                          <input
-                            type="checkbox"
-                            class="checkbox"
-                            checked={MapSet.member?(@selected, item.id)}
-                            phx-click="toggle_select"
-                            phx-value-id={item.id}
-                          />
-                        </div>
-                        <%= if item.images != [] do %>
-                          <div class="w-16 h-16 sm:w-24 sm:h-24 bg-base-300 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
-                              src={"/uploads/#{List.first(item.images).path}"}
-                              alt="Item photo"
-                              class="w-full h-full object-cover"
+                      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-start">
+                        <div class="flex gap-3 sm:gap-4 flex-1 min-w-0 items-start">
+                          <div class="flex items-center">
+                            <input
+                              type="checkbox"
+                              class="checkbox"
+                              checked={MapSet.member?(@selected, item.id)}
+                              phx-click="toggle_select"
+                              phx-value-id={item.id}
                             />
                           </div>
-                        <% end %>
-
-                        <div class="flex-1 min-w-0">
-                          <%= if item.size do %>
-                            <p class="font-semibold">{item.size}</p>
-                          <% end %>
-                          <%= if item.brand do %>
-                            <p class="text-sm">{item.brand}</p>
-                          <% end %>
-                          <p class="text-sm text-base-content/70">
-                            {length(item.images)} photos
-                          </p>
-                          <div class="flex flex-wrap items-center gap-2 mt-2">
-                            <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
-                              {item.status}
+                          <%= if item.images != [] do %>
+                            <div class="w-16 h-16 sm:w-24 sm:h-24 bg-base-300 rounded-lg overflow-hidden flex-shrink-0">
+                              <img
+                                src={"/uploads/#{List.first(item.images).path}"}
+                                alt="Item photo"
+                                class="w-full h-full object-cover"
+                              />
                             </div>
-                            <%= if item.yaga_slug do %>
-                              <a
-                                href={"https://www.yaga.ee/kirbs-ee/toode/#{item.yaga_slug}"}
-                                target="_blank"
-                                class="link link-primary text-xs"
-                              >
-                                yaga ↗
-                              </a>
+                          <% end %>
+
+                          <div class="flex-1 min-w-0">
+                            <%= if item.size do %>
+                              <p class="font-semibold">{item.size}</p>
                             <% end %>
-                            <%= if item.combination_group do %>
-                              <span class={"badge badge-sm #{group_border_class(item.combination_group, @bag.items)}"}>
-                                combo
-                              </span>
+                            <%= if item.brand do %>
+                              <p class="text-sm">{item.brand}</p>
                             <% end %>
-                            <%= if item.status == :sold && item.sold_price do %>
-                              <span class="text-sm text-success font-semibold">
-                                €{item.sold_price}
-                              </span>
-                              <%= if item.sold_at do %>
-                                <span class="text-xs text-base-content/60">
-                                  {Calendar.strftime(item.sold_at, "%Y-%m-%d")}
+                            <p class="text-sm text-base-content/70">
+                              {length(item.images)} photos
+                            </p>
+                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                              <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
+                                {item.status}
+                              </div>
+                              <%= if item.yaga_slug do %>
+                                <a
+                                  href={"https://www.yaga.ee/kirbs-ee/toode/#{item.yaga_slug}"}
+                                  target="_blank"
+                                  class="link link-primary text-xs"
+                                >
+                                  yaga ↗
+                                </a>
+                              <% end %>
+                              <%= if item.combination_group do %>
+                                <span class={"badge badge-sm #{group_border_class(item.combination_group, @bag.items)}"}>
+                                  combo
                                 </span>
                               <% end %>
-                            <% end %>
+                              <%= if item.status == :sold && item.sold_price do %>
+                                <span class="text-sm text-success font-semibold">
+                                  €{item.sold_price}
+                                </span>
+                                <%= if item.sold_at do %>
+                                  <span class="text-xs text-base-content/60">
+                                    {Calendar.strftime(item.sold_at, "%Y-%m-%d")}
+                                  </span>
+                                <% end %>
+                              <% end %>
+                            </div>
                           </div>
                         </div>
 
-                        <.link navigate={~p"/items/#{item.id}"} class="btn btn-primary btn-sm">
+                        <.link
+                          navigate={~p"/items/#{item.id}"}
+                          class="btn btn-primary btn-sm w-full sm:w-auto"
+                        >
                           Details
                         </.link>
                       </div>
