@@ -80,7 +80,32 @@ defmodule KirbsWeb.PayoutLive.Index do
         carryover: carryover
       })
 
-    Map.put(client, :open_amounts, open_amounts)
+    client
+    |> Map.put(:open_amounts, open_amounts)
+    |> Map.put(:combined, combined_owed(open_amounts))
+  end
+
+  # A single payout combining every owed, non-current open month. The amount is
+  # the sum of those months' totals; the month is the latest of them (where the
+  # single Send button lives). `nil` month means nothing to send.
+  defp combined_owed(open_amounts) do
+    payable =
+      open_amounts
+      |> Enum.reject(fn {month, _cell} -> Accounting.current_month?(month) end)
+      |> Enum.filter(fn {_month, cell} -> Decimal.compare(cell.total, Decimal.new(0)) == :gt end)
+
+    total =
+      Enum.reduce(payable, Decimal.new(0), fn {_month, cell}, acc ->
+        Decimal.add(acc, cell.total)
+      end)
+
+    month =
+      case Enum.map(payable, &elem(&1, 0)) do
+        [] -> nil
+        months -> Enum.max(months)
+      end
+
+    %{total: total, month: month}
   end
 
   defp client_payouts_for_month(payouts, client_id, year, month) do
@@ -103,12 +128,21 @@ defmodule KirbsWeb.PayoutLive.Index do
     |> Decimal.to_string()
   end
 
-  defp format_cell(%{earnings: earnings, carryover: carryover}) do
+  # Hover breakdown for an owed cell: `earnings (±carryover)`. Empty string when
+  # there's no carryover (then the shown total already equals earnings).
+  defp cell_breakdown(%{earnings: earnings, carryover: carryover}) do
     if Decimal.compare(carryover, Decimal.new(0)) == :eq do
-      format_amount(earnings)
+      ""
     else
       sign = if Decimal.compare(carryover, Decimal.new(0)) == :gt, do: "+", else: ""
       "#{format_amount(earnings)} (#{sign}#{format_amount(carryover)})"
+    end
+  end
+
+  defp in_progress_title(cell) do
+    case cell_breakdown(cell) do
+      "" -> "Month still in progress"
+      breakdown -> "#{breakdown} · month still in progress"
     end
   end
 
@@ -334,22 +368,6 @@ defmodule KirbsWeb.PayoutLive.Index do
           </div>
         </div>
 
-        <div class="alert alert-info mb-6">
-          <div class="text-sm">
-            <p class="font-semibold">How to read a cell</p>
-            <p>
-              Cells show that month's <span class="font-semibold">earnings</span>
-              (the client's 50% share of items sold). When a number in parentheses follows,
-              it's the <span class="font-semibold">carryover</span>
-              balance rolled in from prior periods — e.g. <span class="font-mono">6.50 (-13.50)</span>
-              means 6.50 earned this month against a -13.50 deficit carried over.
-              A <span class="font-mono">(-…)</span>
-              carryover means the client is still in the red; a <span class="font-mono">(+…)</span>
-              means they have credit. The amount actually owed is <span class="font-mono">max(0, earnings + carryover)</span>.
-            </p>
-          </div>
-        </div>
-
         <%= if Enum.empty?(@clients) do %>
           <div class="alert alert-info">
             <span>No clients yet.</span>
@@ -497,23 +515,26 @@ defmodule KirbsWeb.PayoutLive.Index do
         <% end %>
       <% {:owed, cell} -> %>
         <div class="flex items-center justify-end gap-2">
-          <span class="text-warning font-semibold">{format_cell(cell)}</span>
-          <%= if Decimal.compare(cell.total, Decimal.new(0)) == :gt do %>
+          <span class="text-warning font-semibold" title={cell_breakdown(cell)}>
+            {format_amount(cell.total)}
+          </span>
+          <%= if @client.combined.month == {@year, @month} and Decimal.compare(@client.combined.total, Decimal.new(0)) == :gt do %>
             <button
               class="btn btn-primary btn-xs"
               phx-click="open_send_modal"
               phx-value-client-id={@client.id}
-              phx-value-amount={format_amount(cell.total)}
+              phx-value-amount={format_amount(@client.combined.total)}
               phx-value-year={@year}
               phx-value-month={@month}
+              title={"Send combined €#{format_amount(@client.combined.total)} for all owed months"}
             >
               Send
             </button>
           <% end %>
         </div>
       <% {:owed_in_progress, cell} -> %>
-        <span class="text-warning font-semibold" title="Month still in progress">
-          {format_cell(cell)}
+        <span class="text-warning font-semibold" title={in_progress_title(cell)}>
+          {format_amount(cell.total)}
         </span>
       <% :empty -> %>
         <span class="text-base-content/30">-</span>
