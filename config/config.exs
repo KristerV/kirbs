@@ -23,6 +23,8 @@ config :kirbs, Oban,
        {"0 * * * *", Kirbs.Jobs.CheckSoldItemsJob},
        # Compress images daily at 3 AM
        {"0 3 * * *", Kirbs.Jobs.CompressImagesJob},
+       # Refresh Yaga JWT daily at 4 AM (30-day token, kept rolling)
+       {"0 4 * * *", Kirbs.Jobs.YagaTokenRefreshJob},
        # Monthly Yaga withdraw at midnight on the 1st (Tallinn)
        {"0 0 1 * *", Kirbs.Jobs.YagaMonthlyWithdrawJob}
      ]}
