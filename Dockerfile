@@ -9,11 +9,14 @@
 #   - https://hub.docker.com/r/hexpm/elixir/tags - for the build image
 #   - https://hub.docker.com/_/debian/tags?name=bookworm-20251020-slim - for the release image
 #   - https://pkgs.org/ - resource for finding needed packages
-#   - Ex: docker.io/hexpm/elixir:1.18.1-erlang-27.2-debian-bookworm-20251020-slim
+#   - Ex: docker.io/hexpm/elixir:1.18.4-erlang-27.3.4.14-debian-bookworm-20260623-slim
 #
-ARG ELIXIR_VERSION=1.18.1
-ARG OTP_VERSION=27.2
-ARG DEBIAN_VERSION=bookworm-20251020-slim
+# NOTE: OTP must be >= 27.3. Earlier OTP 27 (e.g. 27.2) fails `mix local.hex`
+# with a TLS key_usage_mismatch against builds.hex.pm after their June 2026
+# CDN cert rotation. See https://github.com/hexpm/hex/issues/1175
+ARG ELIXIR_VERSION=1.18.4
+ARG OTP_VERSION=27.3.4.14
+ARG DEBIAN_VERSION=bookworm-20260623-slim
 
 ARG BUILDER_IMAGE="docker.io/hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="docker.io/debian:${DEBIAN_VERSION}"
