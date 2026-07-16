@@ -9,6 +9,7 @@ defmodule KirbsWeb.LandingLive.Index do
     {:ok,
      socket
      |> assign(:page_title, "Käed Vabad Kirbukas - Lapse riideid müüa ilma vaevata")
+     |> assign(:show_holiday_notice, holiday_notice?())
      |> assign(:show_modal, nil)
      |> assign(:registration_success, false)
      |> assign(:registration_message, nil)
@@ -57,6 +58,9 @@ defmodule KirbsWeb.LandingLive.Index do
         end
     end
   end
+
+  # Holiday until the end of August; the notice disappears from September onwards.
+  defp holiday_notice?, do: Date.before?(Date.utc_today(), ~D[2026-09-01])
 
   defp unique_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
     Enum.any?(errors, fn

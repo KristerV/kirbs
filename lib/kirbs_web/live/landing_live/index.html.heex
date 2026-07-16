@@ -490,13 +490,19 @@
 </style>
 
 <div class="landing-page">
+  <div
+    :if={@show_holiday_notice}
+    style="background: linear-gradient(135deg, #FF7F3F, #FFB366); color: #fff; text-align: center; padding: 0.85rem 1rem; font-weight: bold; position: relative; z-index: 20;"
+  >
+    🌴 Oleme puhkusel kuni augusti lõpuni. Näeme jälle septembris!
+  </div>
   <div class="bubble bubble-1"></div>
   <div class="bubble bubble-2"></div>
   <div class="bubble bubble-3"></div>
   <div class="bubble bubble-4"></div>
   <div class="wave wave-top"></div>
 
-  <nav style="padding: 1rem 0; position: absolute; top: 0; left: 0; right: 0; z-index: 10;">
+  <nav style={"padding: 1rem 0; position: absolute; top: #{if @show_holiday_notice, do: "54px", else: "0"}; left: 0; right: 0; z-index: 10;"}>
     <div class="container" style="display: flex; gap: 1.5rem; justify-content: flex-end;">
       <a
         href="/"
