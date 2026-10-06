@@ -5,6 +5,7 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
   """
 
   alias Kirbs.Resources.Bag
+  alias Kirbs.Services.Ai.OpenrouterModel
 
   def run(bag_id) do
     with {:ok, bag} <- load_bag(bag_id),
@@ -73,16 +74,9 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
         ContentPart.text!(prompt)
       ])
 
-    model = Application.get_env(:kirbs, :ai_model, "gemini-2.5-flash")
+    {:ok, llm} = OpenrouterModel.run()
 
-    case LangChain.Chains.LLMChain.new!(%{
-           llm:
-             LangChain.ChatModels.ChatGoogleAI.new!(%{
-               model: model,
-               temperature: 0,
-               stream: false
-             })
-         })
+    case LangChain.Chains.LLMChain.new!(%{llm: llm})
          |> LangChain.Chains.LLMChain.add_message(message)
          |> LangChain.Chains.LLMChain.run() do
       {:ok, updated_chain} ->
@@ -119,7 +113,7 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
   defp format_ai_error(%LangChain.LangChainError{
          original: %{"promptFeedback" => %{"blockReason" => reason}}
        }) do
-    "AI extraction blocked by Gemini safety filter: #{reason}"
+    "AI extraction blocked by safety filter: #{reason}"
   end
 
   defp format_ai_error(%LangChain.LangChainError{message: message, original: original}) do

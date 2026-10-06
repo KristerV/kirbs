@@ -331,6 +331,12 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
   end
 
   defp format_ai_error(%LangChain.LangChainError{
+         original: %Req.Response{status: 429, body: body}
+       }) do
+    {:rate_limited, retry_delay_seconds(body)}
+  end
+
+  defp format_ai_error(%LangChain.LangChainError{
          original: %{"promptFeedback" => %{"blockReason" => reason}}
        }) do
     "AI extraction blocked by Gemini safety filter: #{reason}"
@@ -339,4 +345,19 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
   defp format_ai_error(%LangChain.LangChainError{message: message, original: original}) do
     "AI extraction failed: #{message}. Original: #{inspect(original)}"
   end
+
+  defp retry_delay_seconds(%{"error" => %{"details" => details}}) do
+    Enum.find_value(details, 60, fn
+      %{"retryDelay" => delay} ->
+        case Integer.parse(delay) do
+          {seconds, _} -> seconds
+          :error -> nil
+        end
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp retry_delay_seconds(_), do: 60
 end

@@ -28,6 +28,9 @@ defmodule Kirbs.Jobs.ProcessItemJob do
       {:cancel, reason} ->
         {:cancel, reason}
 
+      {:error, {:rate_limited, seconds}} ->
+        {:snooze, seconds + 60}
+
       {:error, reason} ->
         {:error, reason}
     end

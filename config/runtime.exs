@@ -37,6 +37,19 @@ else
   end
 end
 
+# OpenRouter API key
+if config_env() == :prod do
+  config :kirbs,
+    openrouter_api_key:
+      System.get_env("OPENROUTER_API_KEY") ||
+        raise("Missing environment variable `OPENROUTER_API_KEY`!")
+else
+  # In dev/test, only set if environment variable exists (allows dev.secret.exs to take precedence)
+  if openrouter_api_key = System.get_env("OPENROUTER_API_KEY") do
+    config :kirbs, openrouter_api_key: openrouter_api_key
+  end
+end
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server
