@@ -9,3 +9,6 @@
 #
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
+
+# Own-shop category tree + Yaga category mappings (idempotent)
+{:ok, :seeded} = Kirbs.Services.Categories.SeedTree.run()

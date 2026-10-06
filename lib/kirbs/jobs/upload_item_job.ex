@@ -28,7 +28,7 @@ defmodule Kirbs.Jobs.UploadItemJob do
     with {:ok, item} <- Ash.get(Item, item_id),
          group when not is_nil(group) <- item.combination_group,
          {:ok, items} <- Item.list_by_combination_group(group),
-         true <- Enum.all?(items, &(&1.status == :uploaded_to_yaga)) do
+         true <- Enum.all?(items, &(&1.yaga_listing_status == :listed)) do
       %{combination_group: group}
       |> Kirbs.Jobs.UpdateCombinationDescriptionsJob.new()
       |> Oban.insert()

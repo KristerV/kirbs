@@ -12,5 +12,8 @@ defmodule Kirbs do
     resource Kirbs.Resources.Image
     resource Kirbs.Resources.Settings
     resource Kirbs.Resources.Payout
+    resource Kirbs.Resources.YagaListing
+    resource Kirbs.Resources.Category
+    resource Kirbs.Resources.YagaCategoryMapping
   end
 end

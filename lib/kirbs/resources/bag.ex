@@ -59,7 +59,7 @@ defmodule Kirbs.Resources.Bag do
 
     read :get_first_bag_ready_for_upload do
       prepare build(sort: [created_at: :asc], limit: 1, load: [:client])
-      filter expr(exists(items, status == :reviewed))
+      filter expr(exists(items, status == :reviewed and is_nil(yaga_listing_status)))
     end
   end
 

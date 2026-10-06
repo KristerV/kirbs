@@ -11,6 +11,22 @@ defmodule Kirbs.Release do
     for repo <- repos() do
       {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
     end
+
+    seed_categories()
+  end
+
+  @doc "Idempotently seeds the own-shop category tree and Yaga category mappings."
+  def seed_categories do
+    load_app()
+
+    for repo <- repos() do
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(repo, fn _repo ->
+          {:ok, :seeded} = Kirbs.Services.Categories.SeedTree.run()
+        end)
+    end
+
+    :ok
   end
 
   def rollback(repo, version) do

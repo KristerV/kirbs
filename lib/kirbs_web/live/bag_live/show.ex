@@ -562,8 +562,8 @@ defmodule KirbsWeb.BagLive.Show do
                               {length(item.images)} photos
                             </p>
                             <div class="flex flex-wrap items-center gap-2 mt-2">
-                              <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
-                                {item.status}
+                              <div class={"badge badge-sm #{status_badge_class(display_status(item))}"}>
+                                {display_status(item)}
                               </div>
                               <%= if item.yaga_slug do %>
                                 <a
@@ -778,6 +778,11 @@ defmodule KirbsWeb.BagLive.Show do
     idx = Enum.find_index(groups, &(&1 == group)) || 0
     Enum.at(@group_colors, rem(idx, length(@group_colors)))
   end
+
+  # Lifecycle status combined with the Yaga channel status for display.
+  defp display_status(%{status: :reviewed, yaga_listing_status: :listed}), do: :uploaded_to_yaga
+  defp display_status(%{status: :reviewed, yaga_listing_status: :failed}), do: :upload_failed
+  defp display_status(item), do: item.status
 
   defp status_badge_class(:sold), do: "badge-success"
   defp status_badge_class(:uploaded_to_yaga), do: "badge-success"

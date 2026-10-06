@@ -4,7 +4,9 @@ defmodule Kirbs.Services.Yaga.Uploader do
   Multi-step process: create draft → upload photos → publish.
   """
 
+  alias Kirbs.Resources.Category
   alias Kirbs.Resources.Item
+  alias Kirbs.Resources.YagaListing
   alias Kirbs.Services.Yaga.Auth
   alias Kirbs.YagaTaxonomy
 
@@ -26,7 +28,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
   end
 
   defp load_and_validate(item_id) do
-    case Ash.get(Item, item_id, load: [:images, :bag]) do
+    case Ash.get(Item, item_id, load: [:images, :bag, category: [:yaga_category_mapping]]) do
       {:ok, nil} ->
         {:error, "Item not found"}
 
@@ -49,7 +51,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
       end
 
     errors =
-      if is_nil(YagaTaxonomy.category_to_id(item.suggested_category)) do
+      if is_nil(yaga_category_id(item)) do
         ["valid category required" | errors]
       else
         errors
@@ -244,7 +246,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
   defp build_product_body(item) do
     price = item.listed_price |> Decimal.to_float() |> trunc()
 
-    category_id = YagaTaxonomy.category_to_id(item.suggested_category)
+    category_id = yaga_category_id(item)
     condition_id = YagaTaxonomy.condition_to_id(item.quality)
     brand_id = YagaTaxonomy.brand_to_id(item.brand)
     colors_id_map = YagaTaxonomy.colors_to_ids(item.colors)
@@ -312,14 +314,22 @@ defmodule Kirbs.Services.Yaga.Uploader do
     }
   end
 
+  # Own-shop category -> Yaga category via YagaCategoryMapping; falls back to the
+  # legacy Yaga-named `suggested_category`.
+  defp yaga_category_id(%{category: %Category{yaga_category_mapping: %{yaga_category_id: id}}}),
+    do: id
+
+  defp yaga_category_id(item), do: YagaTaxonomy.category_to_id(item.suggested_category)
+
   defp mark_uploaded(item, product) do
-    Item.update(item, %{
-      status: :uploaded_to_yaga,
-      yaga_id: product.id,
-      yaga_slug: product.slug,
-      upload_error: nil,
-      uploaded_at: DateTime.utc_now()
-    })
+    with {:ok, _listing} <-
+           YagaListing.mark_listed(%{
+             item_id: item.id,
+             yaga_id: product.id,
+             yaga_slug: product.slug
+           }) do
+      Ash.get(Item, item.id)
+    end
   end
 
   defp mark_failed(item_id, reason) do
@@ -330,12 +340,9 @@ defmodule Kirbs.Services.Yaga.Uploader do
         _ -> inspect(reason)
       end
 
-    case Ash.get(Item, item_id) do
-      {:ok, item} ->
-        Item.update(item, %{
-          status: :upload_failed,
-          upload_error: error_message
-        })
+    case Ash.get(Item, item_id, not_found_error?: false) do
+      {:ok, %Item{} = item} ->
+        YagaListing.mark_failed(%{item_id: item.id, upload_error: error_message})
 
       _ ->
         :ok

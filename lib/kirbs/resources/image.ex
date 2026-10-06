@@ -42,7 +42,7 @@ defmodule Kirbs.Resources.Image do
       end
 
       prepare build(limit: arg(:limit))
-      filter expr(compressed == false and item.status == :uploaded_to_yaga)
+      filter expr(compressed == false and exists(item.yaga_listing, status == :listed))
     end
   end
 

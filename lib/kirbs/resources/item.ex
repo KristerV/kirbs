@@ -3,6 +3,12 @@ defmodule Kirbs.Resources.Item do
     domain: Kirbs,
     data_layer: AshPostgres.DataLayer
 
+  # Yaga channel data lives on YagaListing; these aggregates expose it on Item.
+  @listing_fields [:yaga_id, :yaga_slug, :uploaded_at, :upload_error, :yaga_listing_status]
+
+  @doc false
+  def listing_fields, do: @listing_fields
+
   postgres do
     table "items"
     repo Kirbs.Repo
@@ -25,6 +31,9 @@ defmodule Kirbs.Resources.Item do
     define :recently_sold, args: []
     define :list_reviewed_by_bag, args: [:bag_id]
     define :list_by_combination_group, args: [:combination_group]
+    define :publish
+    define :mark_sold
+    define :mark_unsold
   end
 
   actions do
@@ -42,34 +51,68 @@ defmodule Kirbs.Resources.Item do
       :listed_price,
       :sold_price,
       :status,
-      :yaga_id,
-      :yaga_slug,
-      :upload_error,
-      :uploaded_at,
       :sold_at,
-      :combination_group
+      :combination_group,
+      :category_id,
+      :age_group,
+      :gender,
+      :season,
+      :condition,
+      :search_text,
+      :parcel_size,
+      :weight_grams,
+      :slug,
+      :published_at,
+      :kirbs_status
     ]
 
-    defaults [:create, :read, :destroy]
+    defaults [:destroy]
+
+    create :create do
+      primary? true
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
+
+    read :read do
+      primary? true
+    end
 
     update :update do
       primary? true
       require_atomic? false
 
-      change fn changeset, _context ->
-        # Prevent status from being demoted past the upload boundary.
-        # Once an item is uploaded/sold/discarded, only explicit status
-        # transitions (e.g. mark_sold, clear_ai_data) should change it.
-        protected = [:uploaded_to_yaga, :sold, :discarded]
-        current = changeset.data.status
-        new = Ash.Changeset.get_attribute(changeset, :status)
+      change Kirbs.Resources.Item.Changes.ProtectLifecycleStatus
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
 
-        if current in protected and new not in protected do
-          Ash.Changeset.force_change_attribute(changeset, :status, current)
-        else
-          changeset
-        end
-      end
+    update :mark_sold do
+      accept [:sold_price, :sold_at]
+      require_atomic? false
+
+      change set_attribute(:status, :sold)
+      change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :sold}
+      change load(@listing_fields)
+    end
+
+    update :mark_unsold do
+      accept []
+      require_atomic? false
+
+      change set_attribute(:status, :reviewed)
+      change set_attribute(:sold_price, nil)
+      change set_attribute(:sold_at, nil)
+      change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :listed}
+      change load(@listing_fields)
+    end
+
+    update :publish do
+      accept []
+      require_atomic? false
+
+      change Kirbs.Resources.Item.Changes.PublishItem
+      change load(@listing_fields)
     end
 
     read :get do
@@ -117,7 +160,7 @@ defmodule Kirbs.Resources.Item do
 
     read :recently_uploaded do
       prepare build(sort: [uploaded_at: :desc], limit: 10, load: [:images])
-      filter expr(status == :uploaded_to_yaga and not is_nil(uploaded_at))
+      filter expr(yaga_listing_status == :listed and not is_nil(uploaded_at))
     end
 
     read :recently_sold do
@@ -128,7 +171,7 @@ defmodule Kirbs.Resources.Item do
     read :list_reviewed_by_bag do
       argument :bag_id, :uuid, allow_nil?: false
       prepare build(sort: [created_at: :asc], load: [:images])
-      filter expr(bag_id == ^arg(:bag_id) and status == :reviewed)
+      filter expr(bag_id == ^arg(:bag_id) and status == :reviewed and is_nil(yaga_listing_status))
     end
 
     read :list_by_combination_group do
@@ -154,7 +197,13 @@ defmodule Kirbs.Resources.Item do
         |> Ash.Changeset.force_change_attribute(:ai_price_explanation, nil)
         |> Ash.Changeset.force_change_attribute(:status, :pending)
       end
+
+      change load(@listing_fields)
     end
+  end
+
+  preparations do
+    prepare build(load: @listing_fields)
   end
 
   attributes do
@@ -184,22 +233,50 @@ defmodule Kirbs.Resources.Item do
                     :pending,
                     :ai_processed,
                     :reviewed,
-                    :uploaded_to_yaga,
                     :sold,
-                    :discarded,
-                    :upload_failed
+                    :discarded
                   ]
     end
 
     # Combinations
     attribute :combination_group, :uuid
 
-    # Yaga integration
-    attribute :yaga_id, :integer
-    attribute :yaga_slug, :string
-    attribute :upload_error, :string
-    attribute :uploaded_at, :utc_datetime_usec
     attribute :sold_at, :utc_datetime_usec
+
+    # Typed shop attributes (see docs/taxonomy.md)
+    attribute :age_group, :atom do
+      constraints one_of: [:baby, :toddler, :child, :teen, :adult]
+    end
+
+    attribute :gender, :atom do
+      constraints one_of: [:girl, :boy, :unisex, :woman, :man]
+    end
+
+    attribute :season, :atom do
+      constraints one_of: [:spring_autumn, :summer, :winter, :all_year]
+    end
+
+    attribute :condition, :atom do
+      constraints one_of: [:new_with_tags, :like_new, :good, :fair]
+    end
+
+    attribute :parcel_size, :atom do
+      constraints one_of: [:s, :m, :l]
+    end
+
+    attribute :weight_grams, :integer do
+      constraints min: 0
+    end
+
+    attribute :search_text, :string
+    attribute :slug, :string
+    attribute :published_at, :utc_datetime_usec
+
+    attribute :kirbs_status, :atom do
+      allow_nil? false
+      default :available
+      constraints one_of: [:available, :reserved, :sold]
+    end
 
     create_timestamp :created_at
     update_timestamp :updated_at
@@ -210,6 +287,10 @@ defmodule Kirbs.Resources.Item do
       allow_nil? false
     end
 
+    belongs_to :category, Kirbs.Resources.Category
+
+    has_one :yaga_listing, Kirbs.Resources.YagaListing
+
     has_many :images, Kirbs.Resources.Image do
       sort created_at: :asc
     end
@@ -219,5 +300,17 @@ defmodule Kirbs.Resources.Item do
     calculate :seconds_to_sell,
               :integer,
               expr(fragment("EXTRACT(EPOCH FROM (? - ?))::integer", sold_at, uploaded_at))
+  end
+
+  aggregates do
+    first :yaga_id, :yaga_listing, :yaga_id
+    first :yaga_slug, :yaga_listing, :yaga_slug
+    first :uploaded_at, :yaga_listing, :uploaded_at
+    first :upload_error, :yaga_listing, :upload_error
+    first :yaga_listing_status, :yaga_listing, :status
+  end
+
+  identities do
+    identity :unique_slug, [:slug]
   end
 end

@@ -41,7 +41,7 @@ defmodule KirbsWeb.DashboardLive.Index do
         0.0
       end
 
-    uploaded_count = Enum.count(items, &(&1.status == :uploaded_to_yaga))
+    uploaded_count = Enum.count(items, &(&1.yaga_listing_status == :listed))
 
     sell_through_rate =
       if uploaded_count + sold_count > 0 do
@@ -60,7 +60,7 @@ defmodule KirbsWeb.DashboardLive.Index do
 
     # Row 2: Processing stats
     needs_review = Enum.count(items, &(&1.status in [:pending, :ai_processed]))
-    needs_upload = Enum.count(items, &(&1.status == :reviewed))
+    needs_upload = Enum.count(items, &(&1.status == :reviewed and is_nil(&1.yaga_listing_status)))
 
     # Avg items per bag (excluding empty bags)
     items_by_bag = Enum.group_by(items, & &1.bag_id)

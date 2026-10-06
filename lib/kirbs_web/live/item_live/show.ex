@@ -706,6 +706,9 @@ defmodule KirbsWeb.ItemLive.Show do
 
               <div class="flex flex-wrap items-center gap-4">
                 <div class="badge badge-lg">{@item.status}</div>
+                <%= if @item.yaga_listing_status do %>
+                  <div class="badge badge-lg badge-outline">yaga: {@item.yaga_listing_status}</div>
+                <% end %>
 
                 <div class="text-sm">
                   <span class="font-semibold">Created:</span>

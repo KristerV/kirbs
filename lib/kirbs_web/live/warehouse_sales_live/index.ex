@@ -78,7 +78,7 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
     date = Date.from_iso8601!(sold_at_str)
     sold_at = DateTime.new!(date, ~T[12:00:00], "Etc/UTC")
 
-    case Item.update(candidate.item, %{status: :sold, sold_price: price, sold_at: sold_at}) do
+    case Item.mark_sold(candidate.item, %{sold_price: price, sold_at: sold_at}) do
       {:ok, _item} ->
         candidates = Enum.reject(socket.assigns.candidates, &(&1.item.id == candidate.item.id))
 

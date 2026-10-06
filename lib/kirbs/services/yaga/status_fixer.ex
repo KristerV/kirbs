@@ -1,10 +1,11 @@
 defmodule Kirbs.Services.Yaga.StatusFixer do
   @moduledoc """
-  Finds items stuck with status :reviewed but having a yaga_id,
+  Finds items whose Yaga listing is marked :failed although it has a yaga_id,
   checks their actual status on Yaga, and fixes accordingly.
   """
 
   alias Kirbs.Resources.Item
+  alias Kirbs.Resources.YagaListing
   alias Kirbs.Services.Yaga.StatusChecker
 
   def run do
@@ -17,7 +18,7 @@ defmodule Kirbs.Services.Yaga.StatusFixer do
   defp find_broken_items do
     items =
       Item.list!()
-      |> Enum.filter(&(&1.status == :reviewed and &1.yaga_id != nil))
+      |> Enum.filter(&(&1.yaga_listing_status == :failed and &1.yaga_id != nil))
 
     {:ok, items}
   end
@@ -46,16 +47,22 @@ defmodule Kirbs.Services.Yaga.StatusFixer do
   end
 
   defp update_item(item, "sold", price) do
-    case Item.update(item, %{status: :sold, sold_price: price}) do
+    case Item.mark_sold(item, %{sold_price: price}) do
       {:ok, _} -> {:ok, :sold}
       {:error, err} -> {:error, "#{item.id}: #{inspect(err)}"}
     end
   end
 
   defp update_item(item, _yaga_status, _price) do
-    case Item.update(item, %{status: :uploaded_to_yaga}) do
+    case relist(item) do
       {:ok, _} -> {:ok, :uploaded_to_yaga}
       {:error, err} -> {:error, "#{item.id}: #{inspect(err)}"}
+    end
+  end
+
+  defp relist(item) do
+    with {:ok, listing} <- YagaListing.get_by_item(item.id) do
+      YagaListing.mark_relisted(listing)
     end
   end
 end
