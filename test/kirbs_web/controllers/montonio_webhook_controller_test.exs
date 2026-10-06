@@ -20,7 +20,14 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
     end
 
     test "bad signature is 401 and handler is not called", %{conn: conn} do
-      token = foreign_token(%{"exp" => 4_000_000_000, "merchantReference" => "ORD-1", "paymentStatus" => "PAID", "accessKey" => "test_access_key"})
+      token =
+        foreign_token(%{
+          "exp" => 4_000_000_000,
+          "merchantReference" => "ORD-1",
+          "paymentStatus" => "PAID",
+          "accessKey" => "test_access_key"
+        })
+
       assert conn |> post("/webhooks/montonio", %{"orderToken" => token}) |> response(401)
       refute_received {:payment, _, _}
     end
@@ -40,7 +47,10 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
     end
 
     test "different status for same order is dispatched", %{conn: conn} do
-      post(conn, "/webhooks/montonio", %{"orderToken" => order_token(%{"paymentStatus" => "PENDING"})})
+      post(conn, "/webhooks/montonio", %{
+        "orderToken" => order_token(%{"paymentStatus" => "PENDING"})
+      })
+
       post(build_conn(), "/webhooks/montonio", %{"orderToken" => order_token()})
       assert_received {:payment, "ORD-1", :pending}
       assert_received {:payment, "ORD-1", :paid}
@@ -59,7 +69,9 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
               "id" => "ship-1",
               "status" => "inTransit",
               "merchantReference" => "ORD-1",
-              "parcels" => [%{"carrierParcelId" => "CE123EE", "trackingLink" => "https://track.test/CE123EE"}]
+              "parcels" => [
+                %{"carrierParcelId" => "CE123EE", "trackingLink" => "https://track.test/CE123EE"}
+              ]
             }
           },
           overrides
@@ -81,7 +93,10 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
                          tracking_links: ["https://track.test/CE123EE"]
                        }}
 
-      assert build_conn() |> post("/webhooks/montonio/shipping", %{"payload" => token}) |> response(200)
+      assert build_conn()
+             |> post("/webhooks/montonio/shipping", %{"payload" => token})
+             |> response(200)
+
       refute_received {:shipment, _}
     end
 

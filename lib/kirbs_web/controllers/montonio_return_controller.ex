@@ -15,7 +15,9 @@ defmodule KirbsWeb.MontonioReturnController do
   def show(conn, %{"order-token" => token}) do
     case ApplyPaymentUpdate.run(token) do
       {:ok, %{merchant_reference: ref}} ->
-        redirect(conn, to: String.replace(Config.return_redirect(), ":merchant_reference", URI.encode(ref)))
+        redirect(conn,
+          to: String.replace(Config.return_redirect(), ":merchant_reference", URI.encode(ref))
+        )
 
       # Handler errors are retried by the webhook; still send the customer on.
       {:error, {:handler_failed, _}} ->

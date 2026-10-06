@@ -7,7 +7,12 @@ defmodule Kirbs.Montonio.Shipping.CreateShipmentTest do
     merchant_reference: "ORD-1",
     shipping_method: %{type: :pickup_point, id: "pp-1"},
     parcels: [%{weight: 1.2, length: 30, width: 20, height: 10}],
-    receiver: %{name: "Mari Maasikas", email: "m@example.com", phone_country: "+372", phone_number: "5551234"},
+    receiver: %{
+      name: "Mari Maasikas",
+      email: "m@example.com",
+      phone_country: "+372",
+      phone_number: "5551234"
+    },
     products: [%{sku: "A1", name: "Jacket", quantity: 1, price_cents: 2000}]
   }
 
@@ -21,9 +26,15 @@ defmodule Kirbs.Montonio.Shipping.CreateShipmentTest do
       body = Jason.decode!(raw)
       assert body["shippingMethod"] == %{"type" => "pickupPoint", "id" => "pp-1"}
       assert body["receiver"]["phoneCountryCode"] == "+372"
-      assert body["parcels"] == [%{"weight" => 1.2, "length" => 30, "width" => 20, "height" => 10}]
+
+      assert body["parcels"] == [
+               %{"weight" => 1.2, "length" => 30, "width" => 20, "height" => 10}
+             ]
+
       assert body["merchantReference"] == "ORD-1"
-      assert [%{"price" => 20.0, "sku" => "A1"}] = Enum.map(body["products"], &Map.take(&1, ["price", "sku"]))
+
+      assert [%{"price" => 20.0, "sku" => "A1"}] =
+               Enum.map(body["products"], &Map.take(&1, ["price", "sku"]))
 
       Req.Test.json(conn, %{
         "id" => "ship-1",
@@ -33,7 +44,13 @@ defmodule Kirbs.Montonio.Shipping.CreateShipmentTest do
       })
     end)
 
-    assert {:ok, %{shipment_id: "ship-1", status: "pending", carrier_code: "omniva", tracking_numbers: []}} =
+    assert {:ok,
+            %{
+              shipment_id: "ship-1",
+              status: "pending",
+              carrier_code: "omniva",
+              tracking_numbers: []
+            }} =
              CreateShipment.run(@params)
   end
 

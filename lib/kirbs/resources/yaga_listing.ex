@@ -24,13 +24,24 @@ defmodule Kirbs.Resources.YagaListing do
     define :mark_failed
     define :mark_sold, args: []
     define :mark_relisted, args: []
+    define :request_delist, args: []
+    define :mark_delisted, args: []
+    define :list_needing_delist, args: []
     define :list
     define :update
     define :destroy
   end
 
   actions do
-    default_accept [:item_id, :yaga_id, :yaga_slug, :uploaded_at, :upload_error, :status]
+    default_accept [
+      :item_id,
+      :yaga_id,
+      :yaga_slug,
+      :uploaded_at,
+      :upload_error,
+      :status,
+      :delist_requested_at
+    ]
 
     defaults [:destroy]
 
@@ -80,6 +91,23 @@ defmodule Kirbs.Resources.YagaListing do
       change set_attribute(:status, :sold)
     end
 
+    # Item sold/reserved on kirbs while still live on Yaga. The code base has no
+    # Yaga delete/hide API, so this queues the listing for manual delisting.
+    update :request_delist do
+      accept []
+      change set_attribute(:delist_requested_at, &DateTime.utc_now/0)
+    end
+
+    update :mark_delisted do
+      accept []
+      change set_attribute(:status, :delisted)
+    end
+
+    read :list_needing_delist do
+      filter expr(status == :listed and not is_nil(delist_requested_at))
+      prepare build(sort: [delist_requested_at: :asc], load: [item: [:images]])
+    end
+
     update :mark_relisted do
       accept []
       change set_attribute(:status, :listed)
@@ -93,6 +121,7 @@ defmodule Kirbs.Resources.YagaListing do
     attribute :yaga_slug, :string
     attribute :uploaded_at, :utc_datetime_usec
     attribute :upload_error, :string
+    attribute :delist_requested_at, :utc_datetime_usec
 
     attribute :status, :atom do
       allow_nil? false

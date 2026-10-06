@@ -50,7 +50,9 @@ defmodule Kirbs.Shipping.MontonioPickupPoints do
     ok = for {carrier, {:ok, count}} <- results, do: {carrier, count}
     failed = for {carrier, {:error, reason}} <- results, do: {carrier, reason}
 
-    if ok == [] and failed != [], do: {:error, failed}, else: {:ok, %{refreshed: ok, failed: failed}}
+    if ok == [] and failed != [],
+      do: {:error, failed},
+      else: {:ok, %{refreshed: ok, failed: failed}}
   end
 
   defp carriers(nil), do: Config.carriers()

@@ -13,8 +13,23 @@ defmodule Kirbs.Resources.Item.Changes.SyncListingStatus do
 
     Ash.Changeset.after_action(changeset, fn _changeset, item ->
       case YagaListing.get_by_item(item.id, not_found_error?: false) do
+        # A kirbs-channel sale does not touch the Yaga listing: it is still live
+        # there and queued for delisting instead (see Services.Yaga.RequestDelist).
+        {:ok, %YagaListing{}} when listing_status == :sold and item.sales_channel == :kirbs ->
+          {:ok, item}
+
+        # Manually delisted on Yaga: it stays delisted until someone relists it.
+        {:ok, %YagaListing{status: :delisted}} when listing_status == :listed ->
+          {:ok, item}
+
         {:ok, %YagaListing{} = listing} ->
-          {:ok, _} = YagaListing.update(listing, %{status: listing_status})
+          {:ok, _} =
+            YagaListing.update(listing, %{
+              status: listing_status,
+              delist_requested_at:
+                if(listing_status == :listed, do: nil, else: listing.delist_requested_at)
+            })
+
           {:ok, item}
 
         _ ->

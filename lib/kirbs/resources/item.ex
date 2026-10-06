@@ -45,6 +45,9 @@ defmodule Kirbs.Resources.Item do
     define :extend_reservation, args: [:reserved_until]
     define :sell_on_kirbs, args: [:sold_price]
     define :list_expired_reservations, args: []
+    define :list_unpublished_reviewed_by_bag, args: [:bag_id]
+    define :list_sold_with_stale_kirbs_status, args: []
+    define :list_kirbs_sold_with_stale_status, args: []
   end
 
   actions do
@@ -75,7 +78,8 @@ defmodule Kirbs.Resources.Item do
       :slug,
       :published_at,
       :kirbs_status,
-      :reserved_until
+      :reserved_until,
+      :sales_channel
     ]
 
     defaults [:destroy]
@@ -136,11 +140,15 @@ defmodule Kirbs.Resources.Item do
              )
     end
 
+    # Every sale path (Yaga checker, warehouse review, kirbs shop via
+    # Kirbs.Services.Channels.MarkSoldOnKirbs) goes through here, so kirbs_status
+    # can never disagree with status == :sold. Pass `sales_channel` to say where it sold.
     update :mark_sold do
-      accept [:sold_price, :sold_at]
+      accept [:sold_price, :sold_at, :sales_channel]
       require_atomic? false
 
       change set_attribute(:status, :sold)
+      change set_attribute(:kirbs_status, :sold)
       change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :sold}
       change load(@listing_fields)
     end
@@ -150,6 +158,8 @@ defmodule Kirbs.Resources.Item do
       require_atomic? false
 
       change set_attribute(:status, :reviewed)
+      change set_attribute(:kirbs_status, :available)
+      change set_attribute(:sales_channel, :yaga)
       change set_attribute(:sold_price, nil)
       change set_attribute(:sold_at, nil)
       change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :listed}
@@ -212,8 +222,12 @@ defmodule Kirbs.Resources.Item do
       change set_attribute(:kirbs_status, :sold)
       change set_attribute(:status, :sold)
       change set_attribute(:reserved_until, nil)
+      change set_attribute(:sales_channel, :kirbs)
       change atomic_update(:sold_at, expr(now()))
       change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :sold}
+
+      # a shop sale must come down from Yaga too
+      change Kirbs.Resources.Item.Changes.EnqueueYagaDelist
     end
 
     read :list_expired_reservations do
@@ -292,6 +306,20 @@ defmodule Kirbs.Resources.Item do
     read :list_for_sitemap do
       filter expr(not is_nil(published_at) and not is_nil(slug) and kirbs_status != :sold)
       prepare build(sort: [published_at: :desc])
+    end
+
+    read :list_unpublished_reviewed_by_bag do
+      argument :bag_id, :uuid, allow_nil?: false
+      filter expr(bag_id == ^arg(:bag_id) and status == :reviewed and is_nil(published_at))
+    end
+
+    # Repair queries: status and kirbs_status must agree on "sold".
+    read :list_sold_with_stale_kirbs_status do
+      filter expr(status == :sold and kirbs_status != :sold)
+    end
+
+    read :list_kirbs_sold_with_stale_status do
+      filter expr(status != :sold and kirbs_status == :sold)
     end
 
     read :get_by_bag do
@@ -446,6 +474,13 @@ defmodule Kirbs.Resources.Item do
     attribute :published_at, :utc_datetime_usec
 
     attribute :reserved_until, :utc_datetime_usec
+    # Where the sale happened. Drives accounting (fees per channel) and whether a
+    # Yaga listing still has to be delisted. :warehouse = paid to us directly.
+    attribute :sales_channel, :atom do
+      allow_nil? false
+      default :yaga
+      constraints one_of: [:yaga, :kirbs, :warehouse]
+    end
 
     attribute :kirbs_status, :atom do
       allow_nil? false

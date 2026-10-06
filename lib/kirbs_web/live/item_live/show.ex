@@ -4,6 +4,7 @@ defmodule KirbsWeb.ItemLive.Show do
 
   alias Kirbs.Resources.{Item, Image}
   alias Kirbs.YagaTaxonomy
+  alias Kirbs.Services.Channels.PublishReviewedToShop
   alias Kirbs.Services.FindFirstReviewTarget
   alias Kirbs.Services.FindNextBagItemToReview
 
@@ -304,6 +305,28 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
+  def handle_event("publish_to_shop", _params, socket) do
+    item = socket.assigns.item
+
+    cond do
+      PublishReviewedToShop.publishable?(item) ->
+        case Item.publish(item) do
+          {:ok, published} ->
+            {:noreply,
+             socket
+             |> assign(:item, published)
+             |> put_flash(:info, "Published to the shop")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Could not publish to the shop")}
+        end
+
+      true ->
+        {:noreply, put_flash(socket, :error, "Set a category and a listed price first")}
+    end
+  end
+
+  @impl true
   def handle_event("show_image", %{"image_id" => image_id}, socket) do
     selected_image = Enum.find(socket.assigns.images, &(&1.id == image_id))
     {:noreply, assign(socket, :selected_image, selected_image)}
@@ -537,6 +560,14 @@ defmodule KirbsWeb.ItemLive.Show do
             <button class="btn btn-sm" phx-click="run_ai">
               Run AI
             </button>
+            <%= if @item.status == :reviewed and is_nil(@item.published_at) do %>
+              <button id="publish-to-shop" class="btn btn-sm btn-success" phx-click="publish_to_shop">
+                Publish to shop
+              </button>
+            <% end %>
+            <%= if @item.published_at do %>
+              <span id="published-badge" class="badge badge-success">In shop</span>
+            <% end %>
             <button
               class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: ""}"}
               phx-click="delete_item"

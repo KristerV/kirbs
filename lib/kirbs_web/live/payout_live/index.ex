@@ -46,8 +46,7 @@ defmodule KirbsWeb.PayoutLive.Index do
         |> Enum.flat_map(& &1.items)
         |> Enum.filter(&(&1.status == :sold and not is_nil(&1.sold_price)))
 
-      total_sales = Enum.reduce(sold_items, Decimal.new(0), &Decimal.add(&2, &1.sold_price))
-      client_share = Decimal.div(total_sales, Decimal.new(2))
+      client_share = Accounting.client_share_total(sold_items)
 
       %{
         id: client.id,

@@ -228,6 +228,12 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
       nil ->
         {:ok, :not_found}
 
+      # Sold on kirbs: Yaga still lists it as published until it is delisted by hand,
+      # which must not flip the item back to unsold. (If Yaga also reports a sale, that is
+      # a double sale for the owner to resolve; we keep the kirbs sale.)
+      _ when item.status == :sold and item.sales_channel == :kirbs ->
+        {:ok, :no_change}
+
       %{status: "sold"} = data when item.yaga_listing_status == :listed ->
         mark_as_sold(item, data)
 
