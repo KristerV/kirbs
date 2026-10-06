@@ -2,6 +2,13 @@ import Config
 config :kirbs, Oban, testing: :manual
 config :kirbs, token_signing_secret: "/VHDrBw1lZOfNa3S/rUjuXeLdVqnV3v8"
 config :bcrypt_elixir, log_rounds: 1
+
+config :kirbs, :montonio,
+  access_key: "test_access_key",
+  secret_key: "test_secret_key_test_secret_key_1234",
+  env: :sandbox,
+  req_options: [plug: {Req.Test, Kirbs.Montonio}],
+  label_poll_delay: 0
 config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true
 
 # Configure your database

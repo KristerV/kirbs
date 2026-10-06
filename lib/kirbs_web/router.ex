@@ -99,6 +99,13 @@ defmodule KirbsWeb.Router do
     )
   end
 
+  # Montonio webhooks + payment return: no session/CSRF, auth is the signed JWT.
+  scope "/", KirbsWeb do
+    post "/webhooks/montonio", MontonioWebhookController, :payment
+    post "/webhooks/montonio/shipping", MontonioWebhookController, :shipping
+    get "/checkout/montonio/return", MontonioReturnController, :show
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", KirbsWeb do
   #   pipe_through :api
