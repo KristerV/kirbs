@@ -28,13 +28,14 @@ import {Camera} from "./hooks/camera"
 import {MonthlyEarningsChart} from "./hooks/monthly_earnings_chart"
 import {DailyChart} from "./hooks/daily_chart"
 import {SeasonalChart} from "./hooks/seasonal_chart"
+import {MetaPixel} from "./hooks/meta_pixel"
 import live_select from "live_select"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, Camera, MonthlyEarningsChart, DailyChart, SeasonalChart, ...live_select},
+  hooks: {...colocatedHooks, Camera, MonthlyEarningsChart, DailyChart, SeasonalChart, MetaPixel, ...live_select},
 })
 
 // Show progress bar on live navigation and form submits

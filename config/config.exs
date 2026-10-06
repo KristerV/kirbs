@@ -100,6 +100,13 @@ config :kirbs, KirbsWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
+config :ab_funnel,
+  repo: Kirbs.Repo,
+  experiments: Kirbs.ABTests
+
+# Meta pixel is off by default; enable per environment in runtime.exs.
+config :kirbs, :meta_pixel, enabled: false, pixel_id: nil
+
 config :kirbs, Kirbs.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
