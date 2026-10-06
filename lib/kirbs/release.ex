@@ -23,6 +23,7 @@ defmodule Kirbs.Release do
       {:ok, _, _} =
         Ecto.Migrator.with_repo(repo, fn _repo ->
           {:ok, :seeded} = Kirbs.Services.Categories.SeedTree.run()
+          {:ok, _count} = Kirbs.Services.Search.SeedSynonyms.run()
         end)
     end
 
