@@ -5,6 +5,8 @@ defmodule KirbsWeb.PayoutLive.Index do
   alias Kirbs.Resources.{Client, Payout}
   alias Kirbs.Services.Accounting.{ComputeClientCarryover, ComputeOpenMonthAmounts}
 
+  @recent_month_count 4
+
   @impl true
   def mount(_params, _session, socket) do
     clients = load_clients()
@@ -24,6 +26,7 @@ defmodule KirbsWeb.PayoutLive.Index do
      |> assign(:clients, clients)
      |> assign(:payouts, payouts)
      |> assign(:months, months)
+     |> assign(:show_all_months, false)
      |> assign(:show_modal, false)
      |> assign(:selected_client, nil)
      |> assign(:selected_payout, nil)
@@ -266,6 +269,10 @@ defmodule KirbsWeb.PayoutLive.Index do
      |> assign(:for_month, payout.for_month)}
   end
 
+  def handle_event("toggle_all_months", _params, socket) do
+    {:noreply, update(socket, :show_all_months, &(!&1))}
+  end
+
   def handle_event("close_modal", _params, socket) do
     {:noreply,
      socket
@@ -353,14 +360,31 @@ defmodule KirbsWeb.PayoutLive.Index do
     end
   end
 
+  defp visible_months(months, true), do: months
+  defp visible_months(months, false), do: Enum.take(months, -@recent_month_count)
+
   @impl true
   def render(assigns) do
+    assigns =
+      assign(assigns, :recent_month_count, @recent_month_count)
+      |> assign(:visible_months, visible_months(assigns.months, assigns.show_all_months))
+
     ~H"""
     <div class="bg-base-300 min-h-screen">
       <div class="max-w-7xl mx-auto p-6">
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-3xl font-bold">Payouts</h1>
           <div class="flex gap-2">
+            <button
+              id="toggle-all-months"
+              type="button"
+              class="btn btn-outline btn-sm"
+              phx-click="toggle_all_months"
+            >
+              {if @show_all_months,
+                do: "Show last #{@recent_month_count} months",
+                else: "Show all months"}
+            </button>
             <.link navigate={~p"/warehouse-sales"} class="btn btn-ghost btn-sm">
               Warehouse sales →
             </.link>
@@ -380,7 +404,7 @@ defmodule KirbsWeb.PayoutLive.Index do
                   <thead>
                     <tr>
                       <th>Client</th>
-                      <%= for {year, month} <- @months do %>
+                      <%= for {year, month} <- @visible_months do %>
                         <th class="text-right">{month_name(month)} {year}</th>
                       <% end %>
                       <th class="text-right border-l-2 border-base-300 bg-base-200">Total Paid</th>
@@ -395,7 +419,7 @@ defmodule KirbsWeb.PayoutLive.Index do
                             {client.name}
                           </.link>
                         </td>
-                        <%= for {year, month} <- @months do %>
+                        <%= for {year, month} <- @visible_months do %>
                           <td class="text-right">
                             {render_cell(assigns, client, {year, month})}
                           </td>
