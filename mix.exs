@@ -42,6 +42,7 @@ defmodule Kirbs.MixProject do
   defp deps do
     [
       {:vix, "~> 0.35"},
+      {:ab_funnel, github: "kristerv/ab_funnel"},
       {:tzdata, "~> 1.1"},
       {:langchain, github: "KristerV/langchain", override: true},
       {:live_select, "~> 1.0"},

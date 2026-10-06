@@ -14,6 +14,10 @@ defmodule KirbsWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :load_from_session
+    # Must come after the current user is loaded. Any additional browser-facing pipeline
+    # (e.g. a future :ad_landing one) needs both of these plugs too.
+    plug AbFunnel.Plug.Visitor
+    plug KirbsWeb.Plugs.CaptureUtm
   end
 
   pipeline :api do
@@ -40,11 +44,22 @@ defmodule KirbsWeb.Router do
   scope "/", KirbsWeb do
     pipe_through :browser
 
-    live "/", LandingLive.Index, :index
-    live "/uudised", BlogLive.Index, :index
+    ash_authentication_live_session :public_routes,
+      on_mount: [
+        {KirbsWeb.LiveUserAuth, :live_user_optional},
+        AbFunnel.LiveView,
+        KirbsWeb.LiveTracking
+      ] do
+      live "/", LandingLive.Index, :index
+      live "/uudised", BlogLive.Index, :index
+    end
 
     ash_authentication_live_session :authenticated_routes,
-      on_mount: {KirbsWeb.LiveUserAuth, :live_user_required} do
+      on_mount: [
+        {KirbsWeb.LiveUserAuth, :live_user_required},
+        AbFunnel.LiveView,
+        KirbsWeb.LiveTracking
+      ] do
       live "/dashboard", DashboardLive.Index, :index
       live "/bags", BagLive.Index, :index
       live "/bags/capture", BagLive.Capture, :capture
@@ -113,6 +128,7 @@ defmodule KirbsWeb.Router do
 
     live_dashboard "/dashboard", metrics: KirbsWeb.Telemetry
     oban_dashboard("/oban")
+    live "/ab", AbFunnel.AdminLive
     ash_admin "/"
   end
 
