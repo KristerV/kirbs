@@ -3,7 +3,7 @@ defmodule KirbsWeb.ShopLive.Show do
   Public item page `/p/:slug`: photo gallery, attributes, breadcrumbs and a "Broneeri"
   (reserve) button that leads to the checkout (`/checkout/:slug`).
 
-  Funnel tracking hook point: `mount/3` (item viewed).
+  Funnel tracking: `item_viewed` in `mount/3`.
   """
   use KirbsWeb, :live_view
 
@@ -15,7 +15,12 @@ defmodule KirbsWeb.ShopLive.Show do
   def mount(%{"slug" => slug}, _session, socket) do
     case Item.get_published_by_slug(slug, not_found_error?: false) do
       {:ok, %Item{} = item} ->
-        {:ok, socket |> assign(:item, item) |> assign(:current, 0) |> assign_page(item)}
+        {:ok,
+         socket
+         |> assign(:item, item)
+         |> assign(:current, 0)
+         |> assign_page(item)
+         |> track_view(item)}
 
       _ ->
         {:ok,
@@ -32,6 +37,16 @@ defmodule KirbsWeb.ShopLive.Show do
       {i, ""} when i >= 0 and i <= max -> {:noreply, assign(socket, :current, i)}
       _ -> {:noreply, socket}
     end
+  end
+
+  defp track_view(socket, item) do
+    KirbsWeb.Track.event(socket, :item_viewed, %{
+      item_id: item.id,
+      content_ids: [item.id],
+      content_name: item_title(item),
+      value: item.listed_price && Decimal.to_float(item.listed_price),
+      currency: "EUR"
+    })
   end
 
   defp assign_page(socket, item) do

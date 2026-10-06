@@ -53,7 +53,8 @@ defmodule KirbsWeb.Router do
       live "/", ShopLive.Index, :index
       live "/k/*path", ShopLive.Index, :category
       live "/p/:slug", ShopLive.Show, :show
-      live "/checkout/:slug", ShopLive.CheckoutPlaceholder, :show
+      live "/checkout/:slug", ShopLive.Checkout, :show
+      live "/order/:token", ShopLive.Order, :show
       live "/muuda", LandingLive.Index, :index
       live "/uudised", BlogLive.Index, :index
     end
@@ -75,6 +76,8 @@ defmodule KirbsWeb.Router do
       live "/clients", ClientLive.Index, :index
       live "/clients/:id", ClientLive.Show, :show
       live "/payouts", PayoutLive.Index, :index
+      live "/orders", OrdersLive.Index, :index
+      live "/orders/shipping", OrdersLive.Shipping, :index
       live "/warehouse-sales", WarehouseSalesLive.Index, :index
       live "/accounting", AccountingLive.Index, :index
       live "/settings", SettingsLive.Index, :index

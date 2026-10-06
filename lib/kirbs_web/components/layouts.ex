@@ -27,10 +27,19 @@ defmodule KirbsWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :meta_pixel_id, :string, default: nil, doc: "Meta pixel id (`@meta_pixel_id`); nil = off"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
+    <div
+      :if={@meta_pixel_id}
+      id="meta-pixel"
+      phx-hook="MetaPixel"
+      data-pixel-id={@meta_pixel_id}
+    >
+    </div>
     <div id="shop-shell" class="min-h-screen bg-[#fffaf4] text-stone-800 antialiased">
       <header class="sticky top-0 z-30 border-b border-orange-100 bg-[#fffaf4]/90 backdrop-blur">
         <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">

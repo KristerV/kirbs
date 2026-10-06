@@ -1,4 +1,5 @@
-<Layouts.app flash={@flash}>
+<Layouts.app flash={@flash} meta_pixel_id={@meta_pixel_id}>
+  <div id="shop-visit" phx-hook="ShopVisit" phx-update="ignore"></div>
   <%!-- Hero: only on the unfiltered front page --%>
   <section
     :if={is_nil(@category) and @filters == %{}}

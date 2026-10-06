@@ -17,5 +17,7 @@ defmodule Kirbs do
     resource Kirbs.Resources.YagaCategoryMapping
     resource Kirbs.Resources.CategorizationProposal
     resource Kirbs.Resources.SearchSynonym
+    resource Kirbs.Resources.Order
+    resource Kirbs.Resources.OrderItem
   end
 end

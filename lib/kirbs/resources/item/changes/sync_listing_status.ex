@@ -5,6 +5,9 @@ defmodule Kirbs.Resources.Item.Changes.SyncListingStatus do
   alias Kirbs.Resources.YagaListing
 
   @impl true
+  def atomic(changeset, opts, context), do: {:ok, change(changeset, opts, context)}
+
+  @impl true
   def change(changeset, opts, _context) do
     listing_status = Keyword.fetch!(opts, :listing_status)
 

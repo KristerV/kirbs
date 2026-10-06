@@ -22,14 +22,16 @@ defmodule KirbsWeb.Track do
 
   @doc """
   Track `name` (an atom from `events/0`) for the socket's visitor and push the Meta pixel
-  event when a pixel id is configured. Returns the socket.
+  event when a pixel id is configured. Returns the socket. Pass `pixel: false` to skip the
+  pixel push (e.g. `:shop_viewed`, since the MetaPixel hook already sends PageView on mount).
   """
-  def event(socket, name, metadata \\ %{}) when is_atom(name) do
+  def event(socket, name, metadata \\ %{}, opts \\ []) when is_atom(name) do
     {ab_name, meta_name} = Map.fetch!(@events, name)
     utm = Map.get(socket.assigns, :utm, %{})
 
     AbFunnel.track(socket, ab_name, Map.merge(utm, stringify(metadata)))
-    push_meta(socket, meta_name, metadata)
+
+    if Keyword.get(opts, :pixel, true), do: push_meta(socket, meta_name, metadata), else: socket
   end
 
   @doc "Same as `event/3` for a Plug.Conn (controllers/plugs); no pixel push."
