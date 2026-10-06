@@ -50,6 +50,23 @@ else
   end
 end
 
+# Montonio (payments + shipping). Not required at boot: without credentials the
+# integration returns {:error, :montonio_not_configured}. See docs/montonio.md.
+montonio_env = System.get_env("MONTONIO_ENV") || "sandbox"
+
+if montonio_env not in ["sandbox", "production"] do
+  raise "MONTONIO_ENV must be `sandbox` or `production`, got: #{inspect(montonio_env)}"
+end
+
+if config_env() != :test do
+  if System.get_env("MONTONIO_ACCESS_KEY") && System.get_env("MONTONIO_SECRET_KEY") do
+    config :kirbs, :montonio,
+      access_key: System.get_env("MONTONIO_ACCESS_KEY"),
+      secret_key: System.get_env("MONTONIO_SECRET_KEY"),
+      env: if(montonio_env == "production", do: :production, else: :sandbox)
+  end
+end
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server

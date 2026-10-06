@@ -25,6 +25,8 @@ config :kirbs, Oban,
        {"0 3 * * *", Kirbs.Jobs.CompressImagesJob},
        # Refresh Yaga JWT daily at 4 AM (30-day token, kept rolling)
        {"0 4 * * *", Kirbs.Jobs.YagaTokenRefreshJob},
+       # Refresh cached Montonio pickup points daily at 5 AM
+       {"0 5 * * *", Kirbs.Jobs.RefreshMontonioPickupPointsJob},
        # Monthly Yaga withdraw at midnight on the 1st (Tallinn)
        {"0 0 1 * *", Kirbs.Jobs.YagaMonthlyWithdrawJob}
      ]}

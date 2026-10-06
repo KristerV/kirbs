@@ -10,6 +10,7 @@ defmodule Kirbs.Application do
     children = [
       KirbsWeb.Telemetry,
       Kirbs.Repo,
+      Kirbs.Montonio.Store,
       {DNSCluster, query: Application.get_env(:kirbs, :dns_cluster_query) || :ignore},
       {Oban,
        AshOban.config(
