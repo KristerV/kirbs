@@ -34,6 +34,10 @@ defmodule Kirbs.Resources.Item do
     define :publish
     define :mark_sold
     define :mark_unsold
+    define :search
+    define :facets, args: [:params]
+    define :get_published_by_slug, args: [:slug]
+    define :list_for_sitemap, args: []
   end
 
   actions do
@@ -120,6 +124,66 @@ defmodule Kirbs.Resources.Item do
     end
 
     read :list
+
+    # Public shop: published + available items matching the filters. See
+    # Kirbs.Resources.Item.Preparations.Search for the FTS/trigram/synonym logic.
+    read :search do
+      pagination offset?: true,
+                 default_limit: 24,
+                 max_page_size: 100,
+                 countable: true,
+                 required?: false
+
+      argument :q, :string
+      argument :category, :string
+      argument :brand, :string
+      argument :size, :string
+
+      argument :age_group, :atom do
+        constraints one_of: [:baby, :toddler, :child, :teen, :adult]
+      end
+
+      argument :gender, :atom do
+        constraints one_of: [:girl, :boy, :unisex, :woman, :man]
+      end
+
+      argument :season, :atom do
+        constraints one_of: [:spring_autumn, :summer, :winter, :all_year]
+      end
+
+      argument :condition, :atom do
+        constraints one_of: [:new_with_tags, :like_new, :good, :fair]
+      end
+
+      argument :min_price, :decimal
+      argument :max_price, :decimal
+
+      argument :sort, :atom do
+        constraints one_of: [:relevance, :newest, :price_asc, :price_desc]
+      end
+
+      prepare Kirbs.Resources.Item.Preparations.Search
+    end
+
+    # Facet counts for the shop filter sidebar: %{brand: [{value, count}], ...}.
+    # Each facet is counted with its own filter removed so alternatives stay visible.
+    action :facets, :map do
+      argument :params, :map, allow_nil?: false, default: %{}
+      run Kirbs.Resources.Item.Actions.Facets
+    end
+
+    read :get_published_by_slug do
+      get? true
+      argument :slug, :string, allow_nil?: false
+
+      filter expr(slug == ^arg(:slug) and not is_nil(published_at))
+      prepare build(load: [:images, category: [parent: [:parent]]])
+    end
+
+    read :list_for_sitemap do
+      filter expr(not is_nil(published_at) and not is_nil(slug) and kirbs_status != :sold)
+      prepare build(sort: [published_at: :desc])
+    end
 
     read :get_by_bag do
       argument :bag_id, :uuid do
@@ -300,6 +364,18 @@ defmodule Kirbs.Resources.Item do
     calculate :seconds_to_sell,
               :integer,
               expr(fragment("EXTRACT(EPOCH FROM (? - ?))::integer", sold_at, uploaded_at))
+
+    calculate :search_rank,
+              :float,
+              expr(
+                fragment(
+                  "coalesce(word_similarity((?)::text, immutable_unaccent(lower(coalesce(?, '')))), 0)::float8",
+                  ^arg(:q),
+                  search_text
+                )
+              ) do
+      argument :q, :string, allow_nil?: false
+    end
   end
 
   aggregates do

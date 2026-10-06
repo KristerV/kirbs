@@ -34,7 +34,7 @@ defmodule Kirbs.Resources.Item.Changes.BuildSearchText do
   defp category_name(nil), do: nil
 
   defp category_name(id) do
-    case Ash.get(Category, id, not_found_error?: false) do
+    case Ash.get(Category, id, error?: false) do
       {:ok, %{name_et: name}} -> name
       _ -> nil
     end

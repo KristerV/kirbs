@@ -40,7 +40,11 @@ defmodule KirbsWeb.Router do
   scope "/", KirbsWeb do
     pipe_through :browser
 
-    live "/", LandingLive.Index, :index
+    live "/", ShopLive.Index, :index
+    live "/k/*path", ShopLive.Index, :category
+    live "/p/:slug", ShopLive.Show, :show
+    live "/checkout/:slug", ShopLive.CheckoutPlaceholder, :show
+    live "/muuda", LandingLive.Index, :index
     live "/uudised", BlogLive.Index, :index
 
     ash_authentication_live_session :authenticated_routes,
@@ -60,6 +64,13 @@ defmodule KirbsWeb.Router do
       live "/accounting", AccountingLive.Index, :index
       live "/settings", SettingsLive.Index, :index
     end
+  end
+
+  # Public crawler/image endpoints (no session needed)
+  scope "/", KirbsWeb do
+    get "/img/:width/:id", ImageController, :show
+    get "/sitemap.xml", SeoController, :sitemap
+    get "/robots.txt", SeoController, :robots
   end
 
   scope "/", KirbsWeb do

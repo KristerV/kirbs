@@ -12,3 +12,11 @@
 
 # Own-shop category tree + Yaga category mappings (idempotent)
 {:ok, :seeded} = Kirbs.Services.Categories.SeedTree.run()
+
+# Shop search synonyms (idempotent)
+{:ok, _count} = Kirbs.Services.Search.SeedSynonyms.run()
+
+# Dev-only demo shop items with generated placeholder photos
+if Mix.env() == :dev do
+  {:ok, _items} = Kirbs.Services.Shop.SeedDevItems.run()
+end
