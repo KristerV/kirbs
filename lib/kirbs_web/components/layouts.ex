@@ -75,14 +75,38 @@ defmodule KirbsWeb.Layouts do
             <span class="font-bold text-orange-500">Kirbs</span>
             &middot; kvaliteetsed kasutatud lasteriided uue elu ootel
           </p>
-          <div class="flex gap-4">
+          <div class="flex flex-wrap gap-4">
             <.link navigate={~p"/muuda"} class="transition-colors hover:text-orange-600">
               Müü oma riided
             </.link>
             <.link navigate={~p"/uudised"} class="transition-colors hover:text-orange-600">
               Uudised
             </.link>
+            <.link
+              navigate={~p"/tingimused"}
+              id="footer-terms"
+              class="transition-colors hover:text-orange-600"
+            >
+              Müügitingimused
+            </.link>
+            <.link
+              navigate={~p"/tagastus"}
+              id="footer-returns"
+              class="transition-colors hover:text-orange-600"
+            >
+              Tagastus
+            </.link>
+            <.link
+              navigate={~p"/privaatsus"}
+              id="footer-privacy"
+              class="transition-colors hover:text-orange-600"
+            >
+              Privaatsus
+            </.link>
           </div>
+        </div>
+        <div class="mx-auto max-w-7xl border-t border-orange-100/70 px-4 py-4 sm:px-6 lg:px-8">
+          <KirbsWeb.LegalComponents.company_details />
         </div>
       </footer>
     </div>

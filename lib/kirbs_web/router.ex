@@ -56,6 +56,9 @@ defmodule KirbsWeb.Router do
       live "/checkout/:slug", ShopLive.CheckoutPlaceholder, :show
       live "/muuda", LandingLive.Index, :index
       live "/uudised", BlogLive.Index, :index
+      live "/tingimused", LegalLive.Terms, :show
+      live "/tagastus", LegalLive.Returns, :show
+      live "/privaatsus", LegalLive.Privacy, :show
     end
 
     ash_authentication_live_session :authenticated_routes,

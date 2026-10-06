@@ -4,7 +4,7 @@ defmodule Kirbs.Services.Accounting.ComputeClientCarryover do
 
       carryover = lifetime_share − total_paid − sum(open_month_earnings)
 
-  Where `lifetime_share` is half the sold_price of items the client currently
+  Where `lifetime_share` is the client share (`Kirbs.Accounting.client_share/1`, per sales channel) of items the client currently
   owns, `total_paid` is the sum of recorded payouts, and `open_month_earnings`
   is the share for items whose `sold_at` falls in a post-cutoff month with no
   payout yet.
@@ -33,8 +33,7 @@ defmodule Kirbs.Services.Accounting.ComputeClientCarryover do
   defp lifetime_share(items) do
     items
     |> Enum.filter(&(&1.status == :sold and not is_nil(&1.sold_price)))
-    |> Enum.reduce(Decimal.new(0), fn i, acc -> Decimal.add(acc, i.sold_price) end)
-    |> Decimal.div(2)
+    |> Accounting.client_share_total()
   end
 
   defp sum_amounts(payouts) do
@@ -53,7 +52,6 @@ defmodule Kirbs.Services.Accounting.ComputeClientCarryover do
       i.status == :sold and not is_nil(i.sold_price) and not is_nil(i.sold_at) and
         Accounting.tallinn_month(i.sold_at) == {year, month}
     end)
-    |> Enum.reduce(Decimal.new(0), fn i, acc -> Decimal.add(acc, i.sold_price) end)
-    |> Decimal.div(2)
+    |> Accounting.client_share_total()
   end
 end

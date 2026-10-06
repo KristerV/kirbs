@@ -1,7 +1,7 @@
 defmodule KirbsWeb.WarehouseSalesLive.Index do
   use KirbsWeb, :live_view
 
-  alias Kirbs.Resources.Item
+  alias Kirbs.Resources.{Item, YagaListing}
   alias Kirbs.Services.Yaga.{StatusChecker, WarehouseSaleDetector}
 
   @impl true
@@ -12,6 +12,7 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
      |> assign(:loading, true)
      |> assign(:error, nil)
      |> assign(:candidates, [])
+     |> assign(:delist_queue, YagaListing.list_needing_delist!())
      |> assign(:selected, nil)
      |> assign(:form_price, nil)
      |> assign(:form_sold_at, nil)
@@ -61,6 +62,21 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
      |> assign(:form_sold_at, Date.to_iso8601(sold_at_date))}
   end
 
+  def handle_event("mark_delisted", %{"listing-id" => listing_id}, socket) do
+    listing = Enum.find(socket.assigns.delist_queue, &(&1.id == listing_id))
+
+    case YagaListing.mark_delisted(listing) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> assign(:delist_queue, YagaListing.list_needing_delist!())
+         |> put_flash(:info, "Marked #{listing.yaga_slug} as delisted")}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed: #{inspect(reason)}")}
+    end
+  end
+
   def handle_event("close_modal", _params, socket) do
     {:noreply, assign(socket, :selected, nil)}
   end
@@ -78,7 +94,11 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
     date = Date.from_iso8601!(sold_at_str)
     sold_at = DateTime.new!(date, ~T[12:00:00], "Etc/UTC")
 
-    case Item.mark_sold(candidate.item, %{sold_price: price, sold_at: sold_at}) do
+    case Item.mark_sold(candidate.item, %{
+           sold_price: price,
+           sold_at: sold_at,
+           sales_channel: :warehouse
+         }) do
       {:ok, _item} ->
         candidates = Enum.reject(socket.assigns.candidates, &(&1.item.id == candidate.item.id))
 
@@ -108,6 +128,51 @@ defmodule KirbsWeb.WarehouseSalesLive.Index do
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-3xl font-bold">Warehouse Sales</h1>
           <.link navigate={~p"/payouts"} class="btn btn-ghost btn-sm">← Payouts</.link>
+        </div>
+
+        <div id="delist-queue" class="card bg-base-100 shadow-xl mb-6">
+          <div class="card-body">
+            <h2 class="card-title">Needs manual delisting from Yaga</h2>
+            <p class="text-base-content/70">
+              Sold on kirbs.ee but still live on Yaga. Remove the product on yaga.ee, then click Delisted.
+            </p>
+            <%= if @delist_queue == [] do %>
+              <p id="delist-queue-empty" class="text-success">Nothing to delist.</p>
+            <% else %>
+              <table class="table">
+                <tbody>
+                  <%= for listing <- @delist_queue do %>
+                    <tr id={"delist-#{listing.id}"}>
+                      <td>
+                        <.link navigate={~p"/items/#{listing.item_id}"} class="link link-primary">
+                          {String.slice(listing.item_id, 0, 8)}
+                        </.link>
+                      </td>
+                      <td>
+                        <a
+                          href={"https://www.yaga.ee/kirbs-ee/toode/#{listing.yaga_slug}"}
+                          target="_blank"
+                          class="link"
+                        >
+                          {listing.yaga_slug}
+                        </a>
+                      </td>
+                      <td class="text-right">
+                        <button
+                          id={"delisted-#{listing.id}"}
+                          class="btn btn-primary btn-xs"
+                          phx-click="mark_delisted"
+                          phx-value-listing-id={listing.id}
+                        >
+                          Delisted
+                        </button>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            <% end %>
+          </div>
         </div>
 
         <p class="text-base-content/70 mb-4">
