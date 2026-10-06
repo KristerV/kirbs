@@ -109,7 +109,7 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
   describe "GET /checkout/montonio/return" do
     test "verifies token, notifies handler, redirects", %{conn: conn} do
       conn = get(conn, "/checkout/montonio/return", %{"order-token" => order_token()})
-      assert redirected_to(conn) == "/orders/ORD-1"
+      assert redirected_to(conn) == "/"
       assert_received {:payment, "ORD-1", :paid}
     end
 

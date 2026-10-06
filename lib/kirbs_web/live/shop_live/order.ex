@@ -18,11 +18,29 @@ defmodule KirbsWeb.ShopLive.Order do
          |> assign(:order, order)
          |> assign(:bank, order.payment_method == :manual && BankDetails.get())
          |> assign(:page_title, "Tellimus #{order.reference} | Kirbs")
-         |> assign(:meta, %{robots: "noindex,nofollow"})}
+         |> assign(:meta, %{robots: "noindex,nofollow"})
+         |> poll()}
 
       _ ->
         {:ok, socket |> put_flash(:error, "Tellimust ei leitud") |> push_navigate(to: ~p"/")}
     end
+  end
+
+  # Montonio confirms via webhook, possibly after the buyer is back: poll until it settles.
+  def handle_info(:refresh, socket) do
+    case Order.get_by_token(socket.assigns.order.token, not_found_error?: false) do
+      {:ok, %Order{} = order} -> {:noreply, socket |> assign(:order, order) |> poll()}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp poll(socket) do
+    order = socket.assigns.order
+
+    if connected?(socket) and order.status == :reserved and order.payment_method == :montonio,
+      do: Process.send_after(self(), :refresh, 3_000)
+
+    socket
   end
 
   def render(assigns) do
@@ -59,6 +77,22 @@ defmodule KirbsWeb.ShopLive.Order do
           <p class="mt-4 text-sm text-stone-600">
             Hoiame esemeid sinu jaoks kuni {format_time(@order.reserved_until)}. Kui makset selleks ajaks ei laeku, broneering vabaneb.
           </p>
+        </section>
+
+        <section
+          :if={@order.status == :reserved and @order.payment_method == :montonio}
+          id="montonio-awaiting"
+          class="mt-8 rounded-3xl border-2 border-orange-300 bg-orange-50 p-6 text-center"
+        >
+          <p class="text-stone-700">Ootame panga kinnitust. Leht uueneb ise.</p>
+          <a
+            :if={@order.montonio_payment_url}
+            href={@order.montonio_payment_url}
+            id="continue-payment"
+            class="mt-4 inline-block rounded-full bg-orange-500 px-6 py-2.5 font-bold text-white transition hover:bg-orange-600"
+          >
+            Jätka maksmisega
+          </a>
         </section>
 
         <section

@@ -1,6 +1,6 @@
 # Montonio integration
 
-Payments (Stargate API) and shipping (Shipping v2 API). Code only so far; no
+Payments (Stargate API) and shipping (Shipping v2 API). Wired into the shop; no
 real call has ever been made. Everything below was written from
 docs.montonio.com (Stargate "orders" guide, Shipping v2 guides for shipments,
 labels, webhooks, shipping-methods, sandbox).
@@ -28,7 +28,7 @@ Not required at boot. Without keys every service returns
 `{:error, :montonio_not_configured}` and the daily job is a no-op.
 Other keys of `config :kirbs, :montonio` (all optional): `payment_handler`,
 `shipment_handler`, `carriers` (default `["omniva","smartpost","dpd"]`),
-`return_redirect` (default `"/orders/:merchant_reference"`),
+`return_redirect` (optional override; default resolves `/order/:token`),
 `stargate_base_url`, `shipping_base_url`.
 
 Hosts: Stargate `https://sandbox-stargate.montonio.com/api` / `https://stargate.montonio.com/api`;
@@ -48,22 +48,75 @@ Shipping `https://sandbox-shipping.montonio.com/api/v2` / `https://shipping.mont
 - `Kirbs.Shipping.MontonioPickupPoints` (`list(carrier:, country: "EE", search:, type:)`, `get(id)`, `refresh/1`), ETS cache in `Kirbs.Montonio.Store`, lazily filled, refreshed by `Kirbs.Jobs.RefreshMontonioPickupPointsJob` (cron `0 5 * * *`). Points: `%{id, name, type, street_address, locality, postal_code, carrier}`.
 - `Kirbs.Montonio.Shipping.CreateShipment.run(params)` -> `{:ok, %{shipment_id, status, carrier_code, tracking_numbers, tracking_links}}`; `FetchLabel.run(%{shipment_ids: [...]})` -> `{:ok, pdf_url}`.
 
-### Swapping in for `Kirbs.Shipping.PickupPoints`
+## Final flow (wired into the shop)
 
-The other agent's stub defines the interface; make its implementation delegate
-`list/1` (and `get/1,2`) to `Kirbs.Shipping.MontonioPickupPoints`, same options
-(`carrier:`, `country:`, `search:`). Both return `{:ok, [point]}`.
+Everything below is implemented and covered by Req.Test stubs (no real call has been made yet).
 
-## Hooks the Order flow must call
+1. **Checkout** (`ShopLive.Checkout`): the "Pangalink / pangamakse (Montonio)" option is only shown when
+   `Kirbs.Montonio.Config.configured?/0`; otherwise the shop is bank-transfer only (a forged `montonio`
+   value is coerced to manual). Submit calls `Order.submit(payment_method: :montonio)` (30 min hold),
+   then `Services.Orders.StartMontonioPayment.run/1`: `Payments.CreateOrder` with
+   `merchant_reference = order.reference` (unique, "K1234567"), items + shipping as line items,
+   `Order.set_montonio_ref`, redirect (external) to `payment_url`. If Montonio is unreachable the order
+   is cancelled (item released) and the buyer sees `#checkout-payment-failed` with a retry link.
+2. **Payment result**: `Kirbs.Montonio.OrderPaymentHandler` (default `payment_handler`), fed by the
+   webhook and the browser return. `PAID` -> `Order.mark_paid` (no-op when already paid; accepts a late
+   payment of a cancelled/expired order if the item is still free; if the item was sold meanwhile the
+   order gets `cancel_reason` "PAID IN MONTONIO BUT NOT FULFILLABLE - refund manually ..." and the update
+   is acknowledged). `FAILED`/`CANCELLED` -> `Order.cancel` while unpaid. `PENDING`/unknown -> no-op.
+3. **Return page**: `/checkout/montonio/return` resolves the order by reference and redirects to
+   `/order/:token`, which polls every 3 s while a Montonio order is still `reserved` (webhook may lag).
+4. **Pickup points**: `config :kirbs, :pickup_points_provider` wins if set; otherwise
+   `PickupPoints.Montonio` (cached Montonio data) when configured, else `PickupPoints.Static`.
+   Checkout has a search box (name/address substring, max 50 shown); `Order.submit` validates the id
+   with `provider.get/2`.
+5. **Shipping price**: `Kirbs.Shipping.Rates` by carrier and `Item.parcel_size` (order = largest item,
+   default `m`). All prices and default parcel weights are PLACEHOLDERS (see moduledoc).
+6. **Shipment**: `Order.mark_paid` enqueues `Kirbs.Jobs.CreateMontonioShipmentJob` for Montonio-paid
+   parcel-machine orders. `Services.Orders.CreateMontonioShipment` is idempotent (skips if
+   `montonio_shipment_id` is set), stores shipment id/status/tracking, or stores `shipment_error` and lets
+   Oban retry (5 attempts). Own pickup / manual payment orders get no job.
+7. **Admin** `/orders/shipping`: per Montonio order shows shipment status, tracking and error, with
+   "Create/Retry shipment", "Prepare label" (FetchLabel) and "Download label" (PDF link).
+   `/orders`: "Cancel / refund" for paid orders only records `payment_status: :refunded` + `cancelled`;
+   **the refund itself is done manually in the Montonio partner system** (refund API not built; items stay
+   sold, relist by hand).
+8. **Shipping webhook**: `Kirbs.Montonio.OrderShipmentHandler` finds the order by shipment id, falling
+   back to `merchant_reference`; stores status/tracking/label url/errors; `inTransit`,
+   `awaitingCollection` or `delivered` -> `Order.mark_shipped` (sends the shipped email); `delivered` ->
+   `Order.mark_delivered`. The status names are assumptions, verify in sandbox.
 
-1. Checkout submit: `Payments.CreateOrder.run(%{merchant_reference: order.number, total_cents:, line_items:, return_url: url(~p"/checkout/montonio/return"), notification_url: url(~p"/webhooks/montonio"), billing:, shipping:})`; store `montonio_order_uuid`; redirect customer to `payment_url`.
-2. Configure `payment_handler: MyOrderPaymentHandler` implementing `handle_payment_update/2` (mark paid on `:paid`, cancel/free reservation on `:failed|:cancelled`). Must be idempotent. De-dupe is in-memory only (lost on deploy).
-3. Create the page behind `return_redirect` (default `/orders/:merchant_reference`) or change the config.
-4. After payment: `Shipping.CreateShipment.run(...)` with the pickup point id from `MontonioPickupPoints` (pass `montonio_order_uuid` and `merchant_reference`), store `shipment_id`.
-5. Configure `shipment_handler` to store tracking numbers (event has `tracking_numbers`, `tracking_links`, `status`, `merchant_reference`, `event_type`).
-6. Admin "print label": `Shipping.FetchLabel.run(%{shipment_ids: [id]})`.
-7. One-time per environment: register the shipping webhook (not automated yet):
-   `POST {shipping_base}/webhooks` with url `https://<host>/webhooks/montonio/shipping` and events `shipment.registered`, `shipment.registrationFailed`, `shipment.statusUpdated`, `shipment.labelsCreated`, `labelFile.ready`, `labelFile.creationFailed` (or set it in the partner system). The payment webhook needs no registration: the URL is sent per order.
+New Order columns: `montonio_shipment_id` (unique), `shipment_status`, `shipment_label_url`,
+`shipment_error` (tracking uses the existing `tracking_number`/`tracking_url`).
+
+## Owner checklist
+
+Partner system (https://partner.montonio.com, sandbox: https://sandbox-partner.montonio.com):
+- [ ] Create the store, copy Access key + Secret key (separate sandbox and production keys).
+- [ ] Enable bank payments (payment initiation) for the store.
+- [ ] Shipping: enable carriers Omniva, SmartPosti (Montonio code `smartpost`), DPD; fill in sender
+      details; in sandbox use test mode with dummy carrier credentials.
+- [ ] Register the shipping webhook: URL `https://<host>/webhooks/montonio/shipping`, events
+      `shipment.registered`, `shipment.registrationFailed`, `shipment.statusUpdated`,
+      `shipment.labelsCreated`, `labelFile.ready`, `labelFile.creationFailed` (partner system, or
+      `POST {shipping_base}/webhooks`).
+- [ ] Payment webhook needs no registration (`https://<host>/webhooks/montonio` is sent per order);
+      the return URL is `https://<host>/checkout/montonio/return`.
+- [ ] Refunds: do them in the partner system, then press "Cancel / refund" in `/orders` to keep our records.
+
+App / env (fly secrets): `MONTONIO_ACCESS_KEY`, `MONTONIO_SECRET_KEY`, `MONTONIO_ENV` (`sandbox` or
+`production`). Without them the shop silently stays manual-only. Also replace the placeholder prices in
+`Kirbs.Shipping.Rates` and set `PHX_HOST`/endpoint url correctly (return and webhook URLs are built from it).
+
+End-to-end in sandbox:
+1. Set sandbox env vars, deploy publicly (fly, or ngrok with `PHX_HOST` set).
+2. `Kirbs.Shipping.MontonioPickupPoints.refresh()`; check the checkout picker lists points and searching works.
+3. Buy an item choosing Montonio + Omniva machine; pay with the sandbox bank; expect redirect to
+   `/order/:token` showing "paid" within seconds (webhook) and a `shipped`-less paid order.
+4. Check `/orders/shipping`: shipment created (or error + retry), "Prepare label" then "Download label".
+5. Wait for / trigger sandbox status events; order moves to shipped (email) and delivered.
+6. Repeat and cancel at the bank: order becomes cancelled, item available again.
+7. Tamper a webhook token with curl: expect 401. Only then switch to production keys.
 
 ## Assumptions / unverified
 
@@ -74,7 +127,7 @@ The other agent's stub defines the interface; make its implementation delegate
 - Webhook payment status values beyond PAID/PENDING/FAILED/CANCELLED map to `:unknown`.
 - `labelFile.*` webhooks: we assume `data.labelFileUrl`.
 - Shipping webhook dedupe key is `eventId`; payment key is (reference, status).
-- Return redirect `/orders/:merchant_reference` does not exist yet.
+- Shipment statuses `inTransit`, `awaitingCollection`, `delivered` and the `receiver` phone split (`+372` default) are guesses.
 - Payment webhook IP allowlist (35.156.245.42, 35.156.159.169) is not enforced; JWT verification is the guard.
 - Phone numbers: Montonio wants `phoneCountryCode` like `+372` for shipments; Stargate `phoneCountry` style is unspecified (pass what the docs example shows, e.g. `EE`/`372` to be checked in sandbox).
 - Shipment product `currency` is hard-coded EUR.

@@ -48,11 +48,16 @@ defmodule Kirbs.Resources.Order.Changes.ApplyCheckout do
   end
 
   defp set_shipping(changeset, order, method) do
-    shipping = Rates.cents(method)
+    shipping = Rates.cents(method, parcel_size(order))
 
     changeset
     |> Ash.Changeset.force_change_attribute(:shipping_cents, shipping)
     |> Ash.Changeset.force_change_attribute(:total_cents, order.items_total_cents + shipping)
+  end
+
+  defp parcel_size(order) do
+    order = Ash.load!(order, order_items: :item)
+    order.order_items |> Enum.map(& &1.item) |> Rates.parcel_size()
   end
 
   defp set_point(changeset, method) do
