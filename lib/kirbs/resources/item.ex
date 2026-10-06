@@ -40,6 +40,11 @@ defmodule Kirbs.Resources.Item do
     define :facets, args: [:params]
     define :get_published_by_slug, args: [:slug]
     define :list_for_sitemap, args: []
+    define :reserve, args: [:reserved_until]
+    define :release_reservation, args: [:held_until]
+    define :extend_reservation, args: [:reserved_until]
+    define :sell_on_kirbs, args: [:sold_price]
+    define :list_expired_reservations, args: []
   end
 
   actions do
@@ -69,7 +74,8 @@ defmodule Kirbs.Resources.Item do
       :weight_grams,
       :slug,
       :published_at,
-      :kirbs_status
+      :kirbs_status,
+      :reserved_until
     ]
 
     defaults [:destroy]
@@ -148,6 +154,70 @@ defmodule Kirbs.Resources.Item do
       change set_attribute(:sold_at, nil)
       change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :listed}
       change load(@listing_fields)
+    end
+
+    # Kirbs shop reservation. Atomic: one UPDATE ... WHERE-style guard, so two buyers racing
+    # for a qty-1 item can never both win. An expired reservation (job not yet run) may be taken.
+    update :reserve do
+      accept []
+      argument :reserved_until, :utc_datetime_usec, allow_nil?: false
+
+      validate Kirbs.Resources.Item.Validations.Reservable
+      change set_attribute(:kirbs_status, :reserved)
+      change set_attribute(:reserved_until, arg(:reserved_until))
+    end
+
+    # Pushes a held reservation out (checkout submitted -> longer payment hold).
+    update :extend_reservation do
+      accept []
+      argument :reserved_until, :utc_datetime_usec, allow_nil?: false
+
+      validate attribute_equals(:kirbs_status, :reserved)
+      change set_attribute(:reserved_until, arg(:reserved_until))
+    end
+
+    # Idempotent and owner-safe: only releases an item that is still reserved with exactly the
+    # `held_until` deadline the releasing order holds (never un-sells, never frees another
+    # buyer's newer reservation).
+    update :release_reservation do
+      accept []
+      argument :held_until, :utc_datetime_usec, allow_nil?: false
+
+      change atomic_update(
+               :kirbs_status,
+               expr(
+                 if kirbs_status == :reserved and reserved_until == ^arg(:held_until),
+                   do: :available,
+                   else: kirbs_status
+               )
+             )
+
+      change atomic_update(
+               :reserved_until,
+               expr(
+                 if kirbs_status == :reserved and reserved_until == ^arg(:held_until),
+                   do: nil,
+                   else: reserved_until
+               )
+             )
+    end
+
+    # A purchase through Kirbs: kirbs_status + lifecycle status + sold price/time in one atomic step.
+    update :sell_on_kirbs do
+      accept [:sold_price]
+
+      validate attribute_does_not_equal(:kirbs_status, :sold),
+        message: "ese on juba müüdud"
+
+      change set_attribute(:kirbs_status, :sold)
+      change set_attribute(:status, :sold)
+      change set_attribute(:reserved_until, nil)
+      change atomic_update(:sold_at, expr(now()))
+      change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :sold}
+    end
+
+    read :list_expired_reservations do
+      filter expr(kirbs_status == :reserved and reserved_until < now())
     end
 
     update :publish do
@@ -374,6 +444,8 @@ defmodule Kirbs.Resources.Item do
     attribute :search_text, :string
     attribute :slug, :string
     attribute :published_at, :utc_datetime_usec
+
+    attribute :reserved_until, :utc_datetime_usec
 
     attribute :kirbs_status, :atom do
       allow_nil? false

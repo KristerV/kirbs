@@ -85,4 +85,7 @@ defmodule KirbsWeb.Shop.Labels do
   end
 
   def price(amount) when is_number(amount), do: price(Decimal.new("#{amount}"))
+
+  @doc "Formats integer cents as euros."
+  def cents(cents) when is_integer(cents), do: price(Decimal.div(Decimal.new(cents), 100))
 end

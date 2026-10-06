@@ -20,6 +20,8 @@ defmodule KirbsWeb.SeoController do
     Disallow: /accounting
     Disallow: /settings
     Disallow: /checkout
+    Disallow: /order
+    Disallow: /orders
     Disallow: /login
 
     Sitemap: #{KirbsWeb.Endpoint.url()}/sitemap.xml

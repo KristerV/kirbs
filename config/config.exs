@@ -26,7 +26,9 @@ config :kirbs, Oban,
        # Refresh Yaga JWT daily at 4 AM (30-day token, kept rolling)
        {"0 4 * * *", Kirbs.Jobs.YagaTokenRefreshJob},
        # Monthly Yaga withdraw at midnight on the 1st (Tallinn)
-       {"0 0 1 * *", Kirbs.Jobs.YagaMonthlyWithdrawJob}
+       {"0 0 1 * *", Kirbs.Jobs.YagaMonthlyWithdrawJob},
+       # Release expired shop reservations / cancel unpaid orders
+       {"* * * * *", Kirbs.Jobs.ExpireReservationsJob}
      ]}
   ]
 

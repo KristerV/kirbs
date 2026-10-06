@@ -165,7 +165,7 @@ defmodule KirbsWeb.ShopLiveTest do
       refute view |> element("#gallery-main") |> render() == before
     end
 
-    test "reserve navigates to the checkout placeholder", %{conn: conn} = ctx do
+    test "reserve navigates to the checkout", %{conn: conn} = ctx do
       {:ok, view, _html} = live(conn, ~p"/p/#{ctx.jacket.slug}")
 
       {:ok, _view, _html} =
@@ -190,14 +190,6 @@ defmodule KirbsWeb.ShopLiveTest do
       assert html =~ ~s(property="og:type" content="product")
       assert html =~ "application/ld+json"
       assert html =~ ~s(property="og:image")
-    end
-  end
-
-  describe "checkout placeholder" do
-    test "renders for a published item", %{conn: conn} = ctx do
-      {:ok, view, _html} = live(conn, ~p"/checkout/#{ctx.jacket.slug}")
-      assert has_element?(view, "#checkout-placeholder")
-      assert has_element?(view, "#back-to-item")
     end
   end
 

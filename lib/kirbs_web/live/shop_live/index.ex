@@ -4,7 +4,8 @@ defmodule KirbsWeb.ShopLive.Index do
   Serves both `/` (:index) and `/k/*path` (:category). All state lives in the URL
   (`q`, facet params, `sort`), changed through `push_patch`.
 
-  Funnel tracking hook point: `handle_params/3` (shop viewed) and `load_page/2`.
+  Funnel tracking: `shop_viewed` is fired by the `shop_visit` event (ShopVisit hook, once per
+  browser session).
   """
   use KirbsWeb, :live_view
 
@@ -54,6 +55,12 @@ defmodule KirbsWeb.ShopLive.Index do
          |> put_flash(:error, "Sellist kategooriat ei leitud")
          |> push_navigate(to: ~p"/")}
     end
+  end
+
+  # Sent once per browser session by the ShopVisit hook (the funnel entry). The MetaPixel hook
+  # already sends PageView on mount, so no second pixel event is pushed.
+  def handle_event("shop_visit", _params, socket) do
+    {:noreply, KirbsWeb.Track.event(socket, :shop_viewed, %{}, pixel: false)}
   end
 
   def handle_event("search", %{"q" => q}, socket) do
