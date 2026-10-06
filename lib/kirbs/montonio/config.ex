@@ -38,8 +38,8 @@ defmodule Kirbs.Montonio.Config do
   @doc "Extra Req options (tests set `plug: {Req.Test, Kirbs.Montonio}`)."
   def req_options, do: get(:req_options) || []
 
-  def payment_handler, do: get(:payment_handler) || Kirbs.Montonio.PaymentHandler.Logging
-  def shipment_handler, do: get(:shipment_handler) || Kirbs.Montonio.ShipmentHandler.Logging
+  def payment_handler, do: get(:payment_handler) || Kirbs.Montonio.OrderPaymentHandler
+  def shipment_handler, do: get(:shipment_handler) || Kirbs.Montonio.OrderShipmentHandler
 
   @doc "Carriers whose pickup points are cached. ASSUMPTION: carrier codes below."
   def carriers, do: get(:carriers) || ["omniva", "smartpost", "dpd"]
@@ -47,8 +47,8 @@ defmodule Kirbs.Montonio.Config do
   @doc "Delay between label-file polls in ms."
   def label_poll_delay, do: get(:label_poll_delay) || 1000
 
-  @doc "Where the browser return endpoint redirects; `:merchant_reference` is substituted."
-  def return_redirect, do: get(:return_redirect) || "/orders/:merchant_reference"
+  @doc "Optional override of the return redirect (`:merchant_reference` is substituted); default resolves `/order/:token`."
+  def return_redirect, do: get(:return_redirect)
 
   defp get(key), do: :kirbs |> Application.get_env(:montonio, []) |> Keyword.get(key)
 end

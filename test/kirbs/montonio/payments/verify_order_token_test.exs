@@ -6,7 +6,12 @@ defmodule Kirbs.Montonio.Payments.VerifyOrderTokenTest do
   alias Kirbs.Montonio.Payments.VerifyOrderToken
 
   test "accepts a valid token" do
-    assert {:ok, %{merchant_reference: "ORD-1", payment_status: :paid, montonio_order_uuid: "mont-uuid-1"}} =
+    assert {:ok,
+            %{
+              merchant_reference: "ORD-1",
+              payment_status: :paid,
+              montonio_order_uuid: "mont-uuid-1"
+            }} =
              VerifyOrderToken.run(order_token())
   end
 
@@ -36,8 +41,18 @@ defmodule Kirbs.Montonio.Payments.VerifyOrderTokenTest do
   end
 
   test "rejects alg none tokens" do
-    claims = Jason.encode!(%{"exp" => 4_000_000_000, "merchantReference" => "x", "paymentStatus" => "PAID", "accessKey" => "test_access_key"})
-    token = Base.url_encode64(~s({"alg":"none"}), padding: false) <> "." <> Base.url_encode64(claims, padding: false) <> "."
+    claims =
+      Jason.encode!(%{
+        "exp" => 4_000_000_000,
+        "merchantReference" => "x",
+        "paymentStatus" => "PAID",
+        "accessKey" => "test_access_key"
+      })
+
+    token =
+      Base.url_encode64(~s({"alg":"none"}), padding: false) <>
+        "." <> Base.url_encode64(claims, padding: false) <> "."
+
     assert {:error, _} = VerifyOrderToken.run(token)
   end
 end

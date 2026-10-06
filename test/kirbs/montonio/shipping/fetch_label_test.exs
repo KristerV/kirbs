@@ -8,7 +8,12 @@ defmodule Kirbs.Montonio.Shipping.FetchLabelTest do
       assert conn.request_path == "/api/v2/label-files"
       {:ok, raw, conn} = Plug.Conn.read_body(conn)
       assert %{"shipmentIds" => ["s1"], "synchronous" => true} = Jason.decode!(raw)
-      Req.Test.json(conn, %{"id" => "lf1", "status" => "ready", "labelFileUrl" => "https://l.test/a.pdf"})
+
+      Req.Test.json(conn, %{
+        "id" => "lf1",
+        "status" => "ready",
+        "labelFileUrl" => "https://l.test/a.pdf"
+      })
     end)
 
     assert {:ok, "https://l.test/a.pdf"} = FetchLabel.run(%{shipment_ids: ["s1"]})
@@ -27,7 +32,11 @@ defmodule Kirbs.Montonio.Shipping.FetchLabelTest do
           Req.Test.json(conn, %{"id" => "lf1", "status" => "pending", "labelFileUrl" => nil})
 
         {"GET", _} ->
-          Req.Test.json(conn, %{"id" => "lf1", "status" => "ready", "labelFileUrl" => "https://l.test/b.pdf"})
+          Req.Test.json(conn, %{
+            "id" => "lf1",
+            "status" => "ready",
+            "labelFileUrl" => "https://l.test/b.pdf"
+          })
       end
     end)
 

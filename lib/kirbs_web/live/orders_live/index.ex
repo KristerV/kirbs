@@ -35,6 +35,16 @@ defmodule KirbsWeb.OrdersLive.Index do
      act(socket, id, fn order -> Order.cancel(order, %{cancel_reason: "admin"}) end, "Cancelled")}
   end
 
+  def handle_event("refund", %{"id" => id}, socket) do
+    {:noreply,
+     act(
+       socket,
+       id,
+       fn order -> Order.refund(order, %{cancel_reason: "refunded by admin"}) end,
+       "Marked refunded. Now refund the payment in the Montonio partner system"
+     )}
+  end
+
   defp act(socket, id, fun, success) do
     with {:ok, order} <- Ash.get(Order, id),
          {:ok, _} <- fun.(order) do
@@ -157,6 +167,16 @@ defmodule KirbsWeb.OrdersLive.Index do
                       class="btn btn-success btn-sm"
                     >
                       Mark paid
+                    </button>
+                    <button
+                      :if={order.status == :paid}
+                      id={"refund-#{order.id}"}
+                      phx-click="refund"
+                      phx-value-id={order.id}
+                      data-confirm={"Cancel #{order.reference}? Refund the money manually in the Montonio partner system (or by bank transfer); the items stay sold."}
+                      class="btn btn-ghost btn-sm"
+                    >
+                      Cancel / refund
                     </button>
                     <button
                       :if={order.status in [:pending, :reserved]}

@@ -31,7 +31,12 @@ defmodule Kirbs.Resources.Order do
     define :list_recent, args: []
     define :list_to_ship, args: []
     define :list_expired, args: []
+    define :get_by_reference, args: [:reference]
+    define :get_by_shipment_id, args: [:shipment_id]
     define :set_montonio_ref
+    define :set_shipment
+    define :flag_payment_conflict
+    define :refund
     define :mark_paid, args: []
     define :mark_shipped
     define :mark_delivered, args: []
@@ -64,6 +69,18 @@ defmodule Kirbs.Resources.Order do
       argument :token, :string, allow_nil?: false
       filter expr(token == ^arg(:token))
       prepare build(load: [order_items: [item: :images]])
+    end
+
+    read :get_by_reference do
+      get? true
+      argument :reference, :string, allow_nil?: false
+      filter expr(reference == ^arg(:reference))
+    end
+
+    read :get_by_shipment_id do
+      get? true
+      argument :shipment_id, :string, allow_nil?: false
+      filter expr(montonio_shipment_id == ^arg(:shipment_id))
     end
 
     read :list_recent do
@@ -117,6 +134,38 @@ defmodule Kirbs.Resources.Order do
       accept [:montonio_order_ref, :montonio_payment_url]
     end
 
+    # Montonio shipment bookkeeping (creation result, webhook updates, last error).
+    update :set_shipment do
+      accept [
+        :montonio_shipment_id,
+        :shipment_status,
+        :shipment_label_url,
+        :shipment_error,
+        :tracking_number,
+        :tracking_url
+      ]
+    end
+
+    # A payment arrived that cannot be fulfilled (item sold elsewhere): leave a note for the
+    # admin, who has to refund manually in the Montonio partner system.
+    update :flag_payment_conflict do
+      accept [:cancel_reason]
+    end
+
+    # Admin refund bookkeeping for a paid, not yet shipped order. The money itself is refunded
+    # manually in the Montonio partner system; items stay sold (relist them by hand if needed).
+    update :refund do
+      require_atomic? false
+      accept [:cancel_reason]
+
+      validate attribute_equals(:status, :paid),
+        message: "ainult tasutud tellimust saab tagastada"
+
+      change set_attribute(:status, :cancelled)
+      change set_attribute(:payment_status, :refunded)
+      change set_attribute(:cancelled_at, &DateTime.utc_now/0)
+    end
+
     # Payment confirmed (admin for manual, webhook for Montonio). Sells the items.
     # Fails cleanly when the order was already paid or an item was sold elsewhere.
     update :mark_paid do
@@ -136,6 +185,7 @@ defmodule Kirbs.Resources.Order do
       change Changes.SellItems
       change {Changes.EnqueueEmail, kind: :paid}
       change Changes.TrackPaid
+      change Changes.EnqueueShipment
     end
 
     update :mark_shipped do
@@ -250,6 +300,12 @@ defmodule Kirbs.Resources.Order do
     attribute :tracking_number, :string
     attribute :tracking_url, :string
 
+    # Montonio Shipping (see Kirbs.Services.Orders.CreateMontonioShipment).
+    attribute :montonio_shipment_id, :string
+    attribute :shipment_status, :string
+    attribute :shipment_label_url, :string
+    attribute :shipment_error, :string
+
     # Funnel attribution, so a webhook-confirmed payment can still be tracked (docs/tracking.md).
     attribute :ab_visitor_id, :string
     attribute :ab_assignments, :map
@@ -266,5 +322,6 @@ defmodule Kirbs.Resources.Order do
     identity :unique_token, [:token]
     identity :unique_reference, [:reference]
     identity :unique_montonio_order_ref, [:montonio_order_ref]
+    identity :unique_montonio_shipment_id, [:montonio_shipment_id]
   end
 end

@@ -38,12 +38,23 @@ pixel with `KirbsWeb.Track.event(socket, :paid, %{order_id:, value:, currency: "
 server-side ab_funnel `paid` event is already fired by `mark_paid` from the visitor stored on the order.
 The mailer adapter in production is not configured yet (see `config/runtime.exs`).
 
+## Montonio payment path
+
+Checkout offers "Pangalink (Montonio)" when Montonio keys exist, else bank transfer only. Montonio
+submit -> `Services.Orders.StartMontonioPayment` -> external redirect; the webhook/return feed
+`Kirbs.Montonio.OrderPaymentHandler` (`mark_paid` / `cancel`), the buyer lands on `/order/:token`
+(polls while `reserved`). After `mark_paid`, parcel orders get a Montonio shipment via an Oban job; see
+docs/montonio.md for the full flow, owner checklist and sandbox test plan. Admin `/orders` has
+"Cancel / refund" for paid orders (bookkeeping only; refund money in Montonio partner system).
+
 ## Pickup points / shipping
 
 `Kirbs.Shipping.PickupPoints.list(carrier)` and `.get(carrier, id)` (carrier `:omniva | :dpd |
 :smartposti`, point = `%{id, name, carrier, address}`) delegate to the module in
 `config :kirbs, :pickup_points_provider` (a `Kirbs.Shipping.PickupPoints.Provider`). Default:
-`PickupPoints.Static` (hardcoded). Prices: `Kirbs.Shipping.Rates` (flat per carrier, placeholders).
+`PickupPoints.Montonio` when Montonio is configured, else `PickupPoints.Static`. The checkout picker is
+searchable (`PickupPoints.list(carrier, search, limit)`). Prices: `Kirbs.Shipping.Rates` per carrier and
+`Item.parcel_size` (placeholders).
 `Order.submit` validates `pickup_point_id` through `PickupPoints.get/2` and snapshots the name.
 
 ## TODO(owner)

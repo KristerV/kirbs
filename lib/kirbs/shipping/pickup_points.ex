@@ -22,13 +22,35 @@ defmodule Kirbs.Shipping.PickupPoints do
                 {:ok, Kirbs.Shipping.PickupPoints.point()} | :error
   end
 
-  @doc "All pickup points of a carrier, sorted for display."
-  def list(carrier), do: provider().list(carrier)
+  @doc """
+  Pickup points of a carrier, sorted for display. `search` (case-insensitive substring of name
+  or address) and `limit` narrow the result.
+  """
+  def list(carrier, search \\ nil, limit \\ nil) do
+    points = filter(provider().list(carrier), search)
+    if limit, do: Enum.take(points, limit), else: points
+  end
 
   @doc "One point by carrier and id, `{:ok, point}` or `:error`."
   def get(carrier, id), do: provider().get(carrier, id)
 
+  defp filter(points, search) when search in [nil, ""], do: points
+
+  defp filter(points, search) do
+    needle = search |> String.trim() |> String.downcase()
+    Enum.filter(points, &String.contains?(String.downcase("#{&1.name} #{&1.address}"), needle))
+  end
+
+  # Explicit config wins; otherwise Montonio when it has credentials, else the static list.
   defp provider do
-    Application.get_env(:kirbs, :pickup_points_provider, Kirbs.Shipping.PickupPoints.Static)
+    case Application.get_env(:kirbs, :pickup_points_provider) do
+      nil ->
+        if Kirbs.Montonio.Config.configured?(),
+          do: Kirbs.Shipping.PickupPoints.Montonio,
+          else: Kirbs.Shipping.PickupPoints.Static
+
+      provider ->
+        provider
+    end
   end
 end

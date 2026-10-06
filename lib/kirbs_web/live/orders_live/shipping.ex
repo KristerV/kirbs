@@ -7,6 +7,7 @@ defmodule KirbsWeb.OrdersLive.Shipping do
   use KirbsWeb, :live_view
 
   alias Kirbs.Resources.Order
+  alias Kirbs.Services.Orders.{CreateMontonioShipment, FetchMontonioLabel}
   alias Kirbs.Shipping.Rates
 
   def mount(_params, _session, socket) do
@@ -27,6 +28,30 @@ defmodule KirbsWeb.OrdersLive.Shipping do
   def handle_event("deliver", %{"id" => id}, socket) do
     {:noreply, act(socket, id, "Marked handed over", &Order.mark_delivered/1)}
   end
+
+  def handle_event("create_shipment", %{"id" => id}, socket) do
+    {:noreply, reload(socket, id, "Shipment created", &CreateMontonioShipment.run/1)}
+  end
+
+  def handle_event("fetch_label", %{"id" => id}, socket) do
+    {:noreply, reload(socket, id, "Label ready", &FetchMontonioLabel.run/1)}
+  end
+
+  # Runs a Montonio service and re-renders the card with the stored result or error.
+  defp reload(socket, id, success, service) do
+    result = service.(id)
+    order = Ash.get!(Order, id, load: [:order_items])
+    socket = stream_insert(socket, :orders, order)
+
+    case result do
+      {:ok, _} -> put_flash(socket, :info, "#{order.reference}: #{success}")
+      {:error, error} -> put_flash(socket, :error, "#{order.reference}: " <> error_text(error))
+    end
+  end
+
+  defp error_text(%{__exception__: true} = error), do: Exception.message(error)
+  defp error_text(:no_shipment), do: "no Montonio shipment yet"
+  defp error_text(error), do: inspect(error)
 
   defp act(socket, id, success, fun) do
     with {:ok, order} <- Ash.get(Order, id),
@@ -96,6 +121,57 @@ defmodule KirbsWeb.OrdersLive.Shipping do
                       {order.pickup_point_carrier} · {order.pickup_point_id}
                     </p>
                   <% end %>
+                </div>
+              </div>
+
+              <div
+                :if={order.payment_method == :montonio and order.delivery_method != :pickup}
+                id={"shipment-#{order.id}"}
+                class="mt-3 rounded-lg bg-base-200 p-3 text-sm"
+              >
+                <p class="text-xs uppercase text-base-content/60">Montonio shipment</p>
+                <p :if={order.montonio_shipment_id}>
+                  Status:
+                  <span id={"shipment-status-#{order.id}"} class="font-bold">
+                    {order.shipment_status || "-"}
+                  </span>
+                  <span :if={order.tracking_number}> · tracking  {order.tracking_number}</span>
+                </p>
+                <p :if={is_nil(order.montonio_shipment_id)} class="text-base-content/70">
+                  Not created yet.
+                </p>
+                <p :if={order.shipment_error} id={"shipment-error-#{order.id}"} class="text-error">
+                  {order.shipment_error}
+                </p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button
+                    :if={is_nil(order.montonio_shipment_id)}
+                    id={"create-shipment-#{order.id}"}
+                    phx-click="create_shipment"
+                    phx-value-id={order.id}
+                    class="btn btn-warning btn-sm"
+                  >
+                    {if order.shipment_error, do: "Retry shipment", else: "Create shipment"}
+                  </button>
+                  <button
+                    :if={order.montonio_shipment_id}
+                    id={"fetch-label-#{order.id}"}
+                    phx-click="fetch_label"
+                    phx-value-id={order.id}
+                    class="btn btn-outline btn-sm"
+                  >
+                    Prepare label
+                  </button>
+                  <a
+                    :if={order.shipment_label_url}
+                    id={"download-label-#{order.id}"}
+                    href={order.shipment_label_url}
+                    target="_blank"
+                    rel="noopener"
+                    class="btn btn-primary btn-sm"
+                  >
+                    Download label
+                  </a>
                 </div>
               </div>
 

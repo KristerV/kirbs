@@ -1,5 +1,6 @@
 import Config
 config :kirbs, Oban, testing: :manual
+config :kirbs, :pickup_points_provider, Kirbs.Shipping.PickupPoints.Static
 config :kirbs, token_signing_secret: "/VHDrBw1lZOfNa3S/rUjuXeLdVqnV3v8"
 config :bcrypt_elixir, log_rounds: 1
 
@@ -9,6 +10,7 @@ config :kirbs, :montonio,
   env: :sandbox,
   req_options: [plug: {Req.Test, Kirbs.Montonio}],
   label_poll_delay: 0
+
 config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true
 
 # Configure your database
