@@ -59,6 +59,7 @@ defmodule KirbsWeb.Router do
       live "/warehouse-sales", WarehouseSalesLive.Index, :index
       live "/accounting", AccountingLive.Index, :index
       live "/settings", SettingsLive.Index, :index
+      live "/backfill", BackfillLive.Index, :index
     end
   end
 

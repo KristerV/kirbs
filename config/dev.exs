@@ -6,7 +6,7 @@ config :kirbs, Kirbs.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "0.0.0.0",
-  database: "kirbs_dev",
+  database: System.get_env("DB_NAME", "kirbs_dev"),
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

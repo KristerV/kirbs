@@ -22,7 +22,7 @@ defmodule Kirbs.Resources.Item.Changes.PublishItem do
 
   defp set_slug(%{data: item} = changeset) do
     category =
-      case item.category_id && Ash.get(Category, item.category_id, not_found_error?: false) do
+      case item.category_id && Ash.get(Category, item.category_id, error?: false) do
         {:ok, %{name_et: name}} -> name
         _ -> nil
       end

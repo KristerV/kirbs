@@ -72,3 +72,20 @@ create/update from brand, size, category, suggested_category, description, color
 Channel state lives on the channel listing; for Yaga that is `YagaListing.status`:
 `listed`, `failed`, `sold`, `delisted`. An item "on Yaga" is `status == :reviewed` with a `:listed` listing;
 "needs upload" is `status == :reviewed` with no listing. `Item.kirbs_status` is the own-shop availability.
+
+## Categorization (AI and admin)
+
+- Items attach to **leaf** categories only (depth 2: `root -> group -> type`). Roots and groups are never
+  assigned; the stub audience roots have no leaves yet, so they cannot be chosen.
+- `Kirbs.Services.Ai.ItemCategorize` sends the item photos to the OpenRouter vision model with a JSON schema whose
+  `category_slug` enum is exactly the leaf slugs above and whose attribute enums are the ones in the table.
+  `colors` / `materials` are restricted to the Yaga taxonomy names (Estonian) so values stay valid for uploads.
+  Anything outside the enums is dropped; an unknown slug cancels the categorization.
+- `brand`, `size`, `colors`, `materials` already set by `ItemInfoExtract` are never overwritten by categorization
+  (`Item.apply_categorization` only fills blanks); `category_id`, `age_group`, `gender`, `season`, `condition` are set.
+- Slug note: the trousers type slug is `pusid` (name "Püksid"); it is kept as is because slugs are stable identifiers.
+- New items are categorized right after extraction in `ProcessItemJob` (best effort). Existing items are handled by the
+  backfill (`/backfill`, `mix kirbs.backfill_categorize`, `Kirbs.Release.enqueue_categorize_backfill/1`): dry run stores
+  `CategorizationProposal`s (category, attributes, confidence); nothing touches an item until a proposal is approved,
+  changed and approved, or applied via "apply all above confidence".
+- Admins edit category and attributes in the item review form (`/items/:id`, "Shop category and attributes").

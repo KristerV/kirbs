@@ -29,6 +29,16 @@ defmodule Kirbs.Release do
     :ok
   end
 
+  @doc """
+  Enqueues the categorization backfill on a running release, e.g.
+  `bin/kirbs eval 'Kirbs.Release.enqueue_categorize_backfill()'`. Dry run unless `apply: true`.
+  """
+  def enqueue_categorize_backfill(opts \\ []) do
+    load_app()
+    {:ok, _} = Application.ensure_all_started(@app)
+    Kirbs.Services.Backfill.EnqueueCategorize.run(opts)
+  end
+
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))

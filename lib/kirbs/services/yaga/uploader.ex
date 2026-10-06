@@ -340,7 +340,7 @@ defmodule Kirbs.Services.Yaga.Uploader do
         _ -> inspect(reason)
       end
 
-    case Ash.get(Item, item_id, not_found_error?: false) do
+    case Ash.get(Item, item_id, error?: false) do
       {:ok, %Item{} = item} ->
         YagaListing.mark_failed(%{item_id: item.id, upload_error: error_message})
 

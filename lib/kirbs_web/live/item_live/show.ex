@@ -88,6 +88,7 @@ defmodule KirbsWeb.ItemLive.Show do
        |> assign(:color_options, color_options)
        |> assign(:material_options, material_options)
        |> assign(:size_options, size_options)
+       |> assign(:shop_category_options, shop_category_options())
        |> assign(:delete_confirmation, false)
        |> assign(:selected_image, nil)
        |> assign(:review_bag_id, params["bag_id"])}
@@ -126,6 +127,7 @@ defmodule KirbsWeb.ItemLive.Show do
         "suggested_category",
         "listed_price"
       ])
+      |> Map.merge(shop_attribute_params(item_params))
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
       |> Map.put("status", new_status)
@@ -175,6 +177,7 @@ defmodule KirbsWeb.ItemLive.Show do
         "suggested_category",
         "listed_price"
       ])
+      |> Map.merge(shop_attribute_params(item_params))
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
       |> Map.put("status", new_status)
@@ -361,6 +364,41 @@ defmodule KirbsWeb.ItemLive.Show do
      |> assign(:form, to_form(form))}
   end
 
+  @shop_attribute_keys ~w(category_id age_group gender season condition)
+
+  # Typed shop attributes come from plain selects; a blank option clears the value.
+  defp shop_attribute_params(item_params) do
+    for key <- @shop_attribute_keys, Map.has_key?(item_params, key), into: %{} do
+      {key, if(item_params[key] == "", do: nil, else: item_params[key])}
+    end
+  end
+
+  defp shop_category_options do
+    {:ok, options} = Kirbs.Services.Categories.GroupedLeafOptions.run()
+    options
+  end
+
+  @age_groups [
+    baby: "Beebi",
+    toddler: "Väikelaps",
+    child: "Laps",
+    teen: "Teismeline",
+    adult: "Täiskasvanu"
+  ]
+  @genders [girl: "Tüdruk", boy: "Poiss", unisex: "Unisex", woman: "Naine", man: "Mees"]
+  @seasons [
+    spring_autumn: "Kevad/sügis",
+    summer: "Suvi",
+    winter: "Talv",
+    all_year: "Aastaringne"
+  ]
+  @shop_conditions [
+    new_with_tags: "Uus (siltidega)",
+    like_new: "Uueväärne",
+    good: "Hea",
+    fair: "Keskmine"
+  ]
+
   defp parse_live_select_array(nil), do: []
   defp parse_live_select_array([]), do: []
   defp parse_live_select_array(list) when is_list(list), do: list
@@ -449,6 +487,33 @@ defmodule KirbsWeb.ItemLive.Show do
     end
   end
 
+  defp age_groups, do: @age_groups
+  defp genders, do: @genders
+  defp seasons, do: @seasons
+  defp shop_conditions, do: @shop_conditions
+
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :label, :string, required: true
+  attr :options, :list, required: true
+  attr :value, :any, default: nil
+
+  defp shop_select(assigns) do
+    ~H"""
+    <div class="form-control">
+      <label class="label" for={@id}>
+        <span class="label-text font-semibold">{@label}</span>
+      </label>
+      <select id={@id} name={@name} class="select select-bordered w-full">
+        <option value="">--</option>
+        <option :for={{key, text} <- @options} value={key} selected={@value == key}>
+          {text}
+        </option>
+      </select>
+    </div>
+    """
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -534,7 +599,7 @@ defmodule KirbsWeb.ItemLive.Show do
         </div>
         
     <!-- Item Data Form -->
-        <form phx-submit="save_item" phx-change="form_change">
+        <form id="item-form" phx-submit="save_item" phx-change="form_change">
           <div class="card bg-base-100 shadow-xl mb-6">
             <div class="card-body">
               <h2 class="card-title mb-4">Basic Information</h2>
@@ -655,6 +720,65 @@ defmodule KirbsWeb.ItemLive.Show do
                     placeholder="Describe the item..."
                   ><%= @item.description %></textarea>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="shop-attributes" class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+              <h2 class="card-title mb-4">Shop category and attributes</h2>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-control md:col-span-2">
+                  <label class="label" for="item-category-id">
+                    <span class="label-text font-semibold">Shop category</span>
+                  </label>
+                  <select
+                    id="item-category-id"
+                    name="item[category_id]"
+                    class="select select-bordered w-full"
+                  >
+                    <option value="">-- no category --</option>
+                    <optgroup :for={{label, options} <- @shop_category_options} label={label}>
+                      <option
+                        :for={{name, id} <- options}
+                        value={id}
+                        selected={@item.category_id == id}
+                      >
+                        {name}
+                      </option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                <.shop_select
+                  id="item-age-group"
+                  name="item[age_group]"
+                  label="Age group"
+                  options={age_groups()}
+                  value={@item.age_group}
+                />
+                <.shop_select
+                  id="item-gender"
+                  name="item[gender]"
+                  label="Gender"
+                  options={genders()}
+                  value={@item.gender}
+                />
+                <.shop_select
+                  id="item-season"
+                  name="item[season]"
+                  label="Season"
+                  options={seasons()}
+                  value={@item.season}
+                />
+                <.shop_select
+                  id="item-condition"
+                  name="item[condition]"
+                  label="Shop condition"
+                  options={shop_conditions()}
+                  value={@item.condition}
+                />
               </div>
             </div>
           </div>

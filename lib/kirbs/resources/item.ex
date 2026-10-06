@@ -32,6 +32,8 @@ defmodule Kirbs.Resources.Item do
     define :list_reviewed_by_bag, args: [:bag_id]
     define :list_by_combination_group, args: [:combination_group]
     define :publish
+    define :apply_categorization
+    define :list_uncategorized, args: [:after_id, :limit]
     define :mark_sold
     define :mark_unsold
   end
@@ -85,6 +87,43 @@ defmodule Kirbs.Resources.Item do
       change Kirbs.Resources.Item.Changes.ProtectLifecycleStatus
       change Kirbs.Resources.Item.Changes.BuildSearchText
       change load(@listing_fields)
+    end
+
+    update :apply_categorization do
+      accept [
+        :category_id,
+        :age_group,
+        :gender,
+        :season,
+        :condition,
+        :brand,
+        :size,
+        :colors,
+        :materials
+      ]
+
+      require_atomic? false
+
+      change Kirbs.Resources.Item.Changes.KeepExistingExtraction
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
+
+    read :list_uncategorized do
+      argument :after_id, :uuid
+      argument :limit, :integer, allow_nil?: false, default: 25
+
+      prepare fn query, _context ->
+        query
+        |> Ash.Query.sort(id: :asc)
+        |> Ash.Query.limit(Ash.Query.get_argument(query, :limit))
+      end
+
+      filter expr(
+               is_nil(category_id) and status in [:ai_processed, :reviewed] and
+                 not exists(categorization_proposal, true) and
+                 (is_nil(^arg(:after_id)) or id > ^arg(:after_id))
+             )
     end
 
     update :mark_sold do
@@ -290,6 +329,7 @@ defmodule Kirbs.Resources.Item do
     belongs_to :category, Kirbs.Resources.Category
 
     has_one :yaga_listing, Kirbs.Resources.YagaListing
+    has_one :categorization_proposal, Kirbs.Resources.CategorizationProposal
 
     has_many :images, Kirbs.Resources.Image do
       sort created_at: :asc

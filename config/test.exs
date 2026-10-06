@@ -13,7 +13,7 @@ config :kirbs, Kirbs.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "kirbs_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: "#{System.get_env("DB_NAME", "kirbs_test")}#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
@@ -39,3 +39,6 @@ config :phoenix, :plug_init_mode, :runtime
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
+
+# Never hit OpenRouter in tests: categorization uses a stub (see test/support/stub_categorize_llm.ex)
+config :kirbs, :item_categorize_llm, Kirbs.Test.StubCategorizeLlm
