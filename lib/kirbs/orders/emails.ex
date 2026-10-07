@@ -4,7 +4,7 @@ defmodule Kirbs.Orders.Emails do
   instructions for manual payment), `paid` and `shipped`. Delivery goes through
   `Kirbs.Services.Orders.SendOrderEmail`.
 
-  Sender: `config :kirbs, :shop_mail, from: {"Kirbs", "pood@kirbs.ee"}`
+  Sender: `config :kirbs, :shop_mail, from: {"Kirbs", "kirbs@krister.ee"}`
   (TODO(owner): set the real sender address on a verified domain).
   """
   import Swoosh.Email
@@ -34,7 +34,7 @@ defmodule Kirbs.Orders.Emails do
   defp from do
     :kirbs
     |> Application.get_env(:shop_mail, [])
-    |> Keyword.get(:from, {"Kirbs", "pood@kirbs.ee"})
+    |> Keyword.get(:from, {"Kirbs", "kirbs@krister.ee"})
   end
 
   defp received_text(order) do

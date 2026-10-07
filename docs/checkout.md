@@ -61,6 +61,6 @@ searchable (`PickupPoints.list(carrier, search, limit)`). Prices: `Kirbs.Shippin
 
 - Real IBAN and account holder on `/settings` ("Shop bank transfer details"); the placeholder
   `EE00 ...` is shown until then (`Kirbs.Orders.BankDetails`).
-- Real sender address: `config :kirbs, :shop_mail, from: {"Kirbs", "pood@kirbs.ee"}`, and a
+- Real sender address: `config :kirbs, :shop_mail, from: {"Kirbs", "kirbs@krister.ee"}`, and a
   production Swoosh adapter in `config/runtime.exs`.
 - Real shipping prices and own-pickup address in `Kirbs.Shipping.Rates`.

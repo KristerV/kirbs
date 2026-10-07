@@ -30,7 +30,7 @@ defmodule Kirbs.Shipping.Rates do
   ]
 
   # TODO(owner): real own-pickup address and instructions.
-  @pickup_address "Kirbsi väljastuspunkt (aadress lisatakse) – leiame aja kokku e-kirjas"
+  @pickup_address "Kasesalu 12, Saue linn (Kirbsi kontor ja ladu) – leiame aja kokku e-kirjas"
 
   def methods, do: Keyword.keys(@methods)
 

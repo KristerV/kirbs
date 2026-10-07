@@ -40,13 +40,28 @@ defmodule KirbsWeb.LegalComponents do
     assigns = assign(assigns, :company, Company.details())
 
     ~H"""
-    <%!-- TODO(owner): fill in registry code, VAT number, address and email (config :kirbs, :company). --%>
-    <address id="company-details" class="not-italic text-xs leading-relaxed text-stone-500">
-      <strong class="text-stone-600">{@company.name}</strong>
-      <br /> Registrikood: {@company.registry_code}
-      <br /> KMKR: {@company.vat_number}
-      <br /> Aadress: {@company.address}
-      <br /> E-post: {@company.email}
+    <address
+      id="company-details"
+      class="flex flex-col gap-3 text-sm not-italic text-stone-500 sm:flex-row sm:items-end sm:justify-between"
+    >
+      <div class="flex flex-col gap-1.5">
+        <span class="flex items-center gap-2">
+          <.icon name="hero-map-pin" class="size-4 shrink-0 text-orange-400" />
+          <span>Kontor ja ladu: {@company.office_address}</span>
+        </span>
+        <a
+          id="company-email"
+          href={"mailto:#{@company.email}"}
+          class="flex items-center gap-2 transition-colors hover:text-orange-600"
+        >
+          <.icon name="hero-envelope" class="size-4 shrink-0 text-orange-400" />
+          {@company.email}
+        </a>
+      </div>
+      <p class="text-xs leading-relaxed text-stone-400 sm:max-w-sm sm:text-right">
+        {@company.name} · reg. kood {@company.registry_code}<br />
+        {@company.address}
+      </p>
     </address>
     """
   end

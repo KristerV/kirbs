@@ -18,7 +18,7 @@ defmodule KirbsWeb.LegalLiveTest do
   test "footer shows company details and legal links", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/tingimused")
 
-    assert has_element?(view, "#company-details", "Täp OÜ")
+    assert has_element?(view, "#company-details", "Kirbs OÜ")
     assert has_element?(view, "#footer-terms[href='/tingimused']")
     assert has_element?(view, "#footer-returns[href='/tagastus']")
     assert has_element?(view, "#footer-privacy[href='/privaatsus']")

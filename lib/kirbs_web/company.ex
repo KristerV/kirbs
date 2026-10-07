@@ -2,17 +2,16 @@ defmodule KirbsWeb.Company do
   @moduledoc """
   Company details shown in the storefront footer and the legal pages.
 
-  The owner must fill in the registry code, VAT number, address and contact email, either here
-  or via `config :kirbs, :company, registry_code: "...", ...`. Until then the clearly marked
-  `TODO` placeholders are rendered so they cannot be missed.
+  The company is not VAT-registered, so no VAT number is shown. Any value can be overridden
+  via `config :kirbs, :company, registry_code: "...", ...`.
   """
 
   @defaults %{
-    name: "Täp OÜ",
-    registry_code: "TODO registrikood",
-    vat_number: "TODO KMKR number (kui käibemaksukohustuslane)",
-    address: "TODO aadress",
-    email: "TODO tellimused@kirbs.ee"
+    name: "Kirbs OÜ",
+    registry_code: "17423176",
+    address: "Kuuseheki tn 50-9, Saue linn, 76505 Saue vald, Harju maakond",
+    office_address: "Kasesalu 12, Saue linn",
+    email: "kirbs@krister.ee"
   }
 
   def details do
