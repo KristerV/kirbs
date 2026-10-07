@@ -104,7 +104,7 @@ defmodule Kirbs.Services.Channels.CrossChannelSyncTest do
   describe "PublishReviewedToShop" do
     test "publishes reviewed items with category and price, skips the rest", %{bag: bag} do
       Kirbs.ShopFixtures.seed_shop!()
-      category = Kirbs.Resources.Category.get_by_slug!("lapsed-poisid-pusid")
+      category = Kirbs.Resources.Category.get_by_slug!("lapsed-puksid-luhikesed-puksid")
 
       ok =
         Item.create!(%{

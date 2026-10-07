@@ -30,6 +30,26 @@ defmodule Kirbs.Release do
     :ok
   end
 
+  @doc """
+  Seeds the type-only category tree, re-points items from the old gender-split leaves and
+  removes the obsolete categories (idempotent). Prints and returns the summary.
+  """
+  def migrate_category_tree do
+    load_app()
+
+    for repo <- repos() do
+      {:ok, summary, _} =
+        Ecto.Migrator.with_repo(repo, fn _repo ->
+          {:ok, :seeded} = Kirbs.Services.Categories.SeedTree.run()
+          {:ok, summary} = Kirbs.Services.Categories.MigrateTree.run()
+          IO.inspect(summary, label: "MigrateTree", limit: :infinity)
+          summary
+        end)
+
+      summary
+    end
+  end
+
   @doc "One-off: aligns Item.kirbs_status with Item.status == :sold (idempotent)."
   def repair_kirbs_status do
     load_app()

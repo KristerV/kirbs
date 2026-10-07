@@ -11,7 +11,7 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
     jacket =
       item!(bag, %{
-        category: "lapsed-poisid-talvejakid",
+        category: "lapsed-valisriided-talvejakid",
         brand: "Reima",
         size: "110",
         gender: :boy,
@@ -22,7 +22,7 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
     pants =
       item!(bag, %{
-        category: "lapsed-tudrukud-pusid",
+        category: "lapsed-puksid-luhikesed-puksid",
         brand: "H&M",
         size: "98",
         gender: :girl,
@@ -83,15 +83,16 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
   test "category filter includes the whole subtree", ctx do
     assert ids(%{category: "lapsed"}) |> Enum.sort() == Enum.sort([ctx.jacket.id, ctx.pants.id])
-    assert ids(%{category: "lapsed-poisid"}) == [ctx.jacket.id]
-    assert ids(%{category: "lapsed-tudrukud-pusid"}) == [ctx.pants.id]
+    assert ids(%{category: "lapsed-valisriided"}) == [ctx.jacket.id]
+    assert ids(%{category: "lapsed-puksid-luhikesed-puksid"}) == [ctx.pants.id]
     assert ids(%{category: "mehed"}) == []
   end
 
   test "facets count values with their own filter removed", ctx do
-    facets = Item.facets!(%{gender: :girl})
-    assert Enum.sort(facets.gender) == [boy: 1, girl: 1]
-    assert facets.brand == [{"H&M", 1}]
+    facets = Item.facets!(%{brand: "H&M"})
+    assert Enum.sort(facets.brand) == [{"H&M", 1}, {"Reima", 1}]
+    refute Map.has_key?(facets, :gender)
+    assert facets.size == [{"98", 1}]
     assert [{category_id, 1}] = facets.category_id
     assert category_id == ctx.pants.category_id
   end

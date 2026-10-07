@@ -15,11 +15,11 @@ defmodule Kirbs.ShopFixtures do
   end
 
   @doc """
-  Creates and publishes an item. Options: `:category` (slug, default `lapsed-poisid-pusid`),
+  Creates and publishes an item. Options: `:category` (slug, default `lapsed-puksid-luhikesed-puksid`),
   `:photos` (count, default 1), `:published` (default true), plus any Item attribute.
   """
   def item!(bag, attrs \\ %{}) do
-    {slug, attrs} = Map.pop(attrs, :category, "lapsed-poisid-pusid")
+    {slug, attrs} = Map.pop(attrs, :category, "lapsed-puksid-luhikesed-puksid")
     {photos, attrs} = Map.pop(attrs, :photos, 1)
     {published?, attrs} = Map.pop(attrs, :published, true)
     category = Category.get_by_slug!(slug)

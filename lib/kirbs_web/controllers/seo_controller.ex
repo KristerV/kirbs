@@ -39,9 +39,12 @@ defmodule KirbsWeb.SeoController do
     static = Enum.map([~p"/", ~p"/muuda", ~p"/uudised"], &{&1, nil})
 
     categories =
-      Enum.map(tree.by_id |> Map.values() |> Enum.sort_by(& &1.slug), fn category ->
-        {~p"/k/#{CategoryTree.segments(tree, category)}", nil}
-      end)
+      tree.by_id
+      |> Map.values()
+      |> Enum.reject(&(&1.slug == CategoryTree.default_root()))
+      |> Enum.reject(&(is_nil(&1.parent_id) and CategoryTree.children(tree, &1) == []))
+      |> Enum.sort_by(& &1.slug)
+      |> Enum.map(&{~p"/k/#{CategoryTree.segments(tree, &1)}", nil})
 
     products = Enum.map(items, &{~p"/p/#{&1.slug}", &1.updated_at})
 

@@ -40,7 +40,9 @@ defmodule KirbsWeb.ShopEndpointsTest do
 
       assert get_resp_header(conn, "content-type") |> hd() =~ "application/xml"
       assert body =~ "/muuda</loc>"
-      assert body =~ "/k/lapsed/poisid/pusid</loc>"
+      assert body =~ "/k/puksid-luhikesed/puksid</loc>"
+      refute body =~ "/k/lapsed"
+      refute body =~ "/k/naised"
       assert body =~ "/p/#{ctx.published.slug}</loc>"
       assert length(String.split(body, "/p/")) == 2
     end

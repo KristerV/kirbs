@@ -14,20 +14,32 @@ defmodule Kirbs.Services.Categories.SeedTreeTest do
     assert Enum.sort(roots) == Enum.sort(~w(lapsed naised mehed kodu mangud))
 
     lapsed = Category.get_by_slug!("lapsed")
-    groups = Category.list_children!(lapsed.id) |> Enum.map(& &1.name_et)
-    assert groups == ["Beebid", "Poisid", "Tüdrukud"]
+    families = Category.list_children!(lapsed.id) |> Enum.map(& &1.slug)
 
-    kingad = Category.get_by_slug!("lapsed-poisid-kingad")
-    assert Category.get!(kingad.parent_id).slug == "lapsed-poisid"
+    assert families ==
+             ~w(lapsed-valisriided lapsed-kombinesoonid lapsed-puksid-luhikesed lapsed-ulaosad
+                lapsed-kleidid-seelikud lapsed-oo-vabaaeg lapsed-jalatsid lapsed-aksessuaarid lapsed-muu)
+
+    tossud = Category.get_by_slug!("lapsed-jalatsid-tossud")
+    assert Category.get!(tossud.parent_id).slug == "lapsed-jalatsid"
+
+    # families without types are leaves themselves
+    assert Category.list_children!(Category.get_by_slug!("lapsed-kleidid-seelikud").id) == []
+    assert Category.list_children!(Category.get_by_slug!("lapsed-muu").id) == []
   end
 
   test "maps leaf categories to Yaga categories" do
     {:ok, :seeded} = SeedTree.run()
-    pusid = Category.get_by_slug!("lapsed-poisid-pusid")
-    kingad = Category.get_by_slug!("lapsed-poisid-kingad")
 
-    assert %{yaga_category_id: 438} = YagaCategoryMapping.get_by_category!(pusid.id)
-    assert %{yaga_category_id: 370} = YagaCategoryMapping.get_by_category!(kingad.id)
+    mapped = fn slug ->
+      YagaCategoryMapping.get_by_category!(Category.get_by_slug!(slug).id).yaga_category_id
+    end
+
+    assert mapped.("lapsed-puksid-luhikesed-puksid") == 438
+    assert mapped.("lapsed-kleidid-seelikud") == 438
+    assert mapped.("lapsed-jalatsid-kummikud") == 370
+    assert mapped.("lapsed-aksessuaarid-muu") == 47
+    assert mapped.("lapsed-muu") == 47
   end
 
   test "slug is unique" do

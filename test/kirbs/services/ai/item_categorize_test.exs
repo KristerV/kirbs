@@ -14,10 +14,10 @@ defmodule Kirbs.Services.Ai.ItemCategorizeTest do
   end
 
   test "maps a valid response to category id and typed attributes", %{item: item} do
-    StubCategorizeLlm.respond_with(llm_response("lapsed-beebid-talvejakid"))
+    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-talvejakid"))
 
     assert {:ok, result} = ItemCategorize.run(item)
-    assert result.category_id == Category.get_by_slug!("lapsed-beebid-talvejakid").id
+    assert result.category_id == Category.get_by_slug!("lapsed-valisriided-talvejakid").id
     assert result.age_group == :baby
     assert result.gender == :boy
     assert result.season == :winter
@@ -32,24 +32,26 @@ defmodule Kirbs.Services.Ai.ItemCategorizeTest do
 
     StubCategorizeLlm.respond_with(fn images, prompt, schema ->
       send(test_pid, {:call, images, prompt, schema})
-      {:ok, Jason.encode!(llm_response("lapsed-beebid-talvejakid"))}
+      {:ok, Jason.encode!(llm_response("lapsed-valisriided-talvejakid"))}
     end)
 
     {:ok, _} = ItemCategorize.run(item)
     assert_received {:call, [_image], prompt, schema}
 
     slugs = schema["properties"]["category_slug"]["enum"]
-    assert "lapsed-poisid-pusid" in slugs
+    assert "lapsed-puksid-luhikesed-puksid" in slugs
     refute "lapsed" in slugs
-    refute "lapsed-beebid" in slugs
+    refute "lapsed-valisriided" in slugs
+    assert "lapsed-kleidid-seelikud" in slugs
+    assert "lapsed-muu" in slugs
     refute "naised" in slugs
     assert "baby" in schema["properties"]["age_group"]["enum"]
-    assert prompt =~ "lapsed-poisid-pusid"
+    assert prompt =~ "lapsed-puksid-luhikesed-puksid"
   end
 
   test "drops values outside the enums and rejects unknown categories", %{item: item} do
     StubCategorizeLlm.respond_with(
-      llm_response("lapsed-beebid-kingad", %{
+      llm_response("lapsed-jalatsid-tossud", %{
         "season" => "monsoon",
         "colors" => ["Sinine", "Tulevärv"],
         "confidence" => 7
@@ -74,7 +76,7 @@ defmodule Kirbs.Services.Ai.ItemCategorizeTest do
   end
 
   test "cancels when the item has no photos", %{item: item} do
-    StubCategorizeLlm.respond_with(llm_response("lapsed-beebid-kingad"))
+    StubCategorizeLlm.respond_with(llm_response("lapsed-jalatsid-tossud"))
     {:ok, bare} = Kirbs.Resources.Item.create(%{bag_id: item.bag_id})
     assert {:cancel, _} = ItemCategorize.run(bare)
   end

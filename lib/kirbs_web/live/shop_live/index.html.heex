@@ -76,47 +76,89 @@
 
       <div id="filters-panel" class="hidden space-y-6 lg:block">
         <%!-- Category navigation --%>
-        <% {nav_node, nav_children} = category_nav(@tree, @category) %>
+        <% audiences = CategoryTree.audiences(@tree, @category_counts) %>
         <nav id="category-nav" aria-label="Kategooriad">
+          <ul
+            :if={length(audiences) > 1}
+            id="audience-switcher"
+            class="mb-3 flex flex-wrap gap-1.5"
+          >
+            <li :for={audience <- audiences}>
+              <.link
+                id={"audience-#{audience.slug}"}
+                patch={audience_path(@tree, audience)}
+                class={[
+                  "inline-flex rounded-full border px-3 py-1 text-sm transition",
+                  if(CategoryTree.audience(@tree, @category).id == audience.id,
+                    do: "border-orange-500 bg-orange-500 font-bold text-white",
+                    else: "border-orange-200 bg-white text-stone-600 hover:border-orange-400"
+                  )
+                ]}
+              >
+                {audience.name_et}
+              </.link>
+            </li>
+          </ul>
           <h3 class="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-stone-400">
             Kategooriad
           </h3>
           <.link
-            :if={nav_node}
-            id="category-nav-up"
-            patch={shop_path(@tree, parent_of(@tree, nav_node), @filters)}
+            :if={@category}
+            id="category-nav-all"
+            patch={shop_path(@tree, nil, @filters)}
             class="mb-1 flex items-center gap-1 text-sm text-stone-500 transition-colors hover:text-orange-600"
           >
-            <.icon name="hero-arrow-left-micro" class="size-4" />
-            {(parent_of(@tree, nav_node) && parent_of(@tree, nav_node).name_et) || "Kõik tooted"}
+            <.icon name="hero-arrow-left-micro" class="size-4" /> Kõik tooted
           </.link>
-          <p :if={nav_node} class="mb-1 text-sm font-extrabold text-stone-900">
-            {nav_node.name_et}
-          </p>
           <ul class="space-y-0.5">
-            <%= for child <- nav_children, count = Map.get(@category_counts, child.id, 0), count > 0 or (@category && child.id == @category.id) do %>
+            <%= for {family, children} <- category_nav(@tree, @category, @category_counts) do %>
               <li>
                 <.link
-                  id={"category-link-#{child.slug}"}
-                  patch={shop_path(@tree, child, @filters)}
+                  id={"category-link-#{family.slug}"}
+                  patch={shop_path(@tree, family, @filters)}
                   class={[
                     "flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                    if(@category && child.id == @category.id,
+                    if(@category && family.id == @category.id,
                       do: "bg-orange-100 font-bold text-orange-700",
                       else: "text-stone-600 hover:bg-orange-50 hover:text-orange-600"
                     )
                   ]}
                 >
-                  <span>{child.name_et}</span>
-                  <span class="text-xs text-stone-400">{count}</span>
+                  <span>{family.name_et}</span>
+                  <span class="text-xs text-stone-400">
+                    {Map.get(@category_counts, family.id, 0)}
+                  </span>
                 </.link>
+                <ul
+                  :if={children != []}
+                  class="ml-3 mt-0.5 space-y-0.5 border-l border-orange-100 pl-2"
+                >
+                  <li :for={child <- children}>
+                    <.link
+                      id={"category-link-#{child.slug}"}
+                      patch={shop_path(@tree, child, @filters)}
+                      class={[
+                        "flex items-center justify-between rounded-lg px-2.5 py-1 text-sm transition-colors",
+                        if(@category && child.id == @category.id,
+                          do: "bg-orange-100 font-bold text-orange-700",
+                          else: "text-stone-600 hover:bg-orange-50 hover:text-orange-600"
+                        )
+                      ]}
+                    >
+                      <span>{child.name_et}</span>
+                      <span class="text-xs text-stone-400">
+                        {Map.get(@category_counts, child.id, 0)}
+                      </span>
+                    </.link>
+                  </li>
+                </ul>
               </li>
             <% end %>
           </ul>
         </nav>
 
         <%!-- Enum facets --%>
-        <%= for key <- [:gender, :age_group, :season, :condition],
+        <%= for key <- [:season, :condition],
                 links = facet_links(@facets, key, @filters),
                 links != [] do %>
           <section id={"facet-#{key}"}>

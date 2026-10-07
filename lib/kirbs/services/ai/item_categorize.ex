@@ -35,7 +35,8 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
     end
   end
 
-  # Leaves are categories at depth 2 (root -> group -> type), keyed by slug.
+  # Leaves are categories without children below a root (family -> type, or a family that is
+  # a leaf itself), keyed by slug. The audience root is not part of the shown path.
   defp load_leaves do
     all = Category.list_all!()
     by_id = Map.new(all, &{&1.id, &1})
@@ -45,9 +46,9 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
       all
       |> Enum.reject(&(is_nil(&1.parent_id) or MapSet.member?(parent_ids, &1.id)))
       |> Enum.map(fn leaf ->
-        group = Map.get(by_id, leaf.parent_id)
-        root = group && Map.get(by_id, group.parent_id)
-        path = [root, group, leaf] |> Enum.reject(&is_nil/1) |> Enum.map_join(" > ", & &1.name_et)
+        family = Map.get(by_id, leaf.parent_id)
+        family = if family && family.parent_id, do: family
+        path = [family, leaf] |> Enum.reject(&is_nil/1) |> Enum.map_join(" > ", & &1.name_et)
         %{id: leaf.id, slug: leaf.slug, path: path}
       end)
 
@@ -131,7 +132,9 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
     You classify used children's clothing for an Estonian second-hand shop from photos.
     The photos may show several items sold as one set; pick the category of the main item.
 
-    Choose category_slug from exactly this list (audience > group > type):
+    category_slug describes ONLY what kind of garment or item it is (its type). Never let the
+    child's gender or age influence the category; record those separately as gender and age_group.
+    Choose category_slug from exactly this list (family > type):
     #{categories}
 
     Attributes:
@@ -143,7 +146,7 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
     - materials: from the allowed Estonian list, only if visible on a label
     - brand: printed on the label only, normalized capitalization (e.g. "H&M"), else null
     - size: as printed on the label (e.g. "74/80"), else null
-    - confidence: 0..1, how sure you are about category_slug and the audience
+    - confidence: 0..1, how sure you are about category_slug
     Use null when an attribute cannot be determined.
     #{known}
     """

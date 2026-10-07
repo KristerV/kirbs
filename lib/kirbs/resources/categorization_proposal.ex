@@ -21,6 +21,7 @@ defmodule Kirbs.Resources.CategorizationProposal do
     define :list_pending, args: []
     define :list_pending_above, args: [:min_confidence]
     define :get_by_item, args: [:item_id]
+    define :list_by_category, args: [:category_id]
     define :propose
     define :update
     define :mark_applied, args: []
@@ -57,6 +58,11 @@ defmodule Kirbs.Resources.CategorizationProposal do
       get? true
       argument :item_id, :uuid, allow_nil?: false
       filter expr(item_id == ^arg(:item_id))
+    end
+
+    read :list_by_category do
+      argument :category_id, :uuid, allow_nil?: false
+      filter expr(category_id == ^arg(:category_id))
     end
 
     read :list_pending do

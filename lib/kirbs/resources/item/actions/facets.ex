@@ -7,7 +7,7 @@ defmodule Kirbs.Resources.Item.Actions.Facets do
 
   alias Kirbs.Resources.Item
 
-  @facets [:brand, :size, :age_group, :gender, :season, :condition, :category_id]
+  @facets [:brand, :size, :season, :condition, :category_id]
   @filter_key %{category_id: :category}
 
   @impl true

@@ -10,20 +10,22 @@ defmodule KirbsWeb.ShopLiveTest do
 
     jacket =
       item!(bag, %{
-        category: "lapsed-poisid-talvejakid",
+        category: "lapsed-valisriided-talvejakid",
         brand: "Reima",
         size: "110",
         gender: :boy,
+        season: :winter,
         listed_price: 30,
         photos: 2
       })
 
     pants =
       item!(bag, %{
-        category: "lapsed-tudrukud-pusid",
+        category: "lapsed-puksid-luhikesed-puksid",
         brand: "H&M",
         size: "98",
         gender: :girl,
+        season: :summer,
         listed_price: 6
       })
 
@@ -62,7 +64,7 @@ defmodule KirbsWeb.ShopLiveTest do
     end
 
     test "search params in the URL are applied on first load", %{conn: conn} = ctx do
-      {:ok, view, _html} = live(conn, ~p"/?gender=girl&sort=price_asc")
+      {:ok, view, _html} = live(conn, ~p"/?season=summer&sort=price_asc")
 
       assert has_element?(view, "#items-#{ctx.pants.id}")
       refute has_element?(view, "#items-#{ctx.jacket.id}")
@@ -72,11 +74,11 @@ defmodule KirbsWeb.ShopLiveTest do
     test "facet links toggle filters", %{conn: conn} = ctx do
       {:ok, view, _html} = live(conn, ~p"/")
 
-      view |> element("#facet-gender-boy") |> render_click()
-      assert_patch(view, "/?gender=boy")
+      view |> element("#facet-season-winter") |> render_click()
+      assert_patch(view, "/?season=winter")
       refute has_element?(view, "#items-#{ctx.pants.id}")
 
-      view |> element("#chip-gender") |> render_click()
+      view |> element("#chip-season") |> render_click()
       assert_patch(view, "/")
       assert has_element?(view, "#items-#{ctx.pants.id}")
     end
@@ -111,33 +113,63 @@ defmodule KirbsWeb.ShopLiveTest do
   end
 
   describe "category pages (/k/*path)" do
-    test "shows breadcrumbs and only items of the subtree", %{conn: conn} = ctx do
-      {:ok, view, _html} = live(conn, ~p"/k/lapsed/poisid")
+    test "shows breadcrumbs without the audience and only items of the subtree",
+         %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/k/valisriided/talvejakid")
 
       assert has_element?(view, "#breadcrumbs")
-      assert has_element?(view, ~s(#breadcrumbs a[href="/k/lapsed"]))
+      assert has_element?(view, ~s(#breadcrumbs a[href="/k/valisriided"]), "Välisriided")
+      refute has_element?(view, "#breadcrumbs", "Lapsed")
       assert has_element?(view, "#items-#{ctx.jacket.id}")
       refute has_element?(view, "#items-#{ctx.pants.id}")
       refute has_element?(view, "#shop-hero")
     end
 
-    test "root category includes all children and offers subcategory navigation",
-         %{conn: conn} = ctx do
-      {:ok, view, _html} = live(conn, ~p"/k/lapsed")
+    test "family page includes its types and expands them in the sidebar", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/k/valisriided")
 
       assert has_element?(view, "#items-#{ctx.jacket.id}")
-      assert has_element?(view, "#items-#{ctx.pants.id}")
-      assert has_element?(view, "#category-link-lapsed-poisid")
-      assert has_element?(view, "#category-link-lapsed-tudrukud")
-      refute has_element?(view, "#category-link-lapsed-beebid")
+      refute has_element?(view, "#items-#{ctx.pants.id}")
+      assert has_element?(view, "#category-link-lapsed-valisriided-talvejakid")
+      refute has_element?(view, "#category-link-lapsed-valisriided-vihmariided")
     end
 
-    test "navigating into a subcategory patches", %{conn: conn} = ctx do
-      {:ok, view, _html} = live(conn, ~p"/k/lapsed")
+    test "sidebar lists only families with items, flat on the front page", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
 
-      view |> element("#category-link-lapsed-tudrukud") |> render_click()
-      assert_patch(view, "/k/lapsed/tudrukud")
+      assert has_element?(view, "#category-link-lapsed-valisriided")
+      assert has_element?(view, "#category-link-lapsed-puksid-luhikesed")
+      refute has_element?(view, "#category-link-lapsed-valisriided-talvejakid")
+      refute has_element?(view, "#category-link-lapsed-jalatsid")
+      refute has_element?(view, "#audience-switcher")
+    end
+
+    test "no gender or age facets in the sidebar", %{conn: conn} do
+      {:ok, view, html} = live(conn, ~p"/")
+
+      refute has_element?(view, "#facet-gender")
+      refute has_element?(view, "#facet-age_group")
+      refute html =~ "Sugu"
+      refute html =~ "Vanus"
+    end
+
+    test "navigating into a family patches", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      view |> element("#category-link-lapsed-puksid-luhikesed") |> render_click()
+      assert_patch(view, "/k/puksid-luhikesed")
       refute has_element?(view, "#items-#{ctx.jacket.id}")
+    end
+
+    test "legacy URLs redirect to the new tree", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/k/valisriided/talvejakid"}}} =
+               live(conn, ~p"/k/lapsed/poisid/talvejakid")
+
+      assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/k/lapsed/poisid")
+      assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/k/lapsed")
+
+      assert {:error, {:live_redirect, %{to: "/k/valisriided"}}} =
+               live(conn, ~p"/k/lapsed/valisriided")
     end
 
     test "unknown category redirects to the shop", %{conn: conn} do

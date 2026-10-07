@@ -2,32 +2,49 @@ defmodule Kirbs.Services.Categories.SeedTree do
   @moduledoc """
   Idempotently seeds the own-shop category tree (see docs/taxonomy.md) and the
   Yaga category mappings. Safe to run repeatedly (upserts on slug / category).
+  Never deletes anything; obsolete categories are removed by `MigrateTree`.
   """
 
   alias Kirbs.Resources.{Category, YagaCategoryMapping}
   alias Kirbs.YagaTaxonomy
 
-  @kids_types [
-    {"talvejakid", "Talvejakid"},
-    {"jakid-vestid", "Jakid ja vestid"},
-    {"pusid", "Püksid"},
-    {"kombinesoonid", "Kombinesoonid"},
-    {"kleidid-seelikud", "Kleidid ja seelikud"},
-    {"pluusid-sargid", "Pluusid ja särgid"},
-    {"dressipluusid-kampsunid", "Dressipluusid ja kampsunid"},
-    {"alussargid-bodyd", "Alussärgid ja bodyd"},
-    {"pidzaamad", "Pidžaamad"},
-    {"mutsid-sallid", "Mütsid & sallid"},
-    {"kingad", "Kingad"},
-    {"muu", "Muu"}
-  ]
+  @default_root "lapsed"
 
-  # Estonian audience -> slug, name, types (slug, name) that don't apply are omitted
-  @kids_groups [
-    {"beebid", "Beebid", @kids_types |> Enum.reject(&(elem(&1, 0) == "kleidid-seelikud"))},
-    {"poisid", "Poisid",
-     @kids_types |> Enum.reject(&(elem(&1, 0) in ["kleidid-seelikud", "alussargid-bodyd"]))},
-    {"tudrukud", "Tüdrukud", @kids_types |> Enum.reject(&(elem(&1, 0) == "alussargid-bodyd"))}
+  # {family slug, family name, [{type slug, type name}]}; no types = the family is a leaf.
+  @families [
+    {"valisriided", "Välisriided",
+     [
+       {"talvejakid", "Talvejakid"},
+       {"uleminekujakid-vestid", "Üleminekujakid ja vestid"},
+       {"vihmariided", "Vihmariided"}
+     ]},
+    {"kombinesoonid", "Kombinesoonid",
+     [{"talvekombinesoonid", "Talvekombinesoonid"}, {"vihmakombinesoonid", "Vihmakombinesoonid"}]},
+    {"puksid-luhikesed", "Püksid ja lühikesed",
+     [
+       {"puksid", "Püksid"},
+       {"teksad", "Teksad"},
+       {"retuusid", "Retuusid"},
+       {"luhikesed-puksid", "Lühikesed püksid"}
+     ]},
+    {"ulaosad", "Pluusid, särgid ja kampsunid",
+     [
+       {"t-sargid-pluusid", "T-särgid ja pluusid"},
+       {"dressipluusid-kampsunid", "Dressipluusid ja kampsunid"},
+       {"bodyd-alussargid", "Bodyd ja alussärgid"}
+     ]},
+    {"kleidid-seelikud", "Kleidid ja seelikud", []},
+    {"oo-vabaaeg", "Öö- ja vabaaja", [{"pidzaamad", "Pidžaamad"}, {"dressid", "Dressid"}]},
+    {"jalatsid", "Jalatsid",
+     [
+       {"talvesaapad", "Talvesaapad"},
+       {"kummikud", "Kummikud"},
+       {"tossud", "Tossud"},
+       {"sandaalid-sussid", "Sandaalid ja sussid"}
+     ]},
+    {"aksessuaarid", "Aksessuaarid",
+     [{"mutsid-sallid", "Mütsid ja sallid"}, {"kindad", "Kindad"}, {"muu", "Muu"}]},
+    {"muu", "Muu", []}
   ]
 
   @stub_roots [
@@ -37,40 +54,59 @@ defmodule Kirbs.Services.Categories.SeedTree do
     {"mangud", "Mänguasjad"}
   ]
 
-  # Yaga only knows coarse kids categories.
-  @yaga_by_type %{
-    "kingad" => "Jalanõud lastele",
-    "muu" => "Muu lastele"
-  }
+  # Yaga only knows coarse kids categories: footwear -> 370, Muu -> 47, everything else -> 438.
+  @yaga_footwear_family "jalatsid"
+  @yaga_footwear "Jalanõud lastele"
+  @yaga_other "Muu lastele"
   @yaga_default "Riided"
 
   def run do
-    with {:ok, lapsed} <- upsert("lapsed", "Lapsed", 0, nil),
-         {:ok, _groups} <- seed_kids(lapsed),
+    with {:ok, lapsed} <- upsert(@default_root, "Lapsed", 0, nil),
+         {:ok, _families} <- seed_families(lapsed),
          {:ok, _stubs} <- seed_stubs() do
       {:ok, :seeded}
     end
   end
 
-  defp seed_kids(lapsed) do
-    @kids_groups
+  @doc "Slug of the audience root that public shop URLs are relative to."
+  def default_root, do: @default_root
+
+  @doc "Leaf slugs of the new tree (families without types count as leaves)."
+  def leaf_slugs do
+    Enum.flat_map(@families, fn
+      {family, _name, []} ->
+        ["#{@default_root}-#{family}"]
+
+      {family, _name, types} ->
+        Enum.map(types, fn {type, _} -> "#{@default_root}-#{family}-#{type}" end)
+    end)
+  end
+
+  defp seed_families(lapsed) do
+    @families
     |> Enum.with_index()
     |> Enum.reduce_while({:ok, []}, fn {{slug, name, types}, idx}, {:ok, acc} ->
-      with {:ok, group} <- upsert("lapsed-#{slug}", name, idx, lapsed.id),
-           {:ok, _types} <- seed_types(slug, group, types) do
-        {:cont, {:ok, [group | acc]}}
+      with {:ok, family} <- upsert("#{@default_root}-#{slug}", name, idx, lapsed.id),
+           {:ok, _mapping} <- maybe_map_family(family, slug, types),
+           {:ok, _types} <- seed_types(slug, family, types) do
+        {:cont, {:ok, [family | acc]}}
       else
         error -> {:halt, error}
       end
     end)
   end
 
-  defp seed_types(group_slug, group, types) do
+  # A family without types is itself a leaf, so it needs a Yaga mapping.
+  defp maybe_map_family(family, slug, []), do: map_to_yaga(family, slug, slug)
+  defp maybe_map_family(_family, _slug, _types), do: {:ok, nil}
+
+  defp seed_types(family_slug, family, types) do
     types
     |> Enum.with_index()
     |> Enum.reduce_while({:ok, []}, fn {{slug, name}, idx}, {:ok, acc} ->
-      with {:ok, category} <- upsert("lapsed-#{group_slug}-#{slug}", name, idx, group.id),
-           {:ok, _mapping} <- map_to_yaga(category, slug) do
+      with {:ok, category} <-
+             upsert("#{@default_root}-#{family_slug}-#{slug}", name, idx, family.id),
+           {:ok, _mapping} <- map_to_yaga(category, family_slug, slug) do
         {:cont, {:ok, [category | acc]}}
       else
         error -> {:halt, error}
@@ -93,10 +129,8 @@ defmodule Kirbs.Services.Categories.SeedTree do
     Category.upsert(%{slug: slug, name_et: name_et, position: position, parent_id: parent_id})
   end
 
-  defp map_to_yaga(category, type_slug) do
-    yaga_name = Map.get(@yaga_by_type, type_slug, @yaga_default)
-
-    case YagaTaxonomy.category_to_id(yaga_name) do
+  defp map_to_yaga(category, family_slug, type_slug) do
+    case YagaTaxonomy.category_to_id(yaga_name(family_slug, type_slug)) do
       nil ->
         {:ok, nil}
 
@@ -104,4 +138,8 @@ defmodule Kirbs.Services.Categories.SeedTree do
         YagaCategoryMapping.upsert(%{category_id: category.id, yaga_category_id: yaga_id})
     end
   end
+
+  defp yaga_name(@yaga_footwear_family, _type), do: @yaga_footwear
+  defp yaga_name(_family, "muu"), do: @yaga_other
+  defp yaga_name(_family, _type), do: @yaga_default
 end

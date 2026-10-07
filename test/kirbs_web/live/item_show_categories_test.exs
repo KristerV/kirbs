@@ -33,12 +33,12 @@ defmodule KirbsWeb.ItemShowCategoriesTest do
     conn: conn,
     item: item
   } do
-    kingad = Category.get_by_slug!("lapsed-tudrukud-kingad")
+    kingad = Category.get_by_slug!("lapsed-jalatsid-tossud")
     {:ok, view, _html} = live(conn, "/items/#{item.id}")
 
     assert has_element?(
              view,
-             "#shop-attributes #item-category-id optgroup[label='Lapsed > Tüdrukud']"
+             "#shop-attributes #item-category-id optgroup[label='Jalatsid']"
            )
 
     view
@@ -59,11 +59,11 @@ defmodule KirbsWeb.ItemShowCategoriesTest do
     assert saved.gender == :girl
     assert saved.season == :summer
     assert saved.condition == :like_new
-    assert saved.search_text =~ "Kingad"
+    assert saved.search_text =~ "Tossud"
   end
 
   test "blank option clears the category", %{conn: conn, item: item} do
-    kingad = Category.get_by_slug!("lapsed-tudrukud-kingad")
+    kingad = Category.get_by_slug!("lapsed-jalatsid-tossud")
     Item.apply_categorization!(item, %{category_id: kingad.id})
     {:ok, view, _html} = live(conn, "/items/#{item.id}")
 

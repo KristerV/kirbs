@@ -16,7 +16,7 @@ defmodule KirbsWeb.ShopLive.Index do
 
   @page_size 24
   @text_filters [:q, :brand, :size]
-  @enum_filters [:gender, :age_group, :season, :condition]
+  @enum_filters [:season, :condition]
   @sorts ~w(relevance newest price_asc price_desc)
 
   def mount(_params, _session, socket) do
@@ -48,6 +48,12 @@ defmodule KirbsWeb.ShopLive.Index do
          |> assign_facets()
          |> assign_meta()
          |> load_page(reset: true)}
+
+      {:redirect, category} ->
+        {:noreply,
+         push_navigate(socket,
+           to: shop_path(socket.assigns.tree, category, parse_filters(params))
+         )}
 
       :not_found ->
         {:noreply,
@@ -119,19 +125,36 @@ defmodule KirbsWeb.ShopLive.Index do
   end
 
   defp empty_facets do
-    Map.new([:brand, :size, :age_group, :gender, :season, :condition, :category_id], &{&1, []})
+    Map.new([:brand, :size, :season, :condition, :category_id], &{&1, []})
   end
 
   # --- params -------------------------------------------------------------
 
-  defp resolve_category(tree, %{"path" => path}) when is_list(path) do
+  defp resolve_category(tree, %{"path" => path}) when is_list(path) and path != [] do
     case CategoryTree.get_by_segments(tree, path) do
-      nil -> :not_found
-      category -> {:ok, category}
+      nil -> resolve_legacy(tree, path)
+      category -> canonical(tree, category, path)
     end
   end
 
   defp resolve_category(_tree, _params), do: {:ok, nil}
+
+  # The default audience root is not a page of its own, and non-canonical spellings
+  # (`/k/lapsed/valisriided`) redirect to the canonical URL.
+  defp canonical(tree, category, path) do
+    cond do
+      category.slug == CategoryTree.default_root() -> {:redirect, nil}
+      CategoryTree.segments(tree, category) == path -> {:ok, category}
+      true -> {:redirect, category}
+    end
+  end
+
+  defp resolve_legacy(tree, path) do
+    case CategoryTree.legacy_category(tree, path) do
+      {:ok, category} -> {:redirect, category}
+      :error -> :not_found
+    end
+  end
 
   defp parse_filters(params) do
     text =
@@ -229,7 +252,7 @@ defmodule KirbsWeb.ShopLive.Index do
            "#{category.name_et}: kvaliteetsed kasutatud lasteriided soodsa hinnaga Kirbsi e-poes."}
       end
 
-    path = if category, do: ~p"/k/#{CategoryTree.segments(tree, category)}", else: ~p"/"
+    path = shop_path(tree, category, %{})
 
     socket
     |> assign(:page_title, title)
@@ -242,7 +265,11 @@ defmodule KirbsWeb.ShopLive.Index do
 
   @doc false
   def shop_path(tree, category, filters) do
-    base = if category, do: ~p"/k/#{CategoryTree.segments(tree, category)}", else: ~p"/"
+    base =
+      case category && CategoryTree.segments(tree, category) do
+        segments when segments in [nil, []] -> ~p"/"
+        segments -> ~p"/k/#{segments}"
+      end
 
     query =
       filters
@@ -289,27 +316,38 @@ defmodule KirbsWeb.ShopLive.Index do
     end)
   end
 
-  # Category navigation: children of the current node, or siblings when on a leaf.
-  defp category_nav(tree, nil), do: {nil, CategoryTree.roots(tree)}
+  # Category navigation: families of the current audience (only those with items), the
+  # children of the active family expanded. Returns `[{family, [child]}]`.
+  defp category_nav(tree, category, counts) do
+    audience = CategoryTree.audience(tree, category)
+    active = category && active_family(tree, category)
 
-  defp category_nav(tree, category) do
-    case CategoryTree.children(tree, category) do
-      [] ->
-        parent = category.parent_id && CategoryTree.get(tree, category.parent_id)
+    for family <- audience_children(tree, audience), visible?(family, category, counts) do
+      children =
+        if active && active.id == family.id,
+          do: Enum.filter(CategoryTree.children(tree, family), &visible?(&1, category, counts)),
+          else: []
 
-        {parent,
-         if(parent, do: CategoryTree.children(tree, parent), else: CategoryTree.roots(tree))}
-
-      children ->
-        {category, children}
+      {family, children}
     end
   end
 
-  defp parent_of(_tree, %{parent_id: nil}), do: nil
-  defp parent_of(tree, node), do: CategoryTree.get(tree, node.parent_id)
+  defp audience_children(_tree, nil), do: []
+  defp audience_children(tree, audience), do: CategoryTree.children(tree, audience)
+
+  defp visible?(node, category, counts),
+    do: Map.get(counts, node.id, 0) > 0 or (category != nil and node.id == category.id)
+
+  # The family (level directly below the audience root) of a category.
+  defp active_family(tree, category) do
+    case CategoryTree.ancestors(tree, category) do
+      [_root, family | _] -> family
+      _ -> nil
+    end
+  end
 
   defp breadcrumb_trail(tree, category) do
-    chain = CategoryTree.ancestors(tree, category)
+    chain = CategoryTree.trail(tree, category)
     last = length(chain) - 1
 
     crumbs =
@@ -321,6 +359,13 @@ defmodule KirbsWeb.ShopLive.Index do
       end)
 
     [{"Pood", ~p"/"} | crumbs]
+  end
+
+  defp audience_path(tree, audience) do
+    case CategoryTree.default_root() == audience.slug do
+      true -> ~p"/"
+      false -> ~p"/k/#{CategoryTree.segments(tree, audience)}"
+    end
   end
 
   defp active_chips(filters) do

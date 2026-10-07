@@ -34,6 +34,7 @@ defmodule Kirbs.Resources.Item do
     define :publish
     define :apply_categorization
     define :list_uncategorized, args: [:after_id, :limit]
+    define :list_by_category, args: [:category_id]
     define :mark_sold
     define :mark_unsold
     define :search
@@ -121,6 +122,11 @@ defmodule Kirbs.Resources.Item do
       change Kirbs.Resources.Item.Changes.KeepExistingExtraction
       change Kirbs.Resources.Item.Changes.BuildSearchText
       change load(@listing_fields)
+    end
+
+    read :list_by_category do
+      argument :category_id, :uuid, allow_nil?: false
+      filter expr(category_id == ^arg(:category_id))
     end
 
     read :list_uncategorized do

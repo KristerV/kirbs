@@ -3,9 +3,13 @@ defmodule KirbsWeb.Shop.CategoryTree do
   In-memory view of the category tree for the storefront (breadcrumbs, URL paths,
   subcategory navigation, rolled-up counts). Build once from `Category.list_all!/0`.
 
-  Category slugs are prefixed by their path (`lapsed-poisid-pusid`), so the public URL
-  `/k/lapsed/poisid/pusid` is derived by stripping each parent's slug prefix.
+  Category slugs are prefixed by their path (`lapsed-valisriided-talvejakid`), so the public URL
+  is derived by stripping each parent's slug prefix. Kids is the default audience: its root
+  (`lapsed`) is not a level in the shop, so the URL is `/k/valisriided/talvejakid` and the
+  breadcrumbs start at the family. Other audience roots keep their segment (`/k/naised/...`).
   """
+
+  @default_root "lapsed"
 
   defstruct by_id: %{}, by_slug: %{}, children: %{}
 
@@ -35,7 +39,15 @@ defmodule KirbsWeb.Shop.CategoryTree do
     end
   end
 
-  @doc "URL path segments, e.g. `[\"lapsed\", \"poisid\", \"pusid\"]`."
+  @doc "Slug of the default audience root, which is not shown as a level."
+  def default_root, do: @default_root
+
+  @doc "Chain from the first shown level (default audience root dropped) to the category."
+  def trail(%__MODULE__{} = tree, category) do
+    tree |> ancestors(category) |> Enum.reject(&(&1.slug == @default_root))
+  end
+
+  @doc "URL path segments, e.g. `[\"valisriided\", \"talvejakid\"]` (empty for the default root)."
   def segments(%__MODULE__{} = tree, category) do
     tree
     |> ancestors(category)
@@ -50,12 +62,56 @@ defmodule KirbsWeb.Shop.CategoryTree do
     end)
     |> elem(0)
     |> Enum.reverse()
+    |> then(fn
+      [@default_root | rest] -> rest
+      segments -> segments
+    end)
   end
 
-  @doc "Category for URL path segments (`[\"lapsed\", \"poisid\"]`), or nil."
+  @doc """
+  Category for URL path segments, or nil. Segments are relative to the default audience
+  (`["valisriided"]` is `lapsed-valisriided`); other audiences start with their root slug
+  (`["naised", "kleidid"]`). The legacy `["lapsed", ...]` form resolves too.
+  """
   def get_by_segments(%__MODULE__{} = tree, segments) when is_list(segments) do
-    get_by_slug(tree, Enum.join(segments, "-"))
+    joined = Enum.join(segments, "-")
+
+    get_by_slug(tree, @default_root <> "-" <> joined) || get_by_slug(tree, joined)
   end
+
+  @doc """
+  Resolves a pre-type-tree URL (`["lapsed", "poisid", "pusid"]`) to the category it became:
+  `{:ok, category}`, `{:ok, nil}` (everything) or `:error`.
+  """
+  def legacy_category(%__MODULE__{} = tree, ["lapsed", group | rest]) do
+    if group in Kirbs.Services.Categories.MigrateTree.old_group_slugs() do
+      case rest do
+        [] -> {:ok, nil}
+        [type] -> legacy_type(tree, type)
+        _ -> :error
+      end
+    else
+      :error
+    end
+  end
+
+  def legacy_category(_tree, _segments), do: :error
+
+  defp legacy_type(tree, type) do
+    case Map.get(Kirbs.Services.Categories.MigrateTree.type_map(), type) do
+      nil -> :error
+      slug -> {:ok, get_by_slug(tree, slug)}
+    end
+  end
+
+  @doc "Audience roots with a positive rolled-up count, in tree order."
+  def audiences(%__MODULE__{} = tree, rolled_counts) do
+    Enum.filter(roots(tree), &(Map.get(rolled_counts, &1.id, 0) > 0))
+  end
+
+  @doc "The audience root a category belongs to (default root for nil)."
+  def audience(%__MODULE__{} = tree, nil), do: get_by_slug(tree, @default_root)
+  def audience(%__MODULE__{} = tree, category), do: tree |> ancestors(category) |> hd()
 
   @doc "Counts per category id rolled up to every ancestor: `%{id => count}`."
   def rollup(%__MODULE__{} = tree, counts) do

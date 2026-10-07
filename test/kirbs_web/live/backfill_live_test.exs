@@ -32,7 +32,7 @@ defmodule KirbsWeb.BackfillLiveTest do
     %{conn: conn}
   end
 
-  defp propose(confidence, slug \\ "lapsed-beebid-talvejakid") do
+  defp propose(confidence, slug \\ "lapsed-valisriided-talvejakid") do
     item = item_with_image()
     StubCategorizeLlm.respond_with(llm_response(slug, %{"confidence" => confidence}))
     {:ok, _} = CategorizeBatch.run(limit: 1, after_id: nil)
@@ -57,7 +57,7 @@ defmodule KirbsWeb.BackfillLiveTest do
 
   test "change category then approve uses the changed category", %{conn: conn} do
     {item, proposal} = propose(0.8)
-    other = Category.get_by_slug!("lapsed-poisid-kingad")
+    other = Category.get_by_slug!("lapsed-jalatsid-kummikud")
     {:ok, view, _html} = live(conn, "/backfill")
 
     view

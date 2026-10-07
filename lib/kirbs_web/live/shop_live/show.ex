@@ -76,7 +76,7 @@ defmodule KirbsWeb.ShopLive.Show do
           []
 
         category ->
-          for node <- CategoryTree.ancestors(tree, category) do
+          for node <- CategoryTree.trail(tree, category) do
             {node.name_et, ~p"/k/#{CategoryTree.segments(tree, node)}"}
           end
       end
