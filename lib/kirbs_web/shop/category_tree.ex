@@ -91,11 +91,21 @@ defmodule KirbsWeb.Shop.CategoryTree do
         _ -> :error
       end
     else
-      :error
+      legacy_season_leaf(tree, ["lapsed", group | rest])
     end
   end
 
-  def legacy_category(_tree, _segments), do: :error
+  def legacy_category(tree, segments), do: legacy_season_leaf(tree, segments)
+
+  # Season-flavoured leaves removed from the tree (`talvejakid` -> `jakid`, ...), with or without `lapsed`.
+  defp legacy_season_leaf(%__MODULE__{} = tree, segments) when is_list(segments) do
+    path = segments |> Enum.reject(&(&1 == "lapsed")) |> Enum.join("-")
+
+    case Map.get(Kirbs.Services.Categories.MigrateSeasonOutOfTree.redirects(), path) do
+      nil -> :error
+      new -> {:ok, get_by_slug(tree, @default_root <> "-" <> new)}
+    end
+  end
 
   defp legacy_type(tree, type) do
     case Map.get(Kirbs.Services.Categories.MigrateTree.type_map(), type) do

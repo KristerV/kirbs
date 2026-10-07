@@ -10,12 +10,12 @@ defmodule Kirbs.Services.Shop.SeedDevItems do
 
   # {category slug, brand, size, colors, description, price, age_group, gender, season, condition, rgb}
   @items [
-    {"lapsed-valisriided-talvejakid", "Reima", "104", ["sinine"],
+    {"lapsed-valisriided-jakid", "Reima", "104", ["sinine"],
      "Soe veekindel talvejope, kapuutsiga.", 24, :child, :boy, :winter, :good, [60, 110, 180]},
     {"lapsed-kleidid-seelikud", "H&M", "92", ["roosa"], "Kerge suvekleit lillemustriga.", 8,
      :toddler, :girl, :summer, :like_new, [235, 140, 170]},
-    {"lapsed-kombinesoonid-talvekombinesoonid", "Lindex", "68", ["hall"],
-     "Pehme fliisist kombinesoon beebile.", 12, :baby, :unisex, :winter, :good, [170, 170, 175]},
+    {"lapsed-kombinesoonid", "Lindex", "68", ["hall"], "Pehme fliisist kombinesoon beebile.", 12,
+     :baby, :unisex, :winter, :good, [170, 170, 175]},
     {"lapsed-puksid-luhikesed-puksid", "Zara", "122", ["must"],
      "Dressipüksid taskutega, mugav lõige.", 7, :child, :boy, :all_year, :good, [40, 40, 45]},
     {"lapsed-ulaosad-dressipluusid-kampsunid", "Name It", "110", ["kollane"],
@@ -29,9 +29,8 @@ defmodule Kirbs.Services.Shop.SeedDevItems do
      :toddler, :girl, :spring_autumn, :fair, [150, 110, 190]},
     {"lapsed-aksessuaarid-mutsid-sallid", "Reima", "52", ["punane"],
      "Talvemüts ja sall komplektis.", 6, :child, :boy, :winter, :good, [200, 60, 60]},
-    {"lapsed-valisriided-uleminekujakid-vestid", "Mini A Ture", "116", ["beež"],
-     "Kaunis kevadjope, peaaegu uus.", 16, :child, :girl, :spring_autumn, :like_new,
-     [210, 180, 140]}
+    {"lapsed-valisriided-jakid", "Mini A Ture", "116", ["beež"], "Kaunis kevadjope, peaaegu uus.",
+     16, :child, :girl, :spring_autumn, :like_new, [210, 180, 140]}
   ]
 
   def run do

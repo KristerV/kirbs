@@ -11,7 +11,7 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
     jacket =
       item!(bag, %{
-        category: "lapsed-valisriided-talvejakid",
+        category: "lapsed-valisriided-jakid",
         brand: "Reima",
         size: "110",
         gender: :boy,
@@ -68,10 +68,20 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
   test "facet filters", ctx do
     assert ids(%{gender: :girl}) == [ctx.pants.id]
-    assert ids(%{season: :winter}) == [ctx.jacket.id]
+    assert ids(%{season: [:winter]}) == [ctx.jacket.id]
     assert ids(%{brand: "H&M"}) == [ctx.pants.id]
     assert ids(%{size: "110"}) == [ctx.jacket.id]
     assert ids(%{condition: :fair}) == []
+  end
+
+  test "season accepts a list and all_year items match every season", ctx do
+    all_year = item!(bag!(), %{season: :all_year, category: "lapsed-jalatsid-saapad"})
+
+    assert Enum.sort(ids(%{season: [:winter]})) == Enum.sort([ctx.jacket.id, all_year.id])
+    assert ids(%{season: [:summer]}) == [all_year.id]
+
+    assert Enum.sort(ids(%{season: [:summer, :winter]})) ==
+             Enum.sort([ctx.jacket.id, all_year.id])
   end
 
   test "price range and sorting", ctx do

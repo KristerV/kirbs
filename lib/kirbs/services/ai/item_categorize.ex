@@ -133,14 +133,18 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
     The photos may show several items sold as one set; pick the category of the main item.
 
     category_slug describes ONLY what kind of garment or item it is (its type). Never let the
-    child's gender or age influence the category; record those separately as gender and age_group.
+    child's gender, age or the season influence the category; record those separately as gender,
+    age_group and season. A winter jacket and a summer jacket both belong to the same `jakid` leaf,
+    winter boots and light boots to `saapad`, a winter overall and a rain overall to `kombinesoonid`
+    (rain gear that is a jacket, pants or overall may use `vihmariided`).
     Choose category_slug from exactly this list (family > type):
     #{categories}
 
     Attributes:
     - age_group: #{Enum.join(@age_groups, ", ")} (baby = up to ~86cm, toddler ~92-104, child ~110-146, teen 152+)
     - gender: #{Enum.join(@genders, ", ")} (use unisex when neutral)
-    - season: #{Enum.join(@seasons, ", ")}
+    - season: #{Enum.join(@seasons, ", ")} (judge from insulation, lining, fabric weight and use,
+      independently of the category; all_year when it suits any season)
     - condition: #{Enum.join(@conditions, ", ")} (new_with_tags only if a shop tag is visible)
     - colors: at most 2 dominant colors, from the allowed Estonian list
     - materials: from the allowed Estonian list, only if visible on a label

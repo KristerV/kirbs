@@ -62,7 +62,7 @@ defmodule Kirbs.Services.Categories.MigrateTreeTest do
     assert summary.items_moved == 3
     assert summary.proposals_moved == 1
     assert summary.unmapped == []
-    assert length(summary.needs_review) == 2
+    assert length(summary.needs_review) == 1
     assert "lapsed-poisid-pusid" in summary.deleted_categories
 
     boy = Item.get!(boy.id)
@@ -71,15 +71,15 @@ defmodule Kirbs.Services.Categories.MigrateTreeTest do
     assert boy.search_text =~ "Püksid"
 
     girl = Item.get!(girl.id)
-    assert Category.get!(girl.category_id).slug == "lapsed-jalatsid-tossud"
+    assert Category.get!(girl.category_id).slug == "lapsed-jalatsid-kingad"
     assert girl.gender == :unisex
 
     baby = Item.get!(baby.id)
-    assert Category.get!(baby.category_id).slug == "lapsed-kombinesoonid-talvekombinesoonid"
+    assert Category.get!(baby.category_id).slug == "lapsed-kombinesoonid"
     assert baby.age_group == :baby
 
     assert Category.get!(CategorizationProposal.get!(proposal.id).category_id).slug ==
-             "lapsed-kombinesoonid-talvekombinesoonid"
+             "lapsed-kombinesoonid"
 
     for slug <- ~w(lapsed-poisid lapsed-tudrukud lapsed-beebid lapsed-beebid-kingad) do
       assert {:error, _} = Category.get_by_slug(slug)

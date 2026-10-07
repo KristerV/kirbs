@@ -1,7 +1,7 @@
 defmodule Kirbs.Resources.Item.Actions.Facets do
   @moduledoc """
   Implementation of `Item.facets`: for every facet, runs the same search with that facet's own
-  filter removed and counts the values. Returns `%{brand: [{"Name", 3}, ...], ...}`.
+  filter removed and counts the values. Season keeps `nil` (items without a season) so the shop can show an "all" count. Returns `%{brand: [{"Name", 3}, ...], ...}`.
   """
   use Ash.Resource.Actions.Implementation
 
@@ -25,7 +25,7 @@ defmodule Kirbs.Resources.Item.Actions.Facets do
           |> Ash.Query.limit(10_000)
           |> Ash.read!(page: false)
           |> Enum.map(&Map.fetch!(&1, facet))
-          |> Enum.reject(&is_nil/1)
+          |> Enum.reject(&(is_nil(&1) and facet != :season))
           |> Enum.frequencies()
           |> Enum.sort_by(fn {value, count} -> {-count, to_string(value)} end)
 

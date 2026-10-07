@@ -43,7 +43,9 @@ defmodule Kirbs.Release do
           {:ok, :seeded} = Kirbs.Services.Categories.SeedTree.run()
           {:ok, summary} = Kirbs.Services.Categories.MigrateTree.run()
           IO.inspect(summary, label: "MigrateTree", limit: :infinity)
-          summary
+          {:ok, season} = Kirbs.Services.Categories.MigrateSeasonOutOfTree.run()
+          IO.inspect(season, label: "MigrateSeasonOutOfTree", limit: :infinity)
+          %{gender_tree: summary, season_out_of_tree: season}
         end)
 
       summary

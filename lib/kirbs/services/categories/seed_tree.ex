@@ -13,13 +13,8 @@ defmodule Kirbs.Services.Categories.SeedTree do
   # {family slug, family name, [{type slug, type name}]}; no types = the family is a leaf.
   @families [
     {"valisriided", "Välisriided",
-     [
-       {"talvejakid", "Talvejakid"},
-       {"uleminekujakid-vestid", "Üleminekujakid ja vestid"},
-       {"vihmariided", "Vihmariided"}
-     ]},
-    {"kombinesoonid", "Kombinesoonid",
-     [{"talvekombinesoonid", "Talvekombinesoonid"}, {"vihmakombinesoonid", "Vihmakombinesoonid"}]},
+     [{"jakid", "Jakid"}, {"vestid", "Vestid"}, {"vihmariided", "Vihmariided"}]},
+    {"kombinesoonid", "Kombinesoonid", []},
     {"puksid-luhikesed", "Püksid ja lühikesed",
      [
        {"puksid", "Püksid"},
@@ -37,9 +32,10 @@ defmodule Kirbs.Services.Categories.SeedTree do
     {"oo-vabaaeg", "Öö- ja vabaaja", [{"pidzaamad", "Pidžaamad"}, {"dressid", "Dressid"}]},
     {"jalatsid", "Jalatsid",
      [
-       {"talvesaapad", "Talvesaapad"},
+       {"saapad", "Saapad"},
        {"kummikud", "Kummikud"},
        {"tossud", "Tossud"},
+       {"kingad", "Kingad"},
        {"sandaalid-sussid", "Sandaalid ja sussid"}
      ]},
     {"aksessuaarid", "Aksessuaarid",

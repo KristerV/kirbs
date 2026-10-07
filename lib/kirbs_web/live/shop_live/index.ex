@@ -16,7 +16,8 @@ defmodule KirbsWeb.ShopLive.Index do
 
   @page_size 24
   @text_filters [:q, :brand, :size]
-  @enum_filters [:season, :condition]
+  @enum_filters [:condition]
+  @season_pills [:winter, :spring_autumn, :summer]
   @sorts ~w(relevance newest price_asc price_desc)
 
   def mount(_params, _session, socket) do
@@ -169,6 +170,12 @@ defmodule KirbsWeb.ShopLive.Index do
           into: %{},
           do: {key, atom}
 
+    seasons =
+      case parse_seasons(params["season"]) do
+        [] -> %{}
+        list -> %{season: list}
+      end
+
     prices =
       for key <- [:min_price, :max_price],
           value = valid_price(params[Atom.to_string(key)]),
@@ -178,8 +185,16 @@ defmodule KirbsWeb.ShopLive.Index do
     sort =
       if params["sort"] in @sorts, do: %{sort: String.to_existing_atom(params["sort"])}, else: %{}
 
-    text |> Map.merge(enums) |> Map.merge(prices) |> Map.merge(sort)
+    text |> Map.merge(enums) |> Map.merge(seasons) |> Map.merge(prices) |> Map.merge(sort)
   end
+
+  # `season=winter,summer` -> `[:winter, :summer]` (unknown values dropped, pill order).
+  defp parse_seasons(value) when is_binary(value) do
+    parsed = value |> String.split(",") |> Enum.map(&Labels.parse(:season, String.trim(&1)))
+    Enum.filter([:winter, :spring_autumn, :summer, :all_year], &(&1 in parsed))
+  end
+
+  defp parse_seasons(_), do: []
 
   defp blank_to_nil(value) when is_binary(value) do
     case String.trim(value) do
@@ -273,11 +288,36 @@ defmodule KirbsWeb.ShopLive.Index do
 
     query =
       filters
-      |> Enum.map(fn {key, value} -> {Atom.to_string(key), to_string(value)} end)
+      |> Enum.map(fn {key, value} -> {Atom.to_string(key), param_value(value)} end)
       |> Enum.sort()
 
     if query == [], do: base, else: base <> "?" <> URI.encode_query(query)
   end
+
+  defp param_value(values) when is_list(values), do: Enum.map_join(values, ",", &to_string/1)
+  defp param_value(value), do: to_string(value)
+
+  # Season pills: each pill toggles its season, the rest of the selection stays.
+  defp toggle_season(filters, season) do
+    current = filters[:season] || []
+
+    case if(season in current, do: List.delete(current, season), else: current ++ [season]) do
+      [] -> Map.delete(filters, :season)
+      list -> Map.put(filters, :season, list)
+    end
+  end
+
+  # `[{season, label, count}]`; `all_year` items count towards every season.
+  defp season_pills(facets) do
+    counts = Map.new(facets.season)
+    all_year = Map.get(counts, :all_year, 0)
+
+    for season <- @season_pills do
+      {season, Labels.label(:season, season), Map.get(counts, season, 0) + all_year}
+    end
+  end
+
+  defp season_total(facets), do: facets.season |> Enum.map(&elem(&1, 1)) |> Enum.sum()
 
   defp toggle_filter(filters, key, value) do
     if to_string(filters[key]) == to_string(value),
@@ -346,7 +386,7 @@ defmodule KirbsWeb.ShopLive.Index do
     end
   end
 
-  defp breadcrumb_trail(tree, category) do
+  defp breadcrumb_trail(tree, category, filters) do
     chain = CategoryTree.trail(tree, category)
     last = length(chain) - 1
 
@@ -355,21 +395,23 @@ defmodule KirbsWeb.ShopLive.Index do
       |> Enum.with_index()
       |> Enum.map(fn {node, index} ->
         {node.name_et,
-         if(index == last, do: nil, else: ~p"/k/#{CategoryTree.segments(tree, node)}")}
+         if(index == last, do: nil, else: shop_path(tree, node, Map.take(filters, [:season])))}
       end)
 
-    [{"Pood", ~p"/"} | crumbs]
+    [{"Pood", shop_path(tree, nil, Map.take(filters, [:season]))} | crumbs]
   end
 
-  defp audience_path(tree, audience) do
+  defp audience_path(tree, audience, filters) do
     case CategoryTree.default_root() == audience.slug do
-      true -> ~p"/"
-      false -> ~p"/k/#{CategoryTree.segments(tree, audience)}"
+      true -> shop_path(tree, nil, Map.take(filters, [:season]))
+      false -> shop_path(tree, audience, Map.take(filters, [:season]))
     end
   end
 
   defp active_chips(filters) do
-    for {key, value} <- Enum.sort(filters), key != :sort, do: {key, chip_label(key, value)}
+    for {key, value} <- Enum.sort(filters),
+        key not in [:sort, :season],
+        do: {key, chip_label(key, value)}
   end
 
   defp chip_label(:q, value), do: "„#{value}“"

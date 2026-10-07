@@ -276,8 +276,9 @@ defmodule Kirbs.Resources.Item do
         constraints one_of: [:girl, :boy, :unisex, :woman, :man]
       end
 
-      argument :season, :atom do
-        constraints one_of: [:spring_autumn, :summer, :winter, :all_year]
+      # One season or a list; `:all_year` items match every season filter.
+      argument :season, {:array, :atom} do
+        constraints items: [one_of: [:spring_autumn, :summer, :winter, :all_year]]
       end
 
       argument :condition, :atom do

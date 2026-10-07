@@ -32,7 +32,7 @@ defmodule KirbsWeb.BackfillLiveTest do
     %{conn: conn}
   end
 
-  defp propose(confidence, slug \\ "lapsed-valisriided-talvejakid") do
+  defp propose(confidence, slug \\ "lapsed-valisriided-jakid") do
     item = item_with_image()
     StubCategorizeLlm.respond_with(llm_response(slug, %{"confidence" => confidence}))
     {:ok, _} = CategorizeBatch.run(limit: 1, after_id: nil)

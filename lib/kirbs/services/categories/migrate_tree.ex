@@ -21,24 +21,24 @@ defmodule Kirbs.Services.Categories.MigrateTree do
 
   # old type slug => new leaf slug
   @type_map %{
-    "talvejakid" => "lapsed-valisriided-talvejakid",
-    "jakid-vestid" => "lapsed-valisriided-uleminekujakid-vestid",
+    "talvejakid" => "lapsed-valisriided-jakid",
+    "jakid-vestid" => "lapsed-valisriided-jakid",
     "pusid" => "lapsed-puksid-luhikesed-puksid",
-    "kombinesoonid" => "lapsed-kombinesoonid-talvekombinesoonid",
+    "kombinesoonid" => "lapsed-kombinesoonid",
     "pluusid-sargid" => "lapsed-ulaosad-t-sargid-pluusid",
     "dressipluusid-kampsunid" => "lapsed-ulaosad-dressipluusid-kampsunid",
     "alussargid-bodyd" => "lapsed-ulaosad-bodyd-alussargid",
     "pidzaamad" => "lapsed-oo-vabaaeg-pidzaamad",
     "mutsid-sallid" => "lapsed-aksessuaarid-mutsid-sallid",
-    "kingad" => "lapsed-jalatsid-tossud",
+    "kingad" => "lapsed-jalatsid-kingad",
     "kleidid-seelikud" => "lapsed-kleidid-seelikud",
     "muu" => "lapsed-muu"
   }
 
   # Mappings that are a guess and need a human look.
   @ambiguous %{
-    "kombinesoonid" => "kombinesoonid -> talvekombinesoonid (could be vihmakombinesoonid)",
-    "kingad" => "kingad -> tossud (could be talvesaapad, kummikud, sandaalid-sussid)"
+    "kingad" => "kingad -> kingad (could be saapad, kummikud, tossud, sandaalid-sussid)",
+    "jakid-vestid" => "jakid-vestid -> jakid (some may be vests)"
   }
 
   @doc "Old type slug => new leaf slug, also used to redirect legacy shop URLs."
