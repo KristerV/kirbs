@@ -115,4 +115,30 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
 
   defp perform_job(worker, args), do: Oban.Testing.perform_job(worker, args, repo: Kirbs.Repo)
   defp all_enqueued(worker), do: Oban.Testing.all_enqueued(repo: Kirbs.Repo, worker: worker)
+
+  test "proposal stores extras and waterproof; approving writes them to the item" do
+    item = item_with_image()
+
+    StubCategorizeLlm.respond_with(
+      llm_response("lapsed-valisriided-joped", %{
+        "extra_category_slugs" => ["lapsed-valisriided-valipuksid"],
+        "waterproof" => true
+      })
+    )
+
+    {:ok, _} = CategorizeBatch.run()
+    proposal = CategorizationProposal.get_by_item!(item.id)
+    valipuksid = Kirbs.Resources.Category.get_by_slug!("lapsed-valisriided-valipuksid")
+    assert proposal.extra_category_ids == [valipuksid.id]
+    assert proposal.waterproof
+    assert is_nil(Item.get!(item.id).category_id)
+
+    assert {:ok, updated} = ApplyProposal.run(proposal)
+    assert updated.waterproof
+    assert updated.search_text =~ "Välipüksid"
+    assert updated.search_text =~ "veekindel"
+
+    assert [%{id: id}] = Ash.load!(updated, :extra_categories).extra_categories
+    assert id == valipuksid.id
+  end
 end

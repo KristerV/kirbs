@@ -18,7 +18,7 @@ defmodule KirbsWeb.ShopLive.Index do
   @text_filters [:q, :brand, :size]
   @enum_filters [:gender, :age_group]
   @season_pills [:winter, :spring_autumn, :summer]
-  @persistent_filters [:season, :gender, :age_group]
+  @persistent_filters [:season, :gender, :age_group, :waterproof]
   @sorts ~w(relevance newest price_asc price_desc)
 
   def mount(_params, _session, socket) do
@@ -112,12 +112,12 @@ defmodule KirbsWeb.ShopLive.Index do
   end
 
   defp assign_facets(socket) do
-    %{filters: filters, category: category, tree: tree} = socket.assigns
+    %{filters: filters, category: category} = socket.assigns
     facets = Item.facets!(search_params(filters, category))
 
     socket
     |> assign(:facets, facets)
-    |> assign(:category_counts, CategoryTree.rollup(tree, facets.category_id))
+    |> assign(:category_counts, Map.new(facets.category_rollup))
   end
 
   defp search_params(filters, category) do
@@ -127,7 +127,10 @@ defmodule KirbsWeb.ShopLive.Index do
   end
 
   defp empty_facets do
-    Map.new([:brand, :size, :season, :gender, :age_group, :category_id], &{&1, []})
+    Map.new(
+      [:brand, :size, :season, :gender, :age_group, :waterproof, :category_id, :category_rollup],
+      &{&1, []}
+    )
   end
 
   # --- params -------------------------------------------------------------
@@ -177,6 +180,8 @@ defmodule KirbsWeb.ShopLive.Index do
         list -> %{season: list}
       end
 
+    waterproof = if params["waterproof"] == "true", do: %{waterproof: true}, else: %{}
+
     prices =
       for key <- [:min_price, :max_price],
           value = valid_price(params[Atom.to_string(key)]),
@@ -186,7 +191,12 @@ defmodule KirbsWeb.ShopLive.Index do
     sort =
       if params["sort"] in @sorts, do: %{sort: String.to_existing_atom(params["sort"])}, else: %{}
 
-    text |> Map.merge(enums) |> Map.merge(seasons) |> Map.merge(prices) |> Map.merge(sort)
+    text
+    |> Map.merge(enums)
+    |> Map.merge(seasons)
+    |> Map.merge(waterproof)
+    |> Map.merge(prices)
+    |> Map.merge(sort)
   end
 
   # `season=winter,summer` -> `[:winter, :summer]` (unknown values dropped, pill order).
@@ -318,6 +328,10 @@ defmodule KirbsWeb.ShopLive.Index do
     end
   end
 
+  # Count of waterproof items (with all other filters applied); 0 when none.
+  defp waterproof_count(facets),
+    do: facets.waterproof |> Map.new() |> Map.get(true, 0)
+
   defp toggle_filter(filters, key, value) do
     if to_string(filters[key]) == to_string(value),
       do: Map.delete(filters, key),
@@ -335,7 +349,7 @@ defmodule KirbsWeb.ShopLive.Index do
 
   # The shop sells children's clothes: only these gender / age values are filterable.
   @shown_values %{
-    gender: [:boy, :girl, :unisex],
+    gender: [:boy, :girl],
     age_group: [:baby, :toddler, :child]
   }
 
@@ -443,6 +457,7 @@ defmodule KirbsWeb.ShopLive.Index do
   defp chip_label(:season, values),
     do: Enum.map_join(values, ", ", &Labels.label(:season, &1))
 
+  defp chip_label(:waterproof, _value), do: "Veekindel"
   defp chip_label(:brand, value), do: value
   defp chip_label(:size, value), do: "suurus #{value}"
   defp chip_label(key, value), do: Labels.label(key, value)

@@ -11,6 +11,7 @@ defmodule Kirbs.Services.Search.SeedSynonyms do
     {"talvejope", ["talvejakk", "soe jope", "talvejakid"]},
     {"vihmajope", ["vihmakeep", "vihmariided", "tuulejope"]},
     {"püksid", ["pükse", "pükst", "dressid"]},
+    {"välipüksid", ["välipüks", "lumepüksid", "talvepüksid", "vihmapüksid", "kombepüksid"]},
     {"dressipüksid", ["dressid", "spordipüksid"]},
     {"teksad", ["teksapüksid", "džiinsid", "jeans", "teksapüks"]},
     {"dressipluus", ["hupparid", "hoodie", "kapuutsiga pluus", "dressipluusid"]},

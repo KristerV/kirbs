@@ -1,6 +1,7 @@
 defmodule KirbsWeb.ItemLive.Show do
   use KirbsWeb, :live_view
   import LiveSelect
+  import KirbsWeb.CategoryComponents
 
   alias Kirbs.Resources.{Item, Image}
   alias Kirbs.YagaTaxonomy
@@ -39,7 +40,7 @@ defmodule KirbsWeb.ItemLive.Show do
     if is_nil(id) do
       {:ok, socket}
     else
-      item = Item.get!(id) |> Ash.load!([:bag])
+      item = Item.get!(id) |> Ash.load!([:bag, :item_categories])
       images = Image.list!() |> Enum.filter(&(&1.item_id == item.id)) |> Enum.sort_by(& &1.order)
 
       # Load Yaga taxonomy from static data
@@ -129,6 +130,8 @@ defmodule KirbsWeb.ItemLive.Show do
         "listed_price"
       ])
       |> Map.merge(shop_attribute_params(item_params))
+      |> Map.merge(extra_category_params(item_params))
+      |> Map.put("waterproof", item_params["waterproof"] == "true")
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
       |> Map.put("status", new_status)
@@ -140,7 +143,7 @@ defmodule KirbsWeb.ItemLive.Show do
         {:noreply,
          socket
          |> put_flash(:info, "Item saved!")
-         |> assign(:item, item)}
+         |> assign(:item, Ash.load!(item, [:item_categories]))}
 
       {:error, error} ->
         {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
@@ -179,6 +182,8 @@ defmodule KirbsWeb.ItemLive.Show do
         "listed_price"
       ])
       |> Map.merge(shop_attribute_params(item_params))
+      |> Map.merge(extra_category_params(item_params))
+      |> Map.put("waterproof", item_params["waterproof"] == "true")
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
       |> Map.put("status", new_status)
@@ -378,7 +383,7 @@ defmodule KirbsWeb.ItemLive.Show do
   @impl true
   def handle_info({:item_processed, _item_id}, socket) do
     # Reload item data when AI processing completes
-    item = Item.get!(socket.assigns.item.id) |> Ash.load!([:bag])
+    item = Item.get!(socket.assigns.item.id) |> Ash.load!([:bag, :item_categories])
     form = AshPhoenix.Form.for_update(item, :update, as: "item")
 
     {:noreply,
@@ -388,6 +393,14 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @shop_attribute_keys ~w(category_id age_group gender season condition)
+
+  # The checkbox list always submits a blank value, so a present key means "replace the set".
+  defp extra_category_params(%{"extra_category_ids" => ids}) when is_list(ids),
+    do: %{"extra_category_ids" => ids |> Enum.reject(&(&1 == "")) |> Enum.uniq()}
+
+  defp extra_category_params(_), do: %{}
+
+  defp extra_ids(item), do: Enum.map(item.item_categories, & &1.category_id)
 
   # Typed shop attributes come from plain selects; a blank option clears the value.
   defp shop_attribute_params(item_params) do
@@ -780,6 +793,32 @@ defmodule KirbsWeb.ItemLive.Show do
                       </option>
                     </optgroup>
                   </select>
+                </div>
+
+                <div class="form-control md:col-span-2">
+                  <span class="label-text font-semibold mb-1">Extra categories (sets)</span>
+                  <.extra_categories
+                    id="item-extra-categories"
+                    name="item[extra_category_ids]"
+                    options={@shop_category_options}
+                    selected={extra_ids(@item)}
+                    primary_id={@item.category_id}
+                  />
+                </div>
+
+                <div class="form-control md:col-span-2">
+                  <input type="hidden" name="item[waterproof]" value="false" />
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      id="item-waterproof"
+                      type="checkbox"
+                      name="item[waterproof]"
+                      value="true"
+                      checked={@item.waterproof}
+                      class="checkbox"
+                    />
+                    <span class="label-text font-semibold">Waterproof (veekindel)</span>
+                  </label>
                 </div>
 
                 <.shop_select

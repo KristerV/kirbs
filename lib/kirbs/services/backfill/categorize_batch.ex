@@ -52,6 +52,8 @@ defmodule Kirbs.Services.Backfill.CategorizeBatch do
       :gender,
       :season,
       :condition,
+      :waterproof,
+      :extra_category_ids,
       :brand,
       :size,
       :colors,

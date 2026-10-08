@@ -27,6 +27,7 @@ defmodule Kirbs.Resources.Item.Preparations.Search do
     |> filter_equal(:age_group, Ash.Query.get_argument(query, :age_group))
     |> filter_gender(Ash.Query.get_argument(query, :gender))
     |> filter_season(Ash.Query.get_argument(query, :season))
+    |> filter_waterproof(Ash.Query.get_argument(query, :waterproof))
     |> filter_price(
       Ash.Query.get_argument(query, :min_price),
       Ash.Query.get_argument(query, :max_price)
@@ -121,11 +122,19 @@ defmodule Kirbs.Resources.Item.Preparations.Search do
   defp filter_category(query, slug) do
     pattern = String.replace(slug, ~r/[%_\\]/, "\\\\\\0") <> "-%"
 
+    # primary category OR any extra category, subtree-aware; `exists` never duplicates rows
     Ash.Query.filter(
       query,
-      category.slug == ^slug or fragment("? LIKE ?", category.slug, ^pattern)
+      category.slug == ^slug or fragment("? LIKE ?", category.slug, ^pattern) or
+        exists(
+          extra_categories,
+          slug == ^slug or fragment("? LIKE ?", slug, ^pattern)
+        )
     )
   end
+
+  defp filter_waterproof(query, true), do: Ash.Query.filter(query, waterproof == true)
+  defp filter_waterproof(query, _), do: query
 
   # Unisex items match the boy and girl filters too.
   defp filter_gender(query, gender) when gender in [:boy, :girl],

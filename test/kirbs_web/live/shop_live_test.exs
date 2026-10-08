@@ -195,7 +195,8 @@ defmodule KirbsWeb.ShopLiveTest do
       refute has_element?(view, "#shop-items article", "Reima")
       assert has_element?(view, "#facet-gender-boy", "2")
       assert has_element?(view, "#facet-gender-girl", "2")
-      assert has_element?(view, "#facet-gender-unisex", "1")
+      # unisex overlaps boy/girl, so it is not offered as an option of its own
+      refute has_element?(view, "#facet-gender-unisex")
       assert has_element?(view, "#facet-age_group-toddler", "1")
 
       {:ok, view, _html} = live(conn, ~p"/?gender=unisex")
@@ -274,6 +275,14 @@ defmodule KirbsWeb.ShopLiveTest do
                live(conn, ~p"/k/jalatsid/talvesaapad")
     end
 
+    test "removed vihmariided redirects to joped and keeps the query", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/k/valisriided/joped?waterproof=true"}}} =
+               live(conn, ~p"/k/valisriided/vihmariided?waterproof=true")
+
+      assert {:error, {:live_redirect, %{to: "/k/valisriided/joped"}}} =
+               live(conn, ~p"/k/lapsed/valisriided/vihmariided")
+    end
+
     test "unknown category redirects to the shop", %{conn: conn} do
       assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/k/does/not/exist")
     end
@@ -331,6 +340,92 @@ defmodule KirbsWeb.ShopLiveTest do
     test "the old landing lives at /muuda", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/muuda")
       assert html =~ "Käed Vabad Kirbukas"
+    end
+  end
+
+  describe "multi-category sets" do
+    setup ctx do
+      valipuksid = Kirbs.Resources.Category.get_by_slug!("lapsed-valisriided-valipuksid")
+      vestid = Kirbs.Resources.Category.get_by_slug!("lapsed-valisriided-vestid")
+
+      {:ok, set} =
+        Kirbs.Resources.Item.set_extra_categories(ctx.jacket, [valipuksid.id, vestid.id])
+
+      %{set: set}
+    end
+
+    test "the set shows up in the primary and the extra category pages", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/k/valisriided/joped")
+      assert has_element?(view, "#items-#{ctx.set.id}")
+
+      {:ok, view, _html} = live(conn, ~p"/k/valisriided/valipuksid")
+      assert has_element?(view, "#items-#{ctx.set.id}")
+      assert has_element?(view, "#shop-count", "1 ese")
+    end
+
+    test "family count is distinct items, leaf counts include extras", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/k/valisriided")
+
+      assert has_element?(view, "#category-link-lapsed-valisriided", "1")
+      assert has_element?(view, "#category-link-lapsed-valisriided-joped", "1")
+      assert has_element?(view, "#category-link-lapsed-valisriided-valipuksid", "1")
+      assert has_element?(view, "#category-link-lapsed-valisriided-vestid", "1")
+      assert has_element?(view, "#shop-count", "1 ese")
+    end
+
+    test "product page shows breadcrumb of the primary and Leiad ka links", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/p/#{ctx.set.slug}")
+
+      assert has_element?(view, ~s(#breadcrumbs a[href="/k/valisriided/joped"]))
+      assert has_element?(view, "#item-also-in")
+      assert has_element?(view, ~s(#item-also-in a[href="/k/valisriided/valipuksid"]))
+      assert has_element?(view, ~s(#item-also-in a[href="/k/valisriided/vestid"]))
+    end
+
+    test "no Leiad ka line without extras", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/p/#{ctx.pants.slug}")
+      refute has_element?(view, "#item-also-in")
+    end
+  end
+
+  describe "waterproof" do
+    setup ctx do
+      wet = Kirbs.Resources.Item.update!(ctx.jacket, %{waterproof: true})
+      %{wet: wet}
+    end
+
+    test "facet toggle with count, filters the grid and shows a chip", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/")
+      assert has_element?(view, "#facet-waterproof-true", "1")
+
+      view |> element("#facet-waterproof-true") |> render_click()
+      assert_patch(view, "/?waterproof=true")
+      assert has_element?(view, "#items-#{ctx.wet.id}")
+      refute has_element?(view, "#items-#{ctx.pants.id}")
+      assert has_element?(view, "#chip-waterproof")
+
+      view |> element("#chip-waterproof") |> render_click()
+      assert has_element?(view, "#items-#{ctx.pants.id}")
+    end
+
+    test "persists through category links and sits between season and gender", %{conn: conn} do
+      {:ok, view, html} = live(conn, ~p"/?waterproof=true")
+
+      assert view |> element("#category-link-lapsed-valisriided") |> render() =~
+               "waterproof=true"
+
+      [season, wp, gender] =
+        for id <- ["facet-season", "facet-waterproof", "facet-gender"] do
+          {pos, _} = :binary.match(html, ~s(id="#{id}"))
+          pos
+        end
+
+      assert season < wp and wp < gender
+    end
+
+    test "product page lists it", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/p/#{ctx.wet.slug}")
+      assert has_element?(view, "#item-attributes", "Veekindel")
     end
   end
 end

@@ -17,6 +17,7 @@ defmodule Kirbs.Jobs.ProcessItemJob do
     :gender,
     :season,
     :condition,
+    :waterproof,
     :brand,
     :size,
     :colors,
@@ -60,7 +61,13 @@ defmodule Kirbs.Jobs.ProcessItemJob do
   # Uncategorized items are picked up later by the backfill.
   defp categorize(item) do
     with {:ok, result} <- ItemCategorize.run(item),
-         {:ok, _item} <- Item.apply_categorization(item, Map.take(result, @categorization_fields)) do
+         {:ok, _item} <-
+           Item.apply_categorization(
+             item,
+             result
+             |> Map.take(@categorization_fields)
+             |> Map.put(:extra_category_ids, result.extra_category_ids)
+           ) do
       :ok
     else
       other ->

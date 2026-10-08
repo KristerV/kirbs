@@ -33,23 +33,76 @@ defmodule Kirbs.Services.Shop.SeedDevItems do
      16, :child, :girl, :spring_autumn, :like_new, [210, 180, 140]}
   ]
 
+  # A set: primary Joped + extra Valipuksid, and a waterproof rain jacket.
+  # {category slug, extra slugs, brand, size, colors, description, price, waterproof, rgb}
+  @sets [
+    {"lapsed-valisriided-joped", ["lapsed-valisriided-valipuksid"], "Reima", "98", ["oranž"],
+     "Talvejope ja lumepüksid ühes komplektis, veekindel, kapuutsiga.", 34, true, [230, 120, 40]},
+    {"lapsed-valisriided-joped", [], "Didriksons", "110", ["kollane"],
+     "Vihmajope, täielikult veekindlate õmblustega.", 19, true, [240, 210, 60]}
+  ]
+
   def run do
-    with {:ok, :absent} <- check_not_seeded(),
-         {:ok, client} <- Client.create(%{name: @client_name, email: "dev-shop@example.com"}),
-         {:ok, bag} <- Bag.create(%{client_id: client.id}),
-         {:ok, items} <- create_items(bag) do
-      {:ok, items}
-    else
-      {:ok, :present} -> {:ok, []}
-      error -> error
+    with {:ok, client_state} <- find_or_create_client(),
+         {:ok, items} <- create_items_for(client_state),
+         {:ok, sets} <- create_sets(client_state) do
+      {:ok, items ++ sets}
     end
   end
 
-  defp check_not_seeded do
+  defp find_or_create_client do
     case Client.find_by_name(@client_name) do
-      {:ok, %Client{}} -> {:ok, :present}
-      _ -> {:ok, :absent}
+      {:ok, %Client{} = client} ->
+        {:ok, {:present, client}}
+
+      _ ->
+        with {:ok, client} <- Client.create(%{name: @client_name, email: "dev-shop@example.com"}) do
+          {:ok, {:new, client}}
+        end
     end
+  end
+
+  defp create_items_for({:present, _client}), do: {:ok, []}
+
+  defp create_items_for({:new, client}) do
+    with {:ok, bag} <- Bag.create(%{client_id: client.id}), do: create_items(bag)
+  end
+
+  # Idempotent: the sets are added once, also to a dev DB that was seeded before they existed.
+  defp create_sets({_state, client}) do
+    case Item.search!(%{q: "didriksons"}) do
+      [] ->
+        with {:ok, bag} <- Bag.create(%{client_id: client.id}), do: {:ok, create_sets(bag, @sets)}
+
+      _ ->
+        {:ok, []}
+    end
+  end
+
+  defp create_sets(bag, sets) do
+    Enum.map(sets, fn {slug, extras, brand, size, colors, description, price, waterproof, rgb} ->
+      item =
+        Item.create!(%{
+          bag_id: bag.id,
+          category_id: Category.get_by_slug!(slug).id,
+          brand: brand,
+          size: size,
+          colors: colors,
+          description: description,
+          listed_price: price,
+          age_group: :toddler,
+          gender: :unisex,
+          season: :winter,
+          condition: :good,
+          waterproof: waterproof,
+          status: :reviewed
+        })
+
+      extra_ids = Enum.map(extras, &Category.get_by_slug!(&1).id)
+      item = Item.set_extra_categories!(item, extra_ids)
+      create_images!(item, rgb)
+      Item.publish!(item)
+    end)
   end
 
   defp create_items(bag) do

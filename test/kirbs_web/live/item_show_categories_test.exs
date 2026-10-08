@@ -70,4 +70,33 @@ defmodule KirbsWeb.ItemShowCategoriesTest do
     view |> form("#item-form", %{"item" => %{"category_id" => ""}}) |> render_submit()
     assert is_nil(Item.get!(item.id).category_id)
   end
+
+  test "extra categories checkbox list and waterproof save, primary is not selectable", %{
+    conn: conn,
+    item: item
+  } do
+    joped = Category.get_by_slug!("lapsed-valisriided-joped")
+    valipuksid = Category.get_by_slug!("lapsed-valisriided-valipuksid")
+    Item.apply_categorization!(item, %{category_id: joped.id})
+    {:ok, view, _html} = live(conn, "/items/#{item.id}")
+
+    assert has_element?(view, "#item-extra-categories-#{valipuksid.id}")
+    assert has_element?(view, "#item-extra-categories-#{joped.id}[disabled]")
+
+    view
+    |> form("#item-form", %{
+      "item" => %{"extra_category_ids" => [valipuksid.id], "waterproof" => "true"}
+    })
+    |> render_submit()
+
+    saved = Item.get!(item.id) |> Ash.load!(:extra_categories)
+    assert Enum.map(saved.extra_categories, & &1.id) == [valipuksid.id]
+    assert saved.waterproof
+    assert saved.search_text =~ "Välipüksid"
+    assert has_element?(view, "#item-extra-categories-#{valipuksid.id}[checked]")
+
+    # unchecking everything clears the extras
+    view |> form("#item-form", %{"item" => %{"extra_category_ids" => [""]}}) |> render_submit()
+    assert Ash.load!(Item.get!(item.id), :extra_categories).extra_categories == []
+  end
 end

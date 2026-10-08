@@ -33,6 +33,7 @@ defmodule Kirbs.Resources.Item do
     define :list_by_combination_group, args: [:combination_group]
     define :publish
     define :apply_categorization
+    define :set_extra_categories, args: [:extra_category_ids]
     define :list_uncategorized, args: [:after_id, :limit]
     define :list_by_category, args: [:category_id]
     define :mark_sold
@@ -73,6 +74,7 @@ defmodule Kirbs.Resources.Item do
       :gender,
       :season,
       :condition,
+      :waterproof,
       :search_text,
       :parcel_size,
       :weight_grams,
@@ -99,7 +101,10 @@ defmodule Kirbs.Resources.Item do
       primary? true
       require_atomic? false
 
+      argument :extra_category_ids, {:array, :uuid}
+
       change Kirbs.Resources.Item.Changes.ProtectLifecycleStatus
+      change Kirbs.Resources.Item.Changes.SyncExtraCategories
       change Kirbs.Resources.Item.Changes.BuildSearchText
       change load(@listing_fields)
     end
@@ -111,6 +116,7 @@ defmodule Kirbs.Resources.Item do
         :gender,
         :season,
         :condition,
+        :waterproof,
         :brand,
         :size,
         :colors,
@@ -119,7 +125,24 @@ defmodule Kirbs.Resources.Item do
 
       require_atomic? false
 
+      # nil keeps the current extras, a list replaces them
+      argument :extra_category_ids, {:array, :uuid}
+
       change Kirbs.Resources.Item.Changes.KeepExistingExtraction
+      change Kirbs.Resources.Item.Changes.SyncExtraCategories
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
+
+    # Replaces the set of extra (non-primary) categories atomically. Extras must be leaves,
+    # differ from the primary and be unique.
+    update :set_extra_categories do
+      accept []
+      require_atomic? false
+
+      argument :extra_category_ids, {:array, :uuid}, allow_nil?: false
+
+      change Kirbs.Resources.Item.Changes.SyncExtraCategories
       change Kirbs.Resources.Item.Changes.BuildSearchText
       change load(@listing_fields)
     end
@@ -281,6 +304,9 @@ defmodule Kirbs.Resources.Item do
         constraints items: [one_of: [:spring_autumn, :summer, :winter, :all_year]]
       end
 
+      # true = only waterproof items; false/nil = no filter
+      argument :waterproof, :boolean
+
       argument :min_price, :decimal
       argument :max_price, :decimal
 
@@ -303,7 +329,14 @@ defmodule Kirbs.Resources.Item do
       argument :slug, :string, allow_nil?: false
 
       filter expr(slug == ^arg(:slug) and not is_nil(published_at))
-      prepare build(load: [:images, category: [parent: [:parent]]])
+
+      prepare build(
+                load: [
+                  :images,
+                  category: [parent: [:parent]],
+                  extra_categories: [parent: [:parent]]
+                ]
+              )
     end
 
     read :list_for_sitemap do
@@ -464,6 +497,11 @@ defmodule Kirbs.Resources.Item do
       constraints one_of: [:new_with_tags, :like_new, :good, :fair]
     end
 
+    attribute :waterproof, :boolean do
+      allow_nil? false
+      default false
+    end
+
     attribute :parcel_size, :atom do
       constraints one_of: [:s, :m, :l]
     end
@@ -501,6 +539,15 @@ defmodule Kirbs.Resources.Item do
     end
 
     belongs_to :category, Kirbs.Resources.Category
+
+    has_many :item_categories, Kirbs.Resources.ItemCategory
+
+    # Extra (non-primary) categories, e.g. a jacket+trousers set also found under Valipuksid.
+    many_to_many :extra_categories, Kirbs.Resources.Category do
+      through Kirbs.Resources.ItemCategory
+      source_attribute_on_join_resource :item_id
+      destination_attribute_on_join_resource :category_id
+    end
 
     has_one :yaga_listing, Kirbs.Resources.YagaListing
     has_one :categorization_proposal, Kirbs.Resources.CategorizationProposal

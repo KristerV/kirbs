@@ -104,7 +104,10 @@ defmodule KirbsWeb.Shop.CategoryTree do
     redirects =
       Map.merge(
         Kirbs.Services.Categories.MigrateSeasonOutOfTree.redirects(),
-        Kirbs.Services.Categories.RenameJakidToJoped.redirects()
+        Map.merge(
+          Kirbs.Services.Categories.RenameJakidToJoped.redirects(),
+          Kirbs.Services.Categories.MigrateVihmariidedToValipuksid.redirects()
+        )
       )
 
     case Map.get(redirects, path) do

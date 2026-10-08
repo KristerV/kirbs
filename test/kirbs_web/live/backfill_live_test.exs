@@ -97,4 +97,23 @@ defmodule KirbsWeb.BackfillLiveTest do
     assert [%{args: %{"apply" => false}}] =
              Oban.Testing.all_enqueued(repo: Kirbs.Repo, worker: Kirbs.Jobs.BackfillCategorizeJob)
   end
+
+  test "shows and edits extra categories, approve writes them", %{conn: conn} do
+    {item, proposal} = propose(0.8)
+    valipuksid = Category.get_by_slug!("lapsed-valisriided-valipuksid")
+    {:ok, view, _html} = live(conn, "/backfill")
+
+    assert has_element?(view, "#extra-categories-#{proposal.id}")
+
+    view
+    |> form("#extras-#{proposal.id}", %{"extra_category_ids" => [valipuksid.id]})
+    |> render_change()
+
+    assert CategorizationProposal.get!(proposal.id).extra_category_ids == [valipuksid.id]
+    assert has_element?(view, "#extra-categories-#{proposal.id}-#{valipuksid.id}[checked]")
+
+    view |> element("#approve-#{proposal.id}") |> render_click()
+    assert [%{id: id}] = Ash.load!(Item.get!(item.id), :extra_categories).extra_categories
+    assert id == valipuksid.id
+  end
 end

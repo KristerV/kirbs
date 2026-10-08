@@ -13,7 +13,7 @@ defmodule Kirbs.Services.Categories.SeedTree do
   # {family slug, family name, [{type slug, type name}]}; no types = the family is a leaf.
   @families [
     {"valisriided", "Välisriided",
-     [{"joped", "Joped"}, {"vestid", "Vestid"}, {"vihmariided", "Vihmariided"}]},
+     [{"joped", "Joped"}, {"vestid", "Vestid"}, {"valipuksid", "Välipüksid"}]},
     {"kombinesoonid", "Kombinesoonid", []},
     {"puksid-luhikesed", "Püksid ja lühikesed",
      [

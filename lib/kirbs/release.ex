@@ -46,9 +46,17 @@ defmodule Kirbs.Release do
           {:ok, season} = Kirbs.Services.Categories.MigrateSeasonOutOfTree.run()
           IO.inspect(season, label: "MigrateSeasonOutOfTree", limit: :infinity)
           {:ok, rename} = Kirbs.Services.Categories.RenameJakidToJoped.run()
-          {:ok, _count} = Kirbs.Services.Search.SeedSynonyms.run()
           IO.inspect(rename, label: "RenameJakidToJoped", limit: :infinity)
-          %{gender_tree: summary, season_out_of_tree: season, jakid_to_joped: rename}
+          {:ok, rain} = Kirbs.Services.Categories.MigrateVihmariidedToValipuksid.run()
+          IO.inspect(rain, label: "MigrateVihmariidedToValipuksid", limit: :infinity)
+          {:ok, _count} = Kirbs.Services.Search.SeedSynonyms.run()
+
+          %{
+            gender_tree: summary,
+            season_out_of_tree: season,
+            jakid_to_joped: rename,
+            vihmariided_to_valipuksid: rain
+          }
         end)
 
       summary

@@ -37,6 +37,8 @@ defmodule Kirbs.Resources.CategorizationProposal do
       :gender,
       :season,
       :condition,
+      :waterproof,
+      :extra_category_ids,
       :brand,
       :size,
       :colors,
@@ -94,6 +96,8 @@ defmodule Kirbs.Resources.CategorizationProposal do
         :gender,
         :season,
         :condition,
+        :waterproof,
+        :extra_category_ids,
         :brand,
         :size,
         :colors,
@@ -140,6 +144,17 @@ defmodule Kirbs.Resources.CategorizationProposal do
 
     attribute :condition, :atom do
       constraints one_of: [:new_with_tags, :like_new, :good, :fair]
+    end
+
+    attribute :waterproof, :boolean do
+      allow_nil? false
+      default false
+    end
+
+    # Extra leaf categories (set items, e.g. jacket + trousers); the primary is `category_id`.
+    attribute :extra_category_ids, {:array, :uuid} do
+      allow_nil? false
+      default []
     end
 
     attribute :brand, :string

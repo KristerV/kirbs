@@ -94,9 +94,14 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
       "type" => "object",
       "additionalProperties" => false,
       "required" =>
-        ~w(category_slug age_group gender season condition colors materials brand size confidence),
+        ~w(category_slug extra_category_slugs age_group gender season condition waterproof colors materials brand size confidence),
       "properties" => %{
         "category_slug" => %{"type" => "string", "enum" => Enum.map(leaves, & &1.slug)},
+        "extra_category_slugs" => %{
+          "type" => "array",
+          "items" => %{"type" => "string", "enum" => Enum.map(leaves, & &1.slug)}
+        },
+        "waterproof" => %{"type" => "boolean"},
         "age_group" => nullable_enum.(@age_groups),
         "gender" => nullable_enum.(@genders),
         "season" => nullable_enum.(@seasons),
@@ -130,13 +135,18 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
 
     """
     You classify used children's clothing for an Estonian second-hand shop from photos.
-    The photos may show several items sold as one set; pick the category of the main item.
+    The photos may show several items sold as one set; pick the category of the main item
+    (category_slug) and, only when the photos clearly show several distinct garments sold together
+    (e.g. a jacket plus trousers), list the other garments' leaf slugs in extra_category_slugs.
+    extra_category_slugs is empty for a single garment, never repeats category_slug and never lists
+    a category just because it is similar.
 
     category_slug describes ONLY what kind of garment or item it is (its type). Never let the
     child's gender, age or the season influence the category; record those separately as gender,
     age_group and season. A winter jacket and a summer jacket both belong to the same `joped` leaf,
-    winter boots and light boots to `saapad`, a winter overall and a rain overall to `kombinesoonid`
-    (rain gear that is a jacket, pants or overall may use `vihmariided`).
+    winter boots and light boots to `saapad`, a winter overall and a rain overall to `kombinesoonid`.
+    Snow, rain, shell and insulated outdoor trousers go to `valipuksid` (not to `puksid`); rain and
+    winter jackets go to `joped`. Whether something is rain gear is the waterproof attribute, not a category.
     Choose category_slug from exactly this list (family > type):
     #{categories}
 
@@ -146,6 +156,8 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
     - season: #{Enum.join(@seasons, ", ")} (judge from insulation, lining, fabric weight and use,
       independently of the category; all_year when it suits any season)
     - condition: #{Enum.join(@conditions, ", ")} (new_with_tags only if a shop tag is visible)
+    - waterproof: true ONLY when the item is clearly waterproof / rain gear (rain jacket, rain trousers,
+      rubber boots, waterproof membrane stated on a label); false otherwise, including when unsure
     - colors: at most 2 dominant colors, from the allowed Estonian list
     - materials: from the allowed Estonian list, only if visible on a label
     - brand: printed on the label only, normalized capitalization (e.g. "H&M"), else null
@@ -177,6 +189,9 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
          %{
            category_id: leaf.id,
            category_slug: leaf.slug,
+           extra_category_ids: extras(data["extra_category_slugs"], leaf, leaves),
+           extra_category_slugs: extra_slugs(data["extra_category_slugs"], leaf, leaves),
+           waterproof: data["waterproof"] == true,
            age_group: enum(data["age_group"], @age_groups),
            gender: enum(data["gender"], @genders),
            season: enum(data["season"], @seasons),
@@ -188,6 +203,22 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
            confidence: confidence(data["confidence"])
          }}
     end
+  end
+
+  # Extra leaf slugs: only known leaves, never the primary, no duplicates.
+  defp extra_slugs(slugs, primary, leaves) when is_list(slugs) do
+    known = MapSet.new(leaves, & &1.slug)
+
+    slugs
+    |> Enum.filter(&(is_binary(&1) and MapSet.member?(known, &1) and &1 != primary.slug))
+    |> Enum.uniq()
+  end
+
+  defp extra_slugs(_, _primary, _leaves), do: []
+
+  defp extras(slugs, primary, leaves) do
+    by_slug = Map.new(leaves, &{&1.slug, &1.id})
+    slugs |> extra_slugs(primary, leaves) |> Enum.map(&Map.fetch!(by_slug, &1))
   end
 
   # Whitelisted strings, so converting to atoms is safe.

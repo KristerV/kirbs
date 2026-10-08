@@ -57,6 +57,7 @@ defmodule KirbsWeb.ShopLive.Show do
     socket
     |> assign(:photos, photos)
     |> assign(:crumbs, crumbs(tree, item))
+    |> assign(:also_in, also_in(tree, item))
     |> assign(:attributes, attributes(item))
     |> assign(:available?, item.kirbs_status == :available)
     |> assign(:page_title, "#{title} | Kirbs")
@@ -85,6 +86,13 @@ defmodule KirbsWeb.ShopLive.Show do
     [{"Pood", ~p"/"}] ++ trail ++ [{if(last == "", do: "Toode", else: last), nil}]
   end
 
+  # "Leiad ka" links: the extra categories of a set (the primary one is in the breadcrumbs).
+  defp also_in(tree, item) do
+    for extra <- item.extra_categories, category = CategoryTree.get(tree, extra.id) do
+      {category.name_et, ~p"/k/#{CategoryTree.segments(tree, category)}"}
+    end
+  end
+
   defp attributes(item) do
     [
       {"Bränd", item.brand},
@@ -92,6 +100,7 @@ defmodule KirbsWeb.ShopLive.Show do
       {"Vanus", Labels.label(:age_group, item.age_group)},
       {"Sugu", Labels.label(:gender, item.gender)},
       {"Hooaeg", Labels.label(:season, item.season)},
+      {"Veekindel", if(item.waterproof, do: "Jah")},
       {"Värv", item.colors && Enum.join(item.colors, ", ")},
       {"Materjal", item.materials && Enum.join(item.materials, ", ")}
     ]

@@ -5,6 +5,8 @@ defmodule KirbsWeb.BackfillLive.Index do
   """
   use KirbsWeb, :live_view
 
+  import KirbsWeb.CategoryComponents
+
   alias Kirbs.Resources.CategorizationProposal
   alias Kirbs.Services.Backfill.{ApplyProposal, ApplyProposalsAbove, EnqueueCategorize}
   alias Kirbs.Services.Categories.GroupedLeafOptions
@@ -59,6 +61,21 @@ defmodule KirbsWeb.BackfillLive.Index do
     with {:ok, proposal} <- CategorizationProposal.get(id),
          {:ok, proposal} <-
            CategorizationProposal.update(proposal, %{category_id: blank_to_nil(category_id)}),
+         {:ok, proposal} <- Ash.load(proposal, [:category, item: [:images]]) do
+      {:noreply, stream_insert(socket, :proposals, proposal)}
+    else
+      error -> {:noreply, put_flash(socket, :error, "Could not change: #{inspect(error)}")}
+    end
+  end
+
+  def handle_event("change_extras", %{"proposal_id" => id} = params, socket) do
+    ids = params |> Map.get("extra_category_ids", []) |> Enum.reject(&(&1 == ""))
+
+    with {:ok, proposal} <- CategorizationProposal.get(id),
+         {:ok, proposal} <-
+           CategorizationProposal.update(proposal, %{
+             extra_category_ids: Enum.uniq(ids) -- [proposal.category_id]
+           }),
          {:ok, proposal} <- Ash.load(proposal, [:category, item: [:images]]) do
       {:noreply, stream_insert(socket, :proposals, proposal)}
     else
@@ -186,7 +203,24 @@ defmodule KirbsWeb.BackfillLive.Index do
                   </select>
                 </form>
 
+                <form id={"extras-#{proposal.id}"} phx-change="change_extras">
+                  <input type="hidden" name="proposal_id" value={proposal.id} />
+                  <details open={proposal.extra_category_ids != []}>
+                    <summary class="text-sm cursor-pointer opacity-80">
+                      Extra categories ({length(proposal.extra_category_ids)})
+                    </summary>
+                    <.extra_categories
+                      id={"extra-categories-#{proposal.id}"}
+                      name="extra_category_ids"
+                      options={@category_options}
+                      selected={proposal.extra_category_ids}
+                      primary_id={proposal.category_id}
+                    />
+                  </details>
+                </form>
+
                 <div class="text-sm opacity-80 flex flex-wrap gap-x-4">
+                  <span :if={proposal.waterproof}>waterproof</span>
                   <span :if={proposal.age_group}>age: {proposal.age_group}</span>
                   <span :if={proposal.gender}>gender: {proposal.gender}</span>
                   <span :if={proposal.season}>season: {proposal.season}</span>

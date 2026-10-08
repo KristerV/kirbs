@@ -183,6 +183,35 @@
           </ul>
         </section>
 
+        <%!-- Waterproof: single toggle, persists across category navigation --%>
+        <section
+          :if={waterproof_count(@facets) > 0 or @filters[:waterproof]}
+          id="facet-waterproof"
+        >
+          <h3 class="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-stone-400">
+            Veekindel
+          </h3>
+          <ul class="flex flex-wrap gap-1.5">
+            <li>
+              <.link
+                id="facet-waterproof-true"
+                patch={shop_path(@tree, @category, toggle_filter(@filters, :waterproof, true))}
+                aria-pressed={to_string(@filters[:waterproof] == true)}
+                class={[
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition",
+                  if(@filters[:waterproof],
+                    do: "border-orange-500 bg-orange-500 font-bold text-white",
+                    else:
+                      "border-orange-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-600"
+                  )
+                ]}
+              >
+                Veekindel <span class="text-xs opacity-60">{waterproof_count(@facets)}</span>
+              </.link>
+            </li>
+          </ul>
+        </section>
+
         <%!-- Enum facets --%>
         <%= for key <- [:gender, :age_group],
                 links = facet_links(@facets, key, @filters),
