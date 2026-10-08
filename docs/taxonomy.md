@@ -44,12 +44,15 @@ Type slug = `lapsed-<family>-<type>`, family slug = `lapsed-<family>`; `position
 
 ### Shop navigation
 
-Season is the first filter, a pill row above the category sidebar: `Hooaeg: Kõik · Talv · Kevad/sügis · Suvi`.
-Pills toggle and combine (URL `season=winter,summer`), persist across every category, breadcrumb and audience
-link, and filter the grid and the sidebar counts. `all_year` items match every season filter. Pill counts are
+Season is an ordinary sidebar facet block (Hooaeg: Talv · Kevad/sügis · Suvi) right after the categories.
+Toggles and combine (URL `season=winter,summer`), persist across every category, breadcrumb and audience
+link, and filter the grid and the sidebar counts. `all_year` items match every season filter. Season counts are
 computed with all other filters applied. The sidebar lists only families (and, for the active family, types)
-with available published items, with counts. Other filters: Seisukord, Suurus, Bränd, Hind; there are no
-Sugu/Vanus facets. The search `category` filter matches a category and its whole subtree by slug prefix;
+with available published items, with counts. Sidebar order: Kategooriad, Hooaeg, Sugu (Poiss / Tüdruk / Unisex), Vanus (Beebi / Väikelaps / Laps),
+Suurus, Bränd, Hind. `gender` and `age_group` are single-select URL params that persist across category
+navigation like season; `unisex` items also match the Poiss and Tüdruk filters and count towards both. There
+is no condition filter or badge in the shop (everything is sold as used; JSON-LD `itemCondition` is always
+`UsedCondition`); `condition` stays as an internal column. The search `category` filter matches a category and its whole subtree by slug prefix;
 `Item.search` `season` takes a list.
 
 ### Migrations

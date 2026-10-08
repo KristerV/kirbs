@@ -60,45 +60,6 @@
     </.form>
   </div>
 
-  <%!-- Season: the first filter, persists across category navigation --%>
-  <nav
-    id="season-filter"
-    aria-label="Hooaeg"
-    class="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-sm"
-  >
-    <span class="mr-1 text-xs font-bold uppercase tracking-[0.15em] text-stone-400">Hooaeg</span>
-    <.link
-      id="season-all"
-      patch={shop_path(@tree, @category, Map.delete(@filters, :season))}
-      class={[
-        "inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold transition",
-        if(@filters[:season] in [nil, []],
-          do: "border-orange-500 bg-orange-500 text-white",
-          else:
-            "border-orange-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-600"
-        )
-      ]}
-    >
-      Kõik <span class="text-xs opacity-70">{season_total(@facets)}</span>
-    </.link>
-    <.link
-      :for={{season, label, count} <- season_pills(@facets)}
-      id={"season-#{season}"}
-      patch={shop_path(@tree, @category, toggle_season(@filters, season))}
-      aria-pressed={to_string(season in (@filters[:season] || []))}
-      class={[
-        "inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold transition",
-        if(season in (@filters[:season] || []),
-          do: "border-orange-500 bg-orange-500 text-white",
-          else:
-            "border-orange-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-600"
-        )
-      ]}
-    >
-      {label} <span class="text-xs opacity-70">{count}</span>
-    </.link>
-  </nav>
-
   <div class="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
     <aside id="shop-filters" class="lg:sticky lg:top-20 lg:self-start">
       <button
@@ -196,8 +157,34 @@
           </ul>
         </nav>
 
+        <%!-- Season: combinable toggles, persist across category navigation --%>
+        <section id="facet-season">
+          <h3 class="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-stone-400">
+            Hooaeg
+          </h3>
+          <ul class="flex flex-wrap gap-1.5">
+            <li :for={{season, label, count} <- season_pills(@facets)}>
+              <.link
+                id={"season-#{season}"}
+                patch={shop_path(@tree, @category, toggle_season(@filters, season))}
+                aria-pressed={to_string(season in (@filters[:season] || []))}
+                class={[
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition",
+                  if(season in (@filters[:season] || []),
+                    do: "border-orange-500 bg-orange-500 font-bold text-white",
+                    else:
+                      "border-orange-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-600"
+                  )
+                ]}
+              >
+                {label} <span class="text-xs opacity-60">{count}</span>
+              </.link>
+            </li>
+          </ul>
+        </section>
+
         <%!-- Enum facets --%>
-        <%= for key <- [:condition],
+        <%= for key <- [:gender, :age_group],
                 links = facet_links(@facets, key, @filters),
                 links != [] do %>
           <section id={"facet-#{key}"}>

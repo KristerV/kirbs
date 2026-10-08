@@ -16,8 +16,9 @@ defmodule KirbsWeb.ShopLive.Index do
 
   @page_size 24
   @text_filters [:q, :brand, :size]
-  @enum_filters [:condition]
+  @enum_filters [:gender, :age_group]
   @season_pills [:winter, :spring_autumn, :summer]
+  @persistent_filters [:season, :gender, :age_group]
   @sorts ~w(relevance newest price_asc price_desc)
 
   def mount(_params, _session, socket) do
@@ -126,7 +127,7 @@ defmodule KirbsWeb.ShopLive.Index do
   end
 
   defp empty_facets do
-    Map.new([:brand, :size, :season, :condition, :category_id], &{&1, []})
+    Map.new([:brand, :size, :season, :gender, :age_group, :category_id], &{&1, []})
   end
 
   # --- params -------------------------------------------------------------
@@ -317,8 +318,6 @@ defmodule KirbsWeb.ShopLive.Index do
     end
   end
 
-  defp season_total(facets), do: facets.season |> Enum.map(&elem(&1, 1)) |> Enum.sum()
-
   defp toggle_filter(filters, key, value) do
     if to_string(filters[key]) == to_string(value),
       do: Map.delete(filters, key),
@@ -328,9 +327,29 @@ defmodule KirbsWeb.ShopLive.Index do
   defp facet_links(facets, key, filters) do
     facets
     |> Map.fetch!(key)
+    |> Enum.filter(fn {value, _count} -> shown_value?(key, value) end)
     |> Enum.map(fn {value, count} -> {value, facet_label(key, value), count} end)
     |> ensure_active(key, filters)
+    |> order_links(key)
   end
+
+  # The shop sells children's clothes: only these gender / age values are filterable.
+  @shown_values %{
+    gender: [:boy, :girl, :unisex],
+    age_group: [:baby, :toddler, :child]
+  }
+
+  defp shown_value?(key, value) when is_map_key(@shown_values, key),
+    do: value in Map.fetch!(@shown_values, key)
+
+  defp shown_value?(_key, _value), do: true
+
+  defp order_links(links, key) when is_map_key(@shown_values, key) do
+    order = Map.fetch!(@shown_values, key)
+    Enum.sort_by(links, fn {value, _, _} -> Enum.find_index(order, &(&1 == value)) || 99 end)
+  end
+
+  defp order_links(links, _key), do: links
 
   defp ensure_active(links, key, filters) do
     case filters[key] do
@@ -395,28 +414,35 @@ defmodule KirbsWeb.ShopLive.Index do
       |> Enum.with_index()
       |> Enum.map(fn {node, index} ->
         {node.name_et,
-         if(index == last, do: nil, else: shop_path(tree, node, Map.take(filters, [:season])))}
+         if(index == last,
+           do: nil,
+           else: shop_path(tree, node, Map.take(filters, @persistent_filters))
+         )}
       end)
 
-    [{"Pood", shop_path(tree, nil, Map.take(filters, [:season]))} | crumbs]
+    [{"Pood", shop_path(tree, nil, Map.take(filters, @persistent_filters))} | crumbs]
   end
 
   defp audience_path(tree, audience, filters) do
     case CategoryTree.default_root() == audience.slug do
-      true -> shop_path(tree, nil, Map.take(filters, [:season]))
-      false -> shop_path(tree, audience, Map.take(filters, [:season]))
+      true -> shop_path(tree, nil, Map.take(filters, @persistent_filters))
+      false -> shop_path(tree, audience, Map.take(filters, @persistent_filters))
     end
   end
 
   defp active_chips(filters) do
     for {key, value} <- Enum.sort(filters),
-        key not in [:sort, :season],
+        key != :sort,
         do: {key, chip_label(key, value)}
   end
 
   defp chip_label(:q, value), do: "„#{value}“"
   defp chip_label(:min_price, value), do: "alates #{value} €"
   defp chip_label(:max_price, value), do: "kuni #{value} €"
+
+  defp chip_label(:season, values),
+    do: Enum.map_join(values, ", ", &Labels.label(:season, &1))
+
   defp chip_label(:brand, value), do: value
   defp chip_label(:size, value), do: "suurus #{value}"
   defp chip_label(key, value), do: Labels.label(key, value)

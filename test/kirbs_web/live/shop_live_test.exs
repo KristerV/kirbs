@@ -77,14 +77,17 @@ defmodule KirbsWeb.ShopLiveTest do
       view |> element("#season-winter") |> render_click()
       assert_patch(view, "/?season=winter")
       refute has_element?(view, "#items-#{ctx.pants.id}")
-      refute has_element?(view, "#facet-season")
+      assert has_element?(view, "#facet-season")
+      assert has_element?(view, "#chip-season")
+      refute has_element?(view, "#season-filter")
 
-      view |> element("#season-all") |> render_click()
+      view |> element("#chip-season") |> render_click()
       assert_patch(view, "/")
       assert has_element?(view, "#items-#{ctx.pants.id}")
     end
 
-    test "season pills combine and persist when navigating categories", %{conn: conn} = ctx do
+    test "season facet toggles combine and persist when navigating categories",
+         %{conn: conn} = ctx do
       {:ok, view, _html} = live(conn, ~p"/?season=winter")
 
       view |> element("#season-summer") |> render_click()
@@ -166,13 +169,73 @@ defmodule KirbsWeb.ShopLiveTest do
       refute has_element?(view, "#audience-switcher")
     end
 
-    test "no gender or age facets in the sidebar", %{conn: conn} do
+    test "gender and age facets, no condition filter", %{conn: conn} do
       {:ok, view, html} = live(conn, ~p"/")
 
-      refute has_element?(view, "#facet-gender")
-      refute has_element?(view, "#facet-age_group")
-      refute html =~ "Sugu"
-      refute html =~ "Vanus"
+      assert has_element?(view, "#facet-gender")
+      assert has_element?(view, "#facet-gender-boy")
+      assert has_element?(view, "#facet-gender-girl")
+      refute has_element?(view, "#facet-condition")
+      refute html =~ "Seisukord"
+    end
+
+    test "unisex items match boy and girl filters and counts", %{conn: conn} do
+      uni =
+        item!(bag!(), %{
+          gender: :unisex,
+          age_group: :toddler,
+          brand: "Unibrand",
+          category: "lapsed-valisriided-joped"
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/?gender=girl")
+
+      assert has_element?(view, "#shop-items article", "Unibrand")
+      assert has_element?(view, "#shop-items article", "H&M")
+      refute has_element?(view, "#shop-items article", "Reima")
+      assert has_element?(view, "#facet-gender-boy", "2")
+      assert has_element?(view, "#facet-gender-girl", "2")
+      assert has_element?(view, "#facet-gender-unisex", "1")
+      assert has_element?(view, "#facet-age_group-toddler", "1")
+
+      {:ok, view, _html} = live(conn, ~p"/?gender=unisex")
+      assert has_element?(view, "#shop-items article", "Unibrand")
+      refute has_element?(view, "#shop-items article", "H&M")
+      assert uni.gender == :unisex
+    end
+
+    test "gender and age params toggle, combine with season and persist", %{conn: conn} do
+      item!(bag!(), %{
+        gender: :boy,
+        age_group: :baby,
+        season: :winter,
+        brand: "Babybrand",
+        category: "lapsed-valisriided-joped"
+      })
+
+      {:ok, view, _html} = live(conn, ~p"/?season=winter")
+
+      view |> element("#facet-gender-boy") |> render_click()
+      assert_patch(view, "/?gender=boy&season=winter")
+
+      view |> element("#facet-age_group-baby") |> render_click()
+      assert_patch(view, "/?age_group=baby&gender=boy&season=winter")
+      assert has_element?(view, "#shop-items article", "Babybrand")
+      refute has_element?(view, "#shop-items article", "Reima")
+      assert has_element?(view, "#chip-gender")
+
+      view |> element("#category-link-lapsed-valisriided") |> render_click()
+      assert_patch(view, "/k/valisriided?age_group=baby&gender=boy&season=winter")
+      assert has_element?(view, ~s(#breadcrumbs a[href^="/?age_group=baby"]))
+
+      view |> element("#facet-gender-boy") |> render_click()
+      assert_patch(view, "/k/valisriided?age_group=baby&season=winter")
+    end
+
+    test "legacy condition param is ignored", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/?condition=good")
+      assert has_element?(view, "#shop-items article", "Reima")
+      refute has_element?(view, "#chip-condition")
     end
 
     test "navigating into a family patches", %{conn: conn} = ctx do

@@ -36,7 +36,7 @@ defmodule KirbsWeb.Shop.Labels do
   }
 
   @doc "Facets that are enum attributes (filter param name == attribute name)."
-  def enum_facets, do: [:gender, :age_group, :season, :condition]
+  def enum_facets, do: [:gender, :age_group, :season]
 
   @doc "Estonian label of an attribute value (nil-safe)."
   def label(_field, nil), do: nil
@@ -64,7 +64,6 @@ defmodule KirbsWeb.Shop.Labels do
   def facet_title(:gender), do: "Sugu"
   def facet_title(:age_group), do: "Vanus"
   def facet_title(:season), do: "Hooaeg"
-  def facet_title(:condition), do: "Seisukord"
   def facet_title(:brand), do: "Bränd"
   def facet_title(:size), do: "Suurus"
 

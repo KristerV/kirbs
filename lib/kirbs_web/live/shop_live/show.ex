@@ -89,7 +89,6 @@ defmodule KirbsWeb.ShopLive.Show do
     [
       {"Bränd", item.brand},
       {"Suurus", item.size},
-      {"Seisukord", Labels.label(:condition, item.condition)},
       {"Vanus", Labels.label(:age_group, item.age_group)},
       {"Sugu", Labels.label(:gender, item.gender)},
       {"Hooaeg", Labels.label(:season, item.season)},

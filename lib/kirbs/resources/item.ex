@@ -281,10 +281,6 @@ defmodule Kirbs.Resources.Item do
         constraints items: [one_of: [:spring_autumn, :summer, :winter, :all_year]]
       end
 
-      argument :condition, :atom do
-        constraints one_of: [:new_with_tags, :like_new, :good, :fair]
-      end
-
       argument :min_price, :decimal
       argument :max_price, :decimal
 

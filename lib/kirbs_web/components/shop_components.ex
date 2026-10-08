@@ -67,12 +67,6 @@ defmodule KirbsWeb.ShopComponents do
           >
             {@item.size}
           </span>
-          <span
-            :if={@item.condition in [:new_with_tags, :like_new]}
-            class="absolute right-2.5 top-2.5 rounded-full bg-emerald-500/90 px-2.5 py-1 text-xs font-bold text-white shadow-sm"
-          >
-            {Labels.label(:condition, @item.condition)}
-          </span>
         </div>
         <div class="mt-3 flex items-start justify-between gap-3 px-0.5">
           <div class="min-w-0">

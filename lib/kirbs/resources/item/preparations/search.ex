@@ -25,9 +25,8 @@ defmodule Kirbs.Resources.Item.Preparations.Search do
     |> filter_equal(:brand, Ash.Query.get_argument(query, :brand))
     |> filter_equal(:size, Ash.Query.get_argument(query, :size))
     |> filter_equal(:age_group, Ash.Query.get_argument(query, :age_group))
-    |> filter_equal(:gender, Ash.Query.get_argument(query, :gender))
+    |> filter_gender(Ash.Query.get_argument(query, :gender))
     |> filter_season(Ash.Query.get_argument(query, :season))
-    |> filter_equal(:condition, Ash.Query.get_argument(query, :condition))
     |> filter_price(
       Ash.Query.get_argument(query, :min_price),
       Ash.Query.get_argument(query, :max_price)
@@ -127,6 +126,12 @@ defmodule Kirbs.Resources.Item.Preparations.Search do
       category.slug == ^slug or fragment("? LIKE ?", category.slug, ^pattern)
     )
   end
+
+  # Unisex items match the boy and girl filters too.
+  defp filter_gender(query, gender) when gender in [:boy, :girl],
+    do: Ash.Query.filter(query, gender in ^[gender, :unisex])
+
+  defp filter_gender(query, gender), do: filter_equal(query, :gender, gender)
 
   # `all_year` items belong to every season.
   defp filter_season(query, seasons) when seasons in [nil, []], do: query
