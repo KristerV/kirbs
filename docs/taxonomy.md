@@ -11,22 +11,22 @@ this doc in the same change.
 are attributes, never part of the tree.** Season in particular is not in category names (no `talvejakid`,
 `talvesaapad`): the owner wants to browse "all boots" or "winter boots", "all overalls" or "winter overalls",
 and to see winter jackets, boots and pants together at the start of winter. That only works when the type is
-one leaf and the season is a filter on `Item.season`. A winter jacket and a summer jacket are both `jakid`.
+one leaf and the season is a filter on `Item.season`. A winter jacket and a summer jacket are both `joped`.
 The one exception is `vihmariided` (rain jackets, pants, overalls): rain is a garment use, not a season.
 
 One primary category per item. Structure: audience root -> family -> type. Items attach to **leaves only**; a
 family without children is a leaf itself. Slugs are ASCII, unique, and prefixed by their path.
 
 Kids is the default audience. Root `lapsed` is kept in the DB, but is not a level in the shop: public URLs are
-relative to it (`/k/valisriided/jakid` = slug `lapsed-valisriided-jakid`), breadcrumbs read
-`Pood > Välisriided > Jakid`. The audience switcher renders only when more than one audience root has published
+relative to it (`/k/valisriided/joped` = slug `lapsed-valisriided-joped`), breadcrumbs read
+`Pood > Välisriided > Joped`. The audience switcher renders only when more than one audience root has published
 items. Other roots (`naised`, `mehed`, `kodu`, `mangud`) are empty stubs; their URLs keep the root segment.
 Legacy URLs (`/k/lapsed/poisid/pusid`, `/k/valisriided/talvejakid`, `talvesaapad`, `talvekombinesoonid`,
-`vihmakombinesoonid`, `uleminekujakid-vestid`) redirect to the current leaf, keeping the query string.
+`vihmakombinesoonid`, `uleminekujakid-vestid`, `jakid`) redirect to the current leaf, keeping the query string.
 
 ```
 Lapsed (lapsed)                       default audience, fully built
-  Välisriided (valisriided):  Jakid, Vestid, Vihmariided
+  Välisriided (valisriided):  Joped, Vestid, Vihmariided
   Kombinesoonid                       leaf family
   Püksid ja lühikesed (puksid-luhikesed): Püksid, Teksad, Retuusid, Lühikesed püksid (luhikesed-puksid)
   Pluusid, särgid ja kampsunid (ulaosad): T-särgid ja pluusid (t-sargid-pluusid),
@@ -57,12 +57,16 @@ Sugu/Vanus facets. The search `category` filter matches a category and its whole
 1. `Kirbs.Services.Categories.MigrateTree` (gender tree -> type tree): re-points by type, copies
    gender/age_group from the old group when blank, deletes obsolete categories.
 2. `Kirbs.Services.Categories.MigrateSeasonOutOfTree` (season tree -> pure type tree): `talvejakid` and
-   `uleminekujakid-vestid` -> `jakid` (the latter flagged: some may be vests), `talvekombinesoonid` and
+   `uleminekujakid-vestid` -> `joped` (the latter flagged: some may be vests), `talvekombinesoonid` and
    `vihmakombinesoonid` -> `kombinesoonid` (the latter flagged), `talvesaapad` -> `saapad`. Blank `season` is
    filled from the old leaf (talvejakid/talvekombinesoonid/talvesaapad -> winter, sandaalid-sussid -> summer),
    an existing season is never overwritten; items and pending proposals move, `search_text` is rebuilt.
 
-Both run, idempotently, from `Kirbs.Release.migrate_category_tree/0` (SeedTree first).
+3. `Kirbs.Services.Categories.RenameJakidToJoped`: category `Jakid` renamed to `Joped` ("jope" is the normal
+   word). Items and pending proposals move, `search_text` is rebuilt, the old category and its Yaga mapping are
+   deleted; `/k/valisriided/jakid` redirects to `/k/valisriided/joped`.
+
+All run, idempotently, from `Kirbs.Release.migrate_category_tree/0` (SeedTree first).
 
 ### Yaga mapping (`yaga_category_mappings`)
 
@@ -103,7 +107,7 @@ Channel state lives on the channel listing; for Yaga that is `YagaListing.status
   (`GroupedLeafOptions`) groups leaves by family.
 - `Kirbs.Services.Ai.ItemCategorize` sends the item photos to the OpenRouter vision model with a JSON schema whose
   `category_slug` enum is exactly the leaf slugs above and whose attribute enums are the ones in the table.
-  The prompt tells the model that the category is the item type only (winter and summer jackets share `jakid`);
+  The prompt tells the model that the category is the item type only (winter and summer jackets share `joped`);
   `gender`, `age_group` and `season` are extracted independently as attributes.
   `colors` / `materials` are restricted to the Yaga taxonomy names (Estonian) so values stay valid for uploads.
   Anything outside the enums is dropped; an unknown slug cancels the categorization.

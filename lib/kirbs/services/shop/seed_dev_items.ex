@@ -10,7 +10,7 @@ defmodule Kirbs.Services.Shop.SeedDevItems do
 
   # {category slug, brand, size, colors, description, price, age_group, gender, season, condition, rgb}
   @items [
-    {"lapsed-valisriided-jakid", "Reima", "104", ["sinine"],
+    {"lapsed-valisriided-joped", "Reima", "104", ["sinine"],
      "Soe veekindel talvejope, kapuutsiga.", 24, :child, :boy, :winter, :good, [60, 110, 180]},
     {"lapsed-kleidid-seelikud", "H&M", "92", ["roosa"], "Kerge suvekleit lillemustriga.", 8,
      :toddler, :girl, :summer, :like_new, [235, 140, 170]},
@@ -29,7 +29,7 @@ defmodule Kirbs.Services.Shop.SeedDevItems do
      :toddler, :girl, :spring_autumn, :fair, [150, 110, 190]},
     {"lapsed-aksessuaarid-mutsid-sallid", "Reima", "52", ["punane"],
      "Talvemüts ja sall komplektis.", 6, :child, :boy, :winter, :good, [200, 60, 60]},
-    {"lapsed-valisriided-jakid", "Mini A Ture", "116", ["beež"], "Kaunis kevadjope, peaaegu uus.",
+    {"lapsed-valisriided-joped", "Mini A Ture", "116", ["beež"], "Kaunis kevadjope, peaaegu uus.",
      16, :child, :girl, :spring_autumn, :like_new, [210, 180, 140]}
   ]
 

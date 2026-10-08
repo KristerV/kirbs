@@ -7,7 +7,7 @@ defmodule Kirbs.Services.Search.SeedSynonyms do
   alias Kirbs.Resources.SearchSynonym
 
   @synonyms [
-    {"jope", ["jakk", "jakid", "jopp", "jopesid"]},
+    {"jope", ["jakk", "jakid", "joped", "jopp", "jopesid"]},
     {"talvejope", ["talvejakk", "soe jope", "talvejakid"]},
     {"vihmajope", ["vihmakeep", "vihmariided", "tuulejope"]},
     {"püksid", ["pükse", "pükst", "dressid"]},

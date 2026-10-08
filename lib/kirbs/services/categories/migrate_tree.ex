@@ -21,8 +21,8 @@ defmodule Kirbs.Services.Categories.MigrateTree do
 
   # old type slug => new leaf slug
   @type_map %{
-    "talvejakid" => "lapsed-valisriided-jakid",
-    "jakid-vestid" => "lapsed-valisriided-jakid",
+    "talvejakid" => "lapsed-valisriided-joped",
+    "jakid-vestid" => "lapsed-valisriided-joped",
     "pusid" => "lapsed-puksid-luhikesed-puksid",
     "kombinesoonid" => "lapsed-kombinesoonid",
     "pluusid-sargid" => "lapsed-ulaosad-t-sargid-pluusid",
@@ -38,7 +38,7 @@ defmodule Kirbs.Services.Categories.MigrateTree do
   # Mappings that are a guess and need a human look.
   @ambiguous %{
     "kingad" => "kingad -> kingad (could be saapad, kummikud, tossud, sandaalid-sussid)",
-    "jakid-vestid" => "jakid-vestid -> jakid (some may be vests)"
+    "jakid-vestid" => "jakid-vestid -> joped (some may be vests)"
   }
 
   @doc "Old type slug => new leaf slug, also used to redirect legacy shop URLs."

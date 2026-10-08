@@ -40,7 +40,7 @@ defmodule Kirbs.Services.Categories.SeedTreeTest do
     assert mapped.("lapsed-jalatsid-kummikud") == 370
     assert mapped.("lapsed-jalatsid-saapad") == 370
     assert mapped.("lapsed-jalatsid-kingad") == 370
-    assert mapped.("lapsed-valisriided-jakid") == 438
+    assert mapped.("lapsed-valisriided-joped") == 438
     assert mapped.("lapsed-kombinesoonid") == 438
     assert mapped.("lapsed-aksessuaarid-muu") == 47
     assert mapped.("lapsed-muu") == 47

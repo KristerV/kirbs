@@ -67,10 +67,10 @@ defmodule Kirbs.Services.Categories.MigrateSeasonOutOfTreeTest do
     assert length(summary.needs_review) == 2
     assert "lapsed-valisriided-talvejakid" in summary.deleted_categories
 
-    assert slug_of(winter_jacket) == "lapsed-valisriided-jakid"
+    assert slug_of(winter_jacket) == "lapsed-valisriided-joped"
     assert Item.get!(winter_jacket.id).season == :winter
-    assert Item.get!(winter_jacket.id).search_text =~ "Jakid"
-    assert slug_of(vest) == "lapsed-valisriided-jakid"
+    assert Item.get!(winter_jacket.id).search_text =~ "Joped"
+    assert slug_of(vest) == "lapsed-valisriided-joped"
     assert Item.get!(vest.id).season == nil
     assert slug_of(kept) == "lapsed-jalatsid-saapad"
     assert Item.get!(kept.id).season == :all_year

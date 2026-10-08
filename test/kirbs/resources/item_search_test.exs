@@ -11,7 +11,7 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
     jacket =
       item!(bag, %{
-        category: "lapsed-valisriided-jakid",
+        category: "lapsed-valisriided-joped",
         brand: "Reima",
         size: "110",
         gender: :boy,
@@ -52,7 +52,10 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
   test "synonyms expand the query", ctx do
     # "jakk" is a synonym of "jope" (jacket description says "talvejope" via category too)
-    assert ctx.jacket.id in ids(%{q: "jakid"})
+    for q <- ~w(jakid jakk jope joped talvejope talvejakk) do
+      assert ctx.jacket.id in ids(%{q: q}), "expected #{q} to find the jacket"
+    end
+
     refute ctx.pants.id in ids(%{q: "jakid"})
   end
 

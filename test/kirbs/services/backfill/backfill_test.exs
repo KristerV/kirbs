@@ -16,7 +16,7 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
 
   test "dry run stores proposals and leaves items untouched; rerun is idempotent" do
     item = item_with_image()
-    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-jakid"))
+    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-joped"))
 
     assert {:ok, %{proposed: 1, applied: 0, fetched: 1}} = CategorizeBatch.run()
     assert is_nil(Item.get!(item.id).category_id)
@@ -28,13 +28,13 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
 
   test "pending items are skipped" do
     _pending = item_with_image(%{status: :pending})
-    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-jakid"))
+    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-joped"))
     assert {:ok, %{fetched: 0}} = CategorizeBatch.run()
   end
 
   test "approving applies category, attributes and rebuilds search text" do
     item = item_with_image(%{brand: "Reima"})
-    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-jakid"))
+    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-joped"))
     {:ok, _} = CategorizeBatch.run()
 
     proposal = CategorizationProposal.get_by_item!(item.id)
@@ -45,7 +45,7 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
     # existing extraction wins, blanks are filled
     assert updated.brand == "Reima"
     assert updated.size == "74/80"
-    assert updated.search_text =~ "Jakid"
+    assert updated.search_text =~ "Joped"
     assert CategorizationProposal.get!(proposal.id).status == :applied
   end
 
@@ -53,7 +53,7 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
     high = item_with_image()
 
     StubCategorizeLlm.respond_with(
-      llm_response("lapsed-valisriided-jakid", %{"confidence" => 0.95})
+      llm_response("lapsed-valisriided-joped", %{"confidence" => 0.95})
     )
 
     assert {:ok, %{applied: 1}} = CategorizeBatch.run(apply: true, min_confidence: 0.9)
@@ -62,7 +62,7 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
     low = item_with_image()
 
     StubCategorizeLlm.respond_with(
-      llm_response("lapsed-valisriided-jakid", %{"confidence" => 0.5})
+      llm_response("lapsed-valisriided-joped", %{"confidence" => 0.5})
     )
 
     assert {:ok, %{applied: 0, proposed: 1}} =
@@ -100,7 +100,7 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
 
   test "job chains the next batch until drained and snoozes on rate limit" do
     for _ <- 1..3, do: item_with_image()
-    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-jakid"))
+    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-joped"))
 
     assert :ok = perform_job(BackfillCategorizeJob, %{"limit" => 2})
     assert [%{args: %{"after_id" => after_id}}] = all_enqueued(BackfillCategorizeJob)

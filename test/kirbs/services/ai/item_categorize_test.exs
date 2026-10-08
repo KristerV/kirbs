@@ -14,10 +14,10 @@ defmodule Kirbs.Services.Ai.ItemCategorizeTest do
   end
 
   test "maps a valid response to category id and typed attributes", %{item: item} do
-    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-jakid"))
+    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-joped"))
 
     assert {:ok, result} = ItemCategorize.run(item)
-    assert result.category_id == Category.get_by_slug!("lapsed-valisriided-jakid").id
+    assert result.category_id == Category.get_by_slug!("lapsed-valisriided-joped").id
     assert result.age_group == :baby
     assert result.gender == :boy
     assert result.season == :winter
@@ -32,7 +32,7 @@ defmodule Kirbs.Services.Ai.ItemCategorizeTest do
 
     StubCategorizeLlm.respond_with(fn images, prompt, schema ->
       send(test_pid, {:call, images, prompt, schema})
-      {:ok, Jason.encode!(llm_response("lapsed-valisriided-jakid"))}
+      {:ok, Jason.encode!(llm_response("lapsed-valisriided-joped"))}
     end)
 
     {:ok, _} = ItemCategorize.run(item)

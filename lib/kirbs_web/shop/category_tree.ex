@@ -101,7 +101,13 @@ defmodule KirbsWeb.Shop.CategoryTree do
   defp legacy_season_leaf(%__MODULE__{} = tree, segments) when is_list(segments) do
     path = segments |> Enum.reject(&(&1 == "lapsed")) |> Enum.join("-")
 
-    case Map.get(Kirbs.Services.Categories.MigrateSeasonOutOfTree.redirects(), path) do
+    redirects =
+      Map.merge(
+        Kirbs.Services.Categories.MigrateSeasonOutOfTree.redirects(),
+        Kirbs.Services.Categories.RenameJakidToJoped.redirects()
+      )
+
+    case Map.get(redirects, path) do
       nil -> :error
       new -> {:ok, get_by_slug(tree, @default_root <> "-" <> new)}
     end

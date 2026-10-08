@@ -134,7 +134,7 @@ defmodule Kirbs.Services.Ai.ItemCategorize do
 
     category_slug describes ONLY what kind of garment or item it is (its type). Never let the
     child's gender, age or the season influence the category; record those separately as gender,
-    age_group and season. A winter jacket and a summer jacket both belong to the same `jakid` leaf,
+    age_group and season. A winter jacket and a summer jacket both belong to the same `joped` leaf,
     winter boots and light boots to `saapad`, a winter overall and a rain overall to `kombinesoonid`
     (rain gear that is a jacket, pants or overall may use `vihmariided`).
     Choose category_slug from exactly this list (family > type):

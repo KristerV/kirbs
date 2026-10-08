@@ -10,7 +10,7 @@ defmodule KirbsWeb.ShopLiveTest do
 
     jacket =
       item!(bag, %{
-        category: "lapsed-valisriided-jakid",
+        category: "lapsed-valisriided-joped",
         brand: "Reima",
         size: "110",
         gender: :boy,
@@ -99,7 +99,7 @@ defmodule KirbsWeb.ShopLiveTest do
 
     test "all_year items match every season", %{conn: conn} do
       all_year =
-        item!(bag!(), %{season: :all_year, brand: "Zara", category: "lapsed-valisriided-jakid"})
+        item!(bag!(), %{season: :all_year, brand: "Zara", category: "lapsed-valisriided-joped"})
 
       {:ok, view, _html} = live(conn, ~p"/?season=winter")
       assert has_element?(view, "#items-#{all_year.id}")
@@ -137,7 +137,7 @@ defmodule KirbsWeb.ShopLiveTest do
   describe "category pages (/k/*path)" do
     test "shows breadcrumbs without the audience and only items of the subtree",
          %{conn: conn} = ctx do
-      {:ok, view, _html} = live(conn, ~p"/k/valisriided/jakid")
+      {:ok, view, _html} = live(conn, ~p"/k/valisriided/joped")
 
       assert has_element?(view, "#breadcrumbs")
       assert has_element?(view, ~s(#breadcrumbs a[href="/k/valisriided"]), "Välisriided")
@@ -152,7 +152,7 @@ defmodule KirbsWeb.ShopLiveTest do
 
       assert has_element?(view, "#items-#{ctx.jacket.id}")
       refute has_element?(view, "#items-#{ctx.pants.id}")
-      assert has_element?(view, "#category-link-lapsed-valisriided-jakid")
+      assert has_element?(view, "#category-link-lapsed-valisriided-joped")
       refute has_element?(view, "#category-link-lapsed-valisriided-vihmariided")
     end
 
@@ -161,7 +161,7 @@ defmodule KirbsWeb.ShopLiveTest do
 
       assert has_element?(view, "#category-link-lapsed-valisriided")
       assert has_element?(view, "#category-link-lapsed-puksid-luhikesed")
-      refute has_element?(view, "#category-link-lapsed-valisriided-jakid")
+      refute has_element?(view, "#category-link-lapsed-valisriided-joped")
       refute has_element?(view, "#category-link-lapsed-jalatsid")
       refute has_element?(view, "#audience-switcher")
     end
@@ -184,7 +184,7 @@ defmodule KirbsWeb.ShopLiveTest do
     end
 
     test "legacy URLs redirect to the new tree", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/k/valisriided/jakid"}}} =
+      assert {:error, {:live_redirect, %{to: "/k/valisriided/joped"}}} =
                live(conn, ~p"/k/lapsed/poisid/talvejakid")
 
       assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/k/lapsed/poisid")
@@ -195,8 +195,14 @@ defmodule KirbsWeb.ShopLiveTest do
     end
 
     test "removed season leaves redirect to the type leaf and keep the query", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/k/valisriided/jakid?season=winter"}}} =
+      assert {:error, {:live_redirect, %{to: "/k/valisriided/joped?season=winter"}}} =
                live(conn, ~p"/k/valisriided/talvejakid?season=winter")
+
+      assert {:error, {:live_redirect, %{to: "/k/valisriided/joped?season=winter"}}} =
+               live(conn, ~p"/k/valisriided/jakid?season=winter")
+
+      assert {:error, {:live_redirect, %{to: "/k/valisriided/joped"}}} =
+               live(conn, ~p"/k/valisriided/uleminekujakid-vestid")
 
       assert {:error, {:live_redirect, %{to: "/k/kombinesoonid"}}} =
                live(conn, ~p"/k/kombinesoonid/vihmakombinesoonid")

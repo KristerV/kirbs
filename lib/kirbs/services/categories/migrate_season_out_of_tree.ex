@@ -18,9 +18,9 @@ defmodule Kirbs.Services.Categories.MigrateSeasonOutOfTree do
 
   # old leaf => {new leaf, season implied by the old leaf, review note}
   @moves %{
-    "valisriided-talvejakid" => {"valisriided-jakid", :winter, nil},
+    "valisriided-talvejakid" => {"valisriided-joped", :winter, nil},
     "valisriided-uleminekujakid-vestid" =>
-      {"valisriided-jakid", nil, "uleminekujakid-vestid -> jakid: some may be vests"},
+      {"valisriided-joped", nil, "uleminekujakid-vestid -> joped: some may be vests"},
     "kombinesoonid-talvekombinesoonid" => {"kombinesoonid", :winter, nil},
     "kombinesoonid-vihmakombinesoonid" =>
       {"kombinesoonid", nil,
