@@ -43,7 +43,8 @@ defmodule Kirbs.Repo.Migrations.AddOrderEventsAndPaymentFacts do
             type: :uuid,
             prefix: "public",
             on_delete: :delete_all
-          ), null: false
+          ),
+          null: false
     end
 
     create unique_index(:order_events, [:kind, :external_id],
