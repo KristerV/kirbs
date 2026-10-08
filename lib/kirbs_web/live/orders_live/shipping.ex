@@ -22,11 +22,16 @@ defmodule KirbsWeb.OrdersLive.Shipping do
     attrs = %{tracking_number: blank_to_nil(tracking)}
 
     {:noreply,
-     act(socket, id, "Marked shipped", fn order -> Order.mark_shipped(order, attrs) end)}
+     act(socket, id, "Marked shipped", fn order ->
+       Order.mark_shipped(order, attrs, context: %{event_source: :admin})
+     end)}
   end
 
   def handle_event("deliver", %{"id" => id}, socket) do
-    {:noreply, act(socket, id, "Marked handed over", &Order.mark_delivered/1)}
+    {:noreply,
+     act(socket, id, "Marked handed over", fn order ->
+       Order.mark_delivered(order, %{}, context: %{event_source: :admin})
+     end)}
   end
 
   def handle_event("create_shipment", %{"id" => id}, socket) do

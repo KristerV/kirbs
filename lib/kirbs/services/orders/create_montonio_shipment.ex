@@ -32,11 +32,15 @@ defmodule Kirbs.Services.Orders.CreateMontonioShipment do
 
   defp create(order) do
     with {:ok, shipment} <- CreateShipment.run(params(order)),
-         {:ok, order} <- Order.set_shipment(order, attrs(shipment)) do
+         {:ok, order} <-
+           Order.set_shipment(order, attrs(shipment), context: %{event_source: :api}) do
       {:ok, order}
     else
       {:error, reason} = error ->
-        Order.set_shipment(order, %{shipment_error: format(reason)})
+        Order.set_shipment(order, %{shipment_error: format(reason)},
+          context: %{event_source: :api}
+        )
+
         error
     end
   end

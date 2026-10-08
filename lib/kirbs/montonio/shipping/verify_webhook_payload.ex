@@ -25,6 +25,7 @@ defmodule Kirbs.Montonio.Shipping.VerifyWebhookPayload do
 
     {:ok,
      %{
+       claims: claims,
        event_id: claims["eventId"],
        event_type: type,
        shipment_id: claims["shipmentId"] || data["id"],

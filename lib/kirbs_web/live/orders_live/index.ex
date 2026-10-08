@@ -27,12 +27,25 @@ defmodule KirbsWeb.OrdersLive.Index do
   end
 
   def handle_event("mark_paid", %{"id" => id}, socket) do
-    {:noreply, act(socket, id, fn order -> Order.mark_paid(order) end, "Marked as paid")}
+    {:noreply,
+     act(
+       socket,
+       id,
+       fn order -> Order.mark_paid(order, %{}, context: %{event_source: :admin}) end,
+       "Marked as paid"
+     )}
   end
 
   def handle_event("cancel", %{"id" => id}, socket) do
     {:noreply,
-     act(socket, id, fn order -> Order.cancel(order, %{cancel_reason: "admin"}) end, "Cancelled")}
+     act(
+       socket,
+       id,
+       fn order ->
+         Order.cancel(order, %{cancel_reason: "admin"}, context: %{event_source: :admin})
+       end,
+       "Cancelled"
+     )}
   end
 
   def handle_event("refund", %{"id" => id}, socket) do
@@ -40,7 +53,11 @@ defmodule KirbsWeb.OrdersLive.Index do
      act(
        socket,
        id,
-       fn order -> Order.refund(order, %{cancel_reason: "refunded by admin"}) end,
+       fn order ->
+         Order.refund(order, %{cancel_reason: "refunded by admin"},
+           context: %{event_source: :admin}
+         )
+       end,
        "Marked refunded. Now refund the payment in the Montonio partner system"
      )}
   end
@@ -129,7 +146,13 @@ defmodule KirbsWeb.OrdersLive.Index do
                 </tr>
                 <tr :for={{dom_id, order} <- @streams.orders} id={dom_id}>
                   <td>
-                    <div class="font-mono font-bold">{order.reference}</div>
+                    <.link
+                      navigate={~p"/orders/#{order.id}"}
+                      id={"order-link-#{order.id}"}
+                      class="font-mono font-bold link link-hover"
+                    >
+                      {order.reference}
+                    </.link>
                     <div class="text-xs text-base-content/60">{format_time(order.created_at)}</div>
                   </td>
                   <td>

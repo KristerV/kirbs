@@ -19,5 +19,6 @@ defmodule Kirbs do
     resource Kirbs.Resources.SearchSynonym
     resource Kirbs.Resources.Order
     resource Kirbs.Resources.OrderItem
+    resource Kirbs.Resources.OrderEvent
   end
 end

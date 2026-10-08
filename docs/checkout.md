@@ -27,7 +27,7 @@ All in `Kirbs.Resources.Order` (code_interface):
 |------|-----|
 | `Order.start(item_ids, %{ab_visitor_id:, ab_assignments:})` | reserve + open pending order (checkout does this) |
 | `Order.submit(order, %{buyer_name:, buyer_email:, buyer_phone:, delivery_method:, pickup_point_id:, payment_method: :montonio})` | contact + delivery; status -> `:reserved`; hold = `Orders.Config.hold_deadline(:montonio)` (30 min). Computes `shipping_cents`, `total_cents` (`order.total_cents` is what to charge, EUR cents) |
-| `Order.set_montonio_ref(order, %{montonio_order_ref:, montonio_payment_url:})` | store Montonio's order uuid / paymentUrl (unique) |
+| `Order.set_montonio_ref(order, %{montonio_order_ref:, montonio_payment_url:})` | store Montonio's order uuid / paymentUrl (unique); records `payment_created` |
 | `Order.get_by_token(token)` / `Order.get(id)` | load (with `order_items: [item: :images]`) |
 | `Order.mark_paid(order)` | webhook on `paymentStatus == PAID`: sells items, sends paid email, fires funnel `paid`. Errors if already paid or an item was sold elsewhere (check `order.payment_status == :paid` first for idempotency). Allowed from `:reserved` and `:cancelled` (late payment) |
 | `Order.cancel(order, %{cancel_reason: "..."})` | unpaid failure/abandon; releases the items |
@@ -46,6 +46,15 @@ submit -> `Services.Orders.StartMontonioPayment` -> external redirect; the webho
 (polls while `reserved`). After `mark_paid`, parcel orders get a Montonio shipment via an Oban job; see
 docs/montonio.md for the full flow, owner checklist and sandbox test plan. Admin `/orders` has
 "Cancel / refund" for paid orders (bookkeeping only; refund money in Montonio partner system).
+
+## Audit trail
+
+Every Order state change and verified Montonio notification is appended to `order_events`
+(`Kirbs.Resources.OrderEvent`) in the same transaction as the change; webhook replays are detected via the
+unique (kind, external_id) and change nothing. Payment facts (`paid_at`, `amount_paid_cents`, `currency`,
+`montonio_order_uuid`, `montonio_payment_method`, `refunded_*`, `payment_failure_reason`,
+`last_montonio_status`) live on the order. Admin `/orders/:id` shows them with the timeline and a manual
+note form. `mix kirbs.montonio.smoke` runs the sandbox checkout, see docs/montonio.md.
 
 ## Pickup points / shipping
 

@@ -39,13 +39,13 @@ Shipping `https://sandbox-shipping.montonio.com/api/v2` / `https://shipping.mont
 - `Kirbs.Montonio.Config`, `.Jwt` (JOSE, HS256, verify rejects bad signature, `alg: none`, expiry beyond 5 min leeway), `.Client` (Req; tests use `Req.Test` stub `Kirbs.Montonio`).
 - `Kirbs.Montonio.Payments.CreateOrder.run(params)` -> `{:ok, %{payment_url, montonio_order_uuid}}`. Params are plain maps with integer cents (see moduledoc). Method `paymentInitiation`, country EE, locale `et`, currency EUR. Line items must sum to `total_cents` (add shipping as a line item).
 - `Kirbs.Montonio.Payments.VerifyOrderToken.run(token)` -> `{:ok, %{merchant_reference, payment_status (:paid|:pending|:failed|:cancelled|:unknown), montonio_order_uuid, ...}}`. Also checks `accessKey`.
-- `Kirbs.Montonio.Payments.ApplyPaymentUpdate.run(token)`: verify + de-dupe + call handler.
+
 - Endpoints (no session/CSRF; auth is the signed JWT):
   - `POST /webhooks/montonio` body `{"orderToken": jwt}`; 200 ok/duplicate, 401 bad token, 500 handler error (Montonio retries 13x/48h).
   - `POST /webhooks/montonio/shipping` body `{"payload": jwt}`.
   - `GET /checkout/montonio/return?order-token=jwt`: verifies, notifies handler, redirects to `return_redirect`.
 - Behaviours `Kirbs.Montonio.PaymentHandler` (`handle_payment_update(merchant_reference, status)`) and `Kirbs.Montonio.ShipmentHandler` (`handle_shipment_update(event)`), default `...Logging` implementations.
-- `Kirbs.Shipping.MontonioPickupPoints` (`list(carrier:, country: "EE", search:, type:)`, `get(id)`, `refresh/1`), ETS cache in `Kirbs.Montonio.Store`, lazily filled, refreshed by `Kirbs.Jobs.RefreshMontonioPickupPointsJob` (cron `0 5 * * *`). Points: `%{id, name, type, street_address, locality, postal_code, carrier}`.
+- `Kirbs.Shipping.MontonioPickupPoints` (`list(carrier:, country: "EE", search:, type:)`, `get(id)`, `refresh/1`), ETS cache in `Kirbs.Montonio.Store` (pickup points only), lazily filled, refreshed by `Kirbs.Jobs.RefreshMontonioPickupPointsJob` (cron `0 5 * * *`). Points: `%{id, name, type, street_address, locality, postal_code, carrier}`.
 - `Kirbs.Montonio.Shipping.CreateShipment.run(params)` -> `{:ok, %{shipment_id, status, carrier_code, tracking_numbers, tracking_links}}`; `FetchLabel.run(%{shipment_ids: [...]})` -> `{:ok, pdf_url}`.
 
 ## Final flow (wired into the shop)
@@ -89,6 +89,31 @@ Everything below is implemented and covered by Req.Test stubs (no real call has 
 New Order columns: `montonio_shipment_id` (unique), `shipment_status`, `shipment_label_url`,
 `shipment_error` (tracking uses the existing `tracking_number`/`tracking_url`).
 
+## Audit trail and payment facts
+
+`Kirbs.Resources.OrderEvent` (`order_events`) is an append-only timeline per order: `kind`
+(payment_created, payment_webhook, payment_return, payment_paid, payment_failed, payment_cancelled,
+shipment_created, shipment_webhook, label_created, status_changed, refund_recorded, manual_note,
+error), `source` (montonio_webhook, montonio_return, api, admin, system), `occurred_at`, `summary`,
+`payload` (verified JWT claims / API result, secret-looking keys redacted by `Kirbs.Montonio.RedactPayload`)
+and optional `external_id`.
+
+- Order actions (submit, set_montonio_ref, mark_paid, cancel, refund, set_shipment, mark_shipped,
+  mark_delivered, flag_payment_conflict) append their event in the same transaction
+  (`Order.Changes.RecordEvent`, `RecordShipmentEvents`). Callers say who acted with
+  `context: %{event_source: :admin}` (default `:system`).
+- Webhook idempotency is persisted: unique `(kind, external_id)` where external_id is set. Payment receipt
+  id is `<reference>:<RAW_STATUS>` (kind payment_webhook or payment_return), shipping receipt id is the
+  Montonio `eventId`. A replay finds the event, does nothing and answers 200. The receipt is written after
+  the state change succeeded, so a failed handler (HTTP 500) leaves no receipt and Montonio's retry is processed.
+- Invalid-signature webhooks are only logged; verified ones for unknown references are logged as warnings and
+  not persisted (`order_id` is required).
+- New Order columns: `montonio_order_uuid`, `montonio_payment_method`, `amount_paid_cents`, `currency`
+  (default EUR), `refunded_cents`, `refunded_at`, `payment_failure_reason`, `last_montonio_status`
+  (`paid_at` already existed). They are filled from the verified token claims by `OrderPaymentHandler`.
+- Admin: `/orders/:id` shows buyer, delivery, payment, shipment facts and the timeline (oldest first) with an
+  "Add note" form (`manual_note`). Every row in `/orders` links to it.
+
 ## Owner checklist
 
 Partner system (https://partner.montonio.com, sandbox: https://sandbox-partner.montonio.com):
@@ -126,11 +151,47 @@ End-to-end in sandbox:
 - Pickup point response shape taken from the guide; pagination not mentioned, so none handled.
 - Webhook payment status values beyond PAID/PENDING/FAILED/CANCELLED map to `:unknown`.
 - `labelFile.*` webhooks: we assume `data.labelFileUrl`.
-- Shipping webhook dedupe key is `eventId`; payment key is (reference, status).
+- Shipping webhook dedupe key is `eventId` (fallback shipment:type:status); payment key is `<reference>:<RAW_STATUS>` per source.
+- Payment token claims used for the facts: `uuid`, `paymentMethod`, `grandTotal` (euros, float; converted to cents), `currency`. Names are from the docs sample; the full claims are kept in the event payload so anything else can be read there.
 - Shipment statuses `inTransit`, `awaitingCollection`, `delivered` and the `receiver` phone split (`+372` default) are guesses.
 - Payment webhook IP allowlist (35.156.245.42, 35.156.159.169) is not enforced; JWT verification is the guard.
 - Phone numbers: Montonio wants `phoneCountryCode` like `+372` for shipments; Stargate `phoneCountry` style is unspecified (pass what the docs example shows, e.g. `EE`/`372` to be checked in sandbox).
 - Shipment product `currency` is hard-coded EUR.
+
+## End-to-end sandbox test
+
+One command once the keys exist (no credentials are stored in the repo):
+
+1. Export the sandbox keys (partner system > sandbox store > API keys, https://sandbox-partner.montonio.com):
+
+       export MONTONIO_ACCESS_KEY=<sandbox access key>
+       export MONTONIO_SECRET_KEY=<sandbox secret key>
+       export MONTONIO_ENV=sandbox
+
+2. Start the server in one terminal so the return URL works: `PORT=4010 mix phx.server`
+   (`PHX_HOST`/endpoint url decides the return and webhook URLs sent to Montonio; for local use
+   http://localhost:4010).
+3. In another terminal: `mix kirbs.montonio.smoke`. It creates a dev test item if none is available
+   (dev seed), opens an order, submits it with `payment_method: :montonio` and an Omniva parcel machine
+   from the pickup point list (own pickup if there are none), starts the Montonio payment and prints the
+   sandbox payment URL plus next steps. Without keys it prints these instructions and exits non-zero.
+4. Open the URL and pay with the sandbox bank. You land on `/checkout/montonio/return`, which verifies the
+   order token and drives the same `OrderPaymentHandler` as the webhook, then redirects to `/order/:token`
+   (paid). So payment completion can be tested without any webhook.
+5. `mix kirbs.montonio.smoke --check K1234567` (the printed reference) shows the order, payment facts
+   (paid_at, amount_paid_cents, montonio_order_uuid, payment method) and the event timeline. The same is at
+   http://localhost:4010/orders -> click the reference.
+6. Webhooks cannot reach localhost. To test them (`/webhooks/montonio`, and shipping events), expose the
+   server with `ngrok http 4010` or `cloudflared tunnel --url http://localhost:4010`, restart the server with
+   `PHX_HOST=<tunnel host>` so the notification URL points to the tunnel, and register the shipping webhook
+   URL `https://<tunnel host>/webhooks/montonio/shipping` in the partner system. Replays show as one
+   `payment_webhook` event only.
+7. Cancel at the bank and repeat to check `payment_cancelled` / `payment_failed`; tamper a token with curl
+   for the 401.
+
+Not verified against the real API: all claim names in the payment token beyond `paymentStatus` and
+`merchantReference` (the facts fall back to nil when a claim is absent), the shipment status names, and the
+exact response shapes. The full claims land in the event payload to adjust the extraction.
 
 ## Sandbox test checklist (owner)
 

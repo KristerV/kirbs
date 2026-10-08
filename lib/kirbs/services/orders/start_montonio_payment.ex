@@ -22,7 +22,17 @@ defmodule Kirbs.Services.Orders.StartMontonioPayment do
       {:ok, order.montonio_payment_url}
     else
       {:error, reason} = error ->
-        Order.cancel(order, %{cancel_reason: "Montonio payment not started: #{inspect(reason)}"})
+        Kirbs.Resources.OrderEvent.record(%{
+          order_id: order.id,
+          kind: :error,
+          source: :api,
+          summary: "Montonio payment not started: #{inspect(reason)}"
+        })
+
+        Order.cancel(order, %{cancel_reason: "Montonio payment not started: #{inspect(reason)}"},
+          context: %{event_source: :api}
+        )
+
         error
     end
   end

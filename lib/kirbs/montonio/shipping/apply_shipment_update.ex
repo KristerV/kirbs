@@ -1,10 +1,11 @@
 defmodule Kirbs.Montonio.Shipping.ApplyShipmentUpdate do
   @moduledoc """
-  Verifies a shipping webhook token and hands the normalised event to the
-  configured `Kirbs.Montonio.ShipmentHandler`, once per `eventId` on success.
+  Verifies a shipping webhook token and hands the normalised event to the configured
+  `Kirbs.Montonio.ShipmentHandler`. De-duplication (per `eventId`) is persisted by the default
+  handler as OrderEvents; a handler may answer `{:ok, :duplicate}`.
   """
 
-  alias Kirbs.Montonio.{Config, Shipping.VerifyWebhookPayload, Store}
+  alias Kirbs.Montonio.{Config, Shipping.VerifyWebhookPayload}
 
   def run(token) do
     with {:ok, event} <- VerifyWebhookPayload.run(token),
@@ -14,19 +15,10 @@ defmodule Kirbs.Montonio.Shipping.ApplyShipmentUpdate do
   end
 
   defp dispatch(event) do
-    key = {:shipment, event.event_id || {event.shipment_id, event.event_type, event.status}}
-
-    if Store.seen?(key) do
-      {:ok, :duplicate}
-    else
-      case Config.shipment_handler().handle_shipment_update(event) do
-        :ok ->
-          Store.mark_seen(key)
-          {:ok, :handled}
-
-        {:error, reason} ->
-          {:error, {:handler_failed, reason}}
-      end
+    case Config.shipment_handler().handle_shipment_update(event) do
+      :ok -> {:ok, :handled}
+      {:ok, outcome} -> {:ok, outcome}
+      {:error, reason} -> {:error, {:handler_failed, reason}}
     end
   end
 end

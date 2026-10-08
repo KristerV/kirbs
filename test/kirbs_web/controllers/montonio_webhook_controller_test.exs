@@ -10,13 +10,10 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
   end
 
   describe "POST /webhooks/montonio" do
-    test "valid token calls handler once (idempotent)", %{conn: conn} do
+    test "valid token calls handler", %{conn: conn} do
       token = order_token()
       assert conn |> post("/webhooks/montonio", %{"orderToken" => token}) |> response(200)
       assert_received {:payment, "ORD-1", :paid}
-
-      assert build_conn() |> post("/webhooks/montonio", %{"orderToken" => token}) |> response(200)
-      refute_received {:payment, _, _}
     end
 
     test "bad signature is 401 and handler is not called", %{conn: conn} do
@@ -80,7 +77,7 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
       )
     end
 
-    test "extracts tracking and dedupes by event id", %{conn: conn} do
+    test "extracts tracking (dedupe lives in the handler, see OrderEventsTest)", %{conn: conn} do
       token = shipping_token()
       assert conn |> post("/webhooks/montonio/shipping", %{"payload" => token}) |> response(200)
 
@@ -92,12 +89,6 @@ defmodule KirbsWeb.MontonioWebhookControllerTest do
                          tracking_numbers: ["CE123EE"],
                          tracking_links: ["https://track.test/CE123EE"]
                        }}
-
-      assert build_conn()
-             |> post("/webhooks/montonio/shipping", %{"payload" => token})
-             |> response(200)
-
-      refute_received {:shipment, _}
     end
 
     test "rejects bad signature", %{conn: conn} do

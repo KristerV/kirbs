@@ -12,4 +12,14 @@ defmodule Kirbs.Montonio.PaymentHandler do
 
   @callback handle_payment_update(merchant_reference :: String.t(), status :: atom()) ::
               :ok | {:error, term()}
+
+  @doc """
+  Preferred over `handle_payment_update/2` when exported. `update` is the verified token result
+  (`claims`, `raw_payment_status`, `grand_total`, `currency`, ... and `source` = `:webhook | :return`).
+  May answer `{:ok, :duplicate}` for an already processed notification.
+  """
+  @callback handle_payment_update(String.t(), atom(), update :: map()) ::
+              :ok | {:ok, atom()} | {:error, term()}
+
+  @optional_callbacks handle_payment_update: 3
 end

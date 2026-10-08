@@ -13,7 +13,8 @@ defmodule Kirbs.Montonio.OrderShipmentHandler do
 
   require Logger
 
-  alias Kirbs.Resources.Order
+  alias Kirbs.Montonio.RedactPayload
+  alias Kirbs.Resources.{Order, OrderEvent}
 
   @shipped ["inTransit", "awaitingCollection", "delivered"]
 
@@ -21,7 +22,7 @@ defmodule Kirbs.Montonio.OrderShipmentHandler do
   def handle_shipment_update(event) do
     case find_order(event) do
       %Order{} = order ->
-        update(order, event)
+        deduplicated(order, event)
 
       nil ->
         Logger.warning("Montonio shipment event for unknown order: #{inspect(event.shipment_id)}")
@@ -49,8 +50,52 @@ defmodule Kirbs.Montonio.OrderShipmentHandler do
 
   defp by_reference(_), do: {:ok, nil}
 
+  # Persisted idempotency: the receipt event (shipment_webhook, external id = Montonio eventId)
+  # is written after a successful update; a replay finds it and changes nothing.
+  defp deduplicated(order, event) do
+    external_id = external_id(event)
+
+    case OrderEvent.get_by_external(:shipment_webhook, external_id, not_found_error?: false) do
+      {:ok, %OrderEvent{}} ->
+        {:ok, :duplicate}
+
+      {:ok, nil} ->
+        received_at = DateTime.utc_now()
+
+        with :ok <- update(order, event) do
+          record_receipt(order, event, external_id, received_at)
+          :ok
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp external_id(%{event_id: id}) when is_binary(id), do: id
+  defp external_id(event), do: "#{event.shipment_id}:#{event.event_type}:#{event.status}"
+
+  defp record_receipt(order, event, external_id, received_at) do
+    attrs = %{
+      order_id: order.id,
+      kind: :shipment_webhook,
+      source: :montonio_webhook,
+      occurred_at: received_at,
+      external_id: external_id,
+      summary: "Montonio #{event.event_type}#{if event.status, do: " (#{event.status})"}",
+      payload: RedactPayload.run(event[:claims] || %{})
+    }
+
+    case OrderEvent.record(attrs) do
+      {:ok, _} -> :ok
+      {:error, error} -> Logger.warning("Could not record shipment event: #{inspect(error)}")
+    end
+  end
+
   defp update(order, event) do
-    with {:ok, order} <- Order.set_shipment(order, attrs(order, event)),
+    ctx = [context: %{event_source: :montonio_webhook}]
+
+    with {:ok, order} <- Order.set_shipment(order, attrs(order, event), ctx),
          {:ok, order} <- maybe_ship(order, event.status),
          {:ok, _order} <- maybe_deliver(order, event.status) do
       :ok
@@ -80,10 +125,12 @@ defmodule Kirbs.Montonio.OrderShipmentHandler do
   defp error(_order, _event), do: nil
 
   defp maybe_ship(%{status: :paid} = order, status) when status in @shipped,
-    do: Order.mark_shipped(order, %{})
+    do: Order.mark_shipped(order, %{}, context: %{event_source: :montonio_webhook})
 
   defp maybe_ship(order, _status), do: {:ok, order}
 
-  defp maybe_deliver(%{status: :shipped} = order, "delivered"), do: Order.mark_delivered(order)
+  defp maybe_deliver(%{status: :shipped} = order, "delivered"),
+    do: Order.mark_delivered(order, %{}, context: %{event_source: :montonio_webhook})
+
   defp maybe_deliver(order, _status), do: {:ok, order}
 end
