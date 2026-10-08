@@ -30,6 +30,8 @@ defmodule Kirbs.Montonio.Config do
     end
   end
 
+  def notification_base_url, do: get(:notification_base_url)
+
   def configured?, do: is_binary(access_key()) and is_binary(secret_key())
 
   def stargate_base_url, do: get(:stargate_base_url) || Map.fetch!(@stargate_urls, env())

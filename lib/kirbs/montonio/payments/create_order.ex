@@ -26,7 +26,7 @@ defmodule Kirbs.Montonio.Payments.CreateOrder do
   alias Kirbs.Montonio.{Client, Config, Jwt}
 
   @token_ttl 600
-  @required [:merchant_reference, :total_cents, :return_url, :notification_url, :line_items]
+  @required [:merchant_reference, :total_cents, :return_url, :line_items]
 
   def run(params) when is_map(params) do
     with :ok <- ensure_configured(),
@@ -59,42 +59,49 @@ defmodule Kirbs.Montonio.Payments.CreateOrder do
     end
   end
 
+  # Montonio rejects local notification URLs (e.g. localhost in dev), and the field is
+  # optional: without it the return URL still verifies the token and drives the same handler.
+  defp put_notification_url(payload, nil), do: payload
+  defp put_notification_url(payload, url), do: Map.put(payload, "notificationUrl", url)
+
   defp build_payload(params) do
     total = cents_to_amount(params.total_cents)
     currency = Map.get(params, :currency, "EUR")
     locale = Map.get(params, :locale, "et")
 
-    %{
-      "accessKey" => Config.access_key(),
-      "merchantReference" => params.merchant_reference,
-      "returnUrl" => params.return_url,
-      "notificationUrl" => params.notification_url,
-      "grandTotal" => total,
-      "currency" => currency,
-      "locale" => locale,
-      "lineItems" =>
-        Enum.map(params.line_items, fn item ->
-          %{
-            "name" => item.name,
-            "quantity" => item.quantity,
-            "finalPrice" => cents_to_amount(item.price_cents)
-          }
-        end),
-      "payment" => %{
-        "method" => "paymentInitiation",
-        "amount" => total,
+    payload =
+      %{
+        "accessKey" => Config.access_key(),
+        "merchantReference" => params.merchant_reference,
+        "returnUrl" => params.return_url,
+        "grandTotal" => total,
         "currency" => currency,
-        "methodOptions" =>
-          reject_nil(%{
-            "preferredCountry" => "EE",
-            "preferredLocale" => locale,
-            "preferredProvider" => Map.get(params, :preferred_provider),
-            "paymentDescription" => Map.get(params, :payment_description)
-          })
+        "locale" => locale,
+        "lineItems" =>
+          Enum.map(params.line_items, fn item ->
+            %{
+              "name" => item.name,
+              "quantity" => item.quantity,
+              "finalPrice" => cents_to_amount(item.price_cents)
+            }
+          end),
+        "payment" => %{
+          "method" => "paymentInitiation",
+          "amount" => total,
+          "currency" => currency,
+          "methodOptions" =>
+            reject_nil(%{
+              "preferredCountry" => "EE",
+              "preferredLocale" => locale,
+              "preferredProvider" => Map.get(params, :preferred_provider),
+              "paymentDescription" => Map.get(params, :payment_description)
+            })
+        }
       }
-    }
-    |> put_address("billingAddress", Map.get(params, :billing))
-    |> put_address("shippingAddress", Map.get(params, :shipping))
+      |> put_address("billingAddress", Map.get(params, :billing))
+      |> put_address("shippingAddress", Map.get(params, :shipping))
+
+    put_notification_url(payload, Map.get(params, :notification_url))
   end
 
   defp put_address(payload, _key, nil), do: payload

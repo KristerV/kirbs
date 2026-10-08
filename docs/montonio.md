@@ -203,3 +203,30 @@ exact response shapes. The full claims land in the event payload to adjust the e
 6. `CreateShipment.run/1` with a returned pickup point id; confirm `shipment.registered` webhook, then `FetchLabel.run/1` returns a PDF url.
 7. Register the shipping webhook and confirm `shipment.statusUpdated` yields tracking numbers.
 8. Switch to production keys only after all of the above.
+
+## Verified against the real sandbox (2026-10-08)
+
+Run end to end in a browser with the sandbox keys (shop → checkout → Montonio sandbox bank → return):
+
+- **Payments (Stargate sandbox) work.** `POST /api/orders` returns a `paymentUrl` on
+  `sandbox-gateway.montonio.com`; paying with a sandbox bank returns to `/checkout/montonio/return`
+  with a signed `order-token`. Verified claims: `merchantReference`, `paymentStatus` (`PAID`),
+  `uuid`, `paymentMethod` (`paymentInitiation`), `grandTotal`, `currency`. The order was marked paid,
+  the item sold, and `paid_at`, `amount_paid_cents`, `montonio_order_uuid` and the event timeline saved.
+- **`notificationUrl` is required and must be a public URL.** Montonio answers 400
+  "notificationUrl must be a valid non-local URL" for `localhost` and also when it is missing.
+  In dev we send an inert placeholder (`https://example.com/webhooks/montonio`) and rely on the
+  return URL. To receive real webhooks locally set
+  `config :kirbs, :montonio, notification_base_url: "https://<ngrok-or-cloudflared-host>"`.
+- **Dev URLs follow `PORT`.** `config/dev.exs` builds the endpoint `url:` from `PORT`, so return URLs
+  point at the port the server really runs on (4010 when 4000 is taken).
+- **The Shipping API answered 401 for the sandbox keys** on both `sandbox-shipping.montonio.com/api/v2`
+  and `shipping.montonio.com/api/v2` (JWT built exactly as documented: HS256, `access_key`, `exp`).
+  Montonio's shipping docs say shipping keys come with a signed agreement, so these keys are
+  payments-only. Consequences:
+  - pickup points, shipment creation, labels and tracking are still **unverified** against real Montonio;
+  - in sandbox the checkout falls back to the static parcel-machine list (never in production);
+  - after a Montonio payment the shipment job records the 401 as an `error` event and `shipment_error`
+    on the order (visible in `/orders/:id`), and the order stays paid. Create the shipment manually
+    from `/orders/shipping` once shipping keys exist.
+- Carrier codes (`omniva`, `smartpost`, `dpd`) and shipment/label webhook shapes remain unverified.

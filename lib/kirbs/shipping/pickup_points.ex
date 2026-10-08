@@ -11,6 +11,9 @@ defmodule Kirbs.Shipping.PickupPoints do
   with `carrier` one of `:omniva | :dpd | :smartposti`.
   """
 
+  require Logger
+  alias Kirbs.Shipping.PickupPoints.Static
+
   @type carrier :: :omniva | :dpd | :smartposti
   @type point :: %{id: String.t(), name: String.t(), carrier: carrier(), address: String.t()}
 
@@ -27,12 +30,37 @@ defmodule Kirbs.Shipping.PickupPoints do
   or address) and `limit` narrow the result.
   """
   def list(carrier, search \\ nil, limit \\ nil) do
-    points = filter(provider().list(carrier), search)
+    points = filter(provider_list(carrier), search)
     if limit, do: Enum.take(points, limit), else: points
   end
 
   @doc "One point by carrier and id, `{:ok, point}` or `:error`."
-  def get(carrier, id), do: provider().get(carrier, id)
+  def get(carrier, id) do
+    case provider().get(carrier, id) do
+      :error -> sandbox_fallback(fn -> Static.get(carrier, id) end, :error)
+      found -> found
+    end
+  end
+
+  defp provider_list(carrier) do
+    case provider().list(carrier) do
+      [] -> sandbox_fallback(fn -> Static.list(carrier) end, [])
+      points -> points
+    end
+  end
+
+  # Montonio sandbox keys usually cover payments only: the Shipping API answers 401, so there are
+  # no real points. In sandbox we fall back to the static list so checkout stays testable; in
+  # production an empty list stays empty rather than offering made-up parcel machines.
+  defp sandbox_fallback(fun, empty) do
+    if provider() == Kirbs.Shipping.PickupPoints.Montonio and
+         Kirbs.Montonio.Config.env() == :sandbox do
+      Logger.warning("Montonio pickup points unavailable in sandbox; using the static list")
+      fun.()
+    else
+      empty
+    end
+  end
 
   defp filter(points, search) when search in [nil, ""], do: points
 

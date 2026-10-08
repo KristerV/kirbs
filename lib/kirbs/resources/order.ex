@@ -122,7 +122,10 @@ defmodule Kirbs.Resources.Order do
 
       validate attribute_equals(:status, :pending), message: "tellimus ei ole enam avatud"
 
-      validate present([:buyer_name, :buyer_email, :buyer_phone, :delivery_method])
+      validate present(:buyer_name), message: "palun sisesta nimi"
+      validate present(:buyer_email), message: "palun sisesta e-post"
+      validate present(:buyer_phone), message: "palun sisesta telefoninumber"
+      validate present(:delivery_method), message: "vali kättesaamise viis"
 
       validate match(:buyer_email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
         message: "ei ole korrektne e-posti aadress"
