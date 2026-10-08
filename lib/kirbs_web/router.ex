@@ -81,6 +81,7 @@ defmodule KirbsWeb.Router do
       live "/payouts", PayoutLive.Index, :index
       live "/orders", OrdersLive.Index, :index
       live "/orders/shipping", OrdersLive.Shipping, :index
+      live "/orders/:id", OrdersLive.Show, :show
       live "/warehouse-sales", WarehouseSalesLive.Index, :index
       live "/accounting", AccountingLive.Index, :index
       live "/settings", SettingsLive.Index, :index

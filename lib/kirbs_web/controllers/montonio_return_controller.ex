@@ -15,7 +15,7 @@ defmodule KirbsWeb.MontonioReturnController do
   alias Kirbs.Resources.Order
 
   def show(conn, %{"order-token" => token}) do
-    case ApplyPaymentUpdate.run(token) do
+    case ApplyPaymentUpdate.run(token, :return) do
       {:ok, %{merchant_reference: ref}} ->
         redirect(conn, to: target(ref))
 

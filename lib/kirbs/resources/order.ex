@@ -35,6 +35,7 @@ defmodule Kirbs.Resources.Order do
     define :get_by_shipment_id, args: [:shipment_id]
     define :set_montonio_ref
     define :set_shipment
+    define :note_payment_status
     define :flag_payment_conflict
     define :refund
     define :mark_paid, args: []
@@ -127,15 +128,29 @@ defmodule Kirbs.Resources.Order do
         message: "ei ole korrektne e-posti aadress"
 
       change Changes.ApplyCheckout
+
+      change {Changes.RecordEvent, kind: :status_changed, summary: :submitted}
+
       change {Changes.EnqueueEmail, kind: :received, payment_method: :manual}
     end
 
     update :set_montonio_ref do
+      require_atomic? false
       accept [:montonio_order_ref, :montonio_payment_url]
+
+      change {Changes.RecordEvent, kind: :payment_created, summary: :payment_created}
+    end
+
+    # Records the latest Montonio payment status (pending / unknown updates) without changing state.
+    update :note_payment_status do
+      require_atomic? false
+      accept [:last_montonio_status, :montonio_order_uuid, :montonio_payment_method]
     end
 
     # Montonio shipment bookkeeping (creation result, webhook updates, last error).
     update :set_shipment do
+      require_atomic? false
+
       accept [
         :montonio_shipment_id,
         :shipment_status,
@@ -144,12 +159,17 @@ defmodule Kirbs.Resources.Order do
         :tracking_number,
         :tracking_url
       ]
+
+      change Changes.RecordShipmentEvents
     end
 
     # A payment arrived that cannot be fulfilled (item sold elsewhere): leave a note for the
     # admin, who has to refund manually in the Montonio partner system.
     update :flag_payment_conflict do
+      require_atomic? false
       accept [:cancel_reason]
+
+      change {Changes.RecordEvent, kind: :error, summary: :cancel_reason}
     end
 
     # Admin refund bookkeeping for a paid, not yet shipped order. The money itself is refunded
@@ -164,13 +184,24 @@ defmodule Kirbs.Resources.Order do
       change set_attribute(:status, :cancelled)
       change set_attribute(:payment_status, :refunded)
       change set_attribute(:cancelled_at, &DateTime.utc_now/0)
+      change Changes.SetRefundedAmount
+      change set_attribute(:refunded_at, &DateTime.utc_now/0)
+
+      change {Changes.RecordEvent, kind: :refund_recorded, summary: :refund}
     end
 
     # Payment confirmed (admin for manual, webhook for Montonio). Sells the items.
     # Fails cleanly when the order was already paid or an item was sold elsewhere.
     update :mark_paid do
       require_atomic? false
-      accept []
+
+      accept [
+        :montonio_order_uuid,
+        :montonio_payment_method,
+        :amount_paid_cents,
+        :currency,
+        :last_montonio_status
+      ]
 
       validate attribute_in(:status, [:reserved, :cancelled]),
         message: "tellimust ei saa tasutuks märkida"
@@ -183,6 +214,9 @@ defmodule Kirbs.Resources.Order do
       change set_attribute(:cancelled_at, nil)
       change set_attribute(:cancel_reason, nil)
       change Changes.SellItems
+
+      change {Changes.RecordEvent, kind: :payment_paid, summary: :paid}
+
       change {Changes.EnqueueEmail, kind: :paid}
       change Changes.TrackPaid
       change Changes.EnqueueShipment
@@ -199,6 +233,7 @@ defmodule Kirbs.Resources.Order do
 
       change set_attribute(:status, :shipped)
       change set_attribute(:shipped_at, &DateTime.utc_now/0)
+      change {Changes.RecordEvent, kind: :status_changed, summary: "Order shipped"}
       change {Changes.EnqueueEmail, kind: :shipped}
     end
 
@@ -210,12 +245,13 @@ defmodule Kirbs.Resources.Order do
 
       change set_attribute(:status, :delivered)
       change set_attribute(:delivered_at, &DateTime.utc_now/0)
+      change {Changes.RecordEvent, kind: :status_changed, summary: "Order delivered"}
     end
 
     # Only unpaid orders. Releases the items.
     update :cancel do
       require_atomic? false
-      accept [:cancel_reason]
+      accept [:cancel_reason, :payment_failure_reason, :last_montonio_status]
 
       validate attribute_in(:status, [:pending, :reserved]),
         message: "tasutud tellimust ei saa tühistada"
@@ -223,6 +259,8 @@ defmodule Kirbs.Resources.Order do
       change set_attribute(:status, :cancelled)
       change set_attribute(:cancelled_at, &DateTime.utc_now/0)
       change Changes.ReleaseItems
+
+      change {Changes.RecordEvent, kind: :status_changed, summary: :cancelled}
     end
   end
 
@@ -290,6 +328,16 @@ defmodule Kirbs.Resources.Order do
     attribute :montonio_order_ref, :string
     attribute :montonio_payment_url, :string
 
+    # Payment facts reported by Montonio (verified token claims).
+    attribute :montonio_order_uuid, :string
+    attribute :montonio_payment_method, :string
+    attribute :amount_paid_cents, :integer, constraints: [min: 0]
+    attribute :currency, :string, allow_nil?: false, default: "EUR"
+    attribute :refunded_cents, :integer, constraints: [min: 0]
+    attribute :refunded_at, :utc_datetime_usec
+    attribute :payment_failure_reason, :string
+    attribute :last_montonio_status, :string
+
     attribute :reserved_until, :utc_datetime_usec
     attribute :paid_at, :utc_datetime_usec
     attribute :shipped_at, :utc_datetime_usec
@@ -316,6 +364,7 @@ defmodule Kirbs.Resources.Order do
 
   relationships do
     has_many :order_items, Kirbs.Resources.OrderItem
+    has_many :events, Kirbs.Resources.OrderEvent
   end
 
   identities do

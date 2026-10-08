@@ -40,6 +40,7 @@ defmodule Kirbs.Montonio.Payments.VerifyOrderToken do
     if is_binary(reference) and is_binary(raw_status) do
       {:ok,
        %{
+         claims: claims,
          merchant_reference: reference,
          payment_status: Map.get(@statuses, raw_status, :unknown),
          raw_payment_status: raw_status,

@@ -1,20 +1,18 @@
 defmodule Kirbs.Montonio.Store do
   @moduledoc """
-  Owns the ETS tables used by the Montonio integration: the pickup point cache
-  and the webhook de-duplication set. In-memory only (lost on deploy): pickup
-  points are lazily refetched, and handlers must be idempotent anyway.
+  Owns the ETS table used by the Montonio integration: the pickup point cache.
+  In-memory only (lost on deploy), points are lazily refetched. Webhook de-duplication is
+  persisted as `Kirbs.Resources.OrderEvent` rows (unique kind + external_id).
   """
   use GenServer
 
   @points :montonio_pickup_points
-  @seen :montonio_seen_events
 
   def start_link(_opts), do: GenServer.start_link(__MODULE__, nil, name: __MODULE__)
 
   @impl true
   def init(_) do
     :ets.new(@points, [:named_table, :public, read_concurrency: true])
-    :ets.new(@seen, [:named_table, :public])
     {:ok, nil}
   end
 
@@ -30,16 +28,8 @@ defmodule Kirbs.Montonio.Store do
     end
   end
 
-  def seen?(key), do: :ets.member(@seen, key)
-
-  def mark_seen(key) do
-    :ets.insert(@seen, {key, System.os_time(:second)})
-    :ok
-  end
-
   def clear do
     :ets.delete_all_objects(@points)
-    :ets.delete_all_objects(@seen)
     :ok
   end
 end

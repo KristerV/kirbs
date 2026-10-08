@@ -8,7 +8,8 @@ defmodule Kirbs.Services.Orders.FetchMontonioLabel do
     with {:ok, order} <- Order.get(order_id),
          {:ok, shipment_id} <- shipment_id(order),
          {:ok, url} <- FetchLabel.run(%{shipment_ids: [shipment_id]}),
-         {:ok, order} <- Order.set_shipment(order, %{shipment_label_url: url}) do
+         {:ok, order} <-
+           Order.set_shipment(order, %{shipment_label_url: url}, context: %{event_source: :api}) do
       {:ok, order}
     end
   end
