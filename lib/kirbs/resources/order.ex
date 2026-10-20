@@ -42,6 +42,7 @@ defmodule Kirbs.Resources.Order do
     define :mark_shipped
     define :mark_delivered, args: []
     define :cancel
+    define :expire
   end
 
   actions do
@@ -251,6 +252,21 @@ defmodule Kirbs.Resources.Order do
       change set_attribute(:status, :delivered)
       change set_attribute(:delivered_at, &DateTime.utc_now/0)
       change {Changes.RecordEvent, kind: :status_changed, summary: "Order delivered"}
+    end
+
+    # The expiry job: cancels an unpaid order only if, under the row lock, its hold is still
+    # expired (a checkout submit may have extended it since the job read the order).
+    update :expire do
+      require_atomic? false
+      accept []
+
+      change {Changes.LockOrder, statuses: [:pending, :reserved], expired: true}
+      change set_attribute(:cancel_reason, "aegunud")
+      change set_attribute(:status, :cancelled)
+      change set_attribute(:cancelled_at, &DateTime.utc_now/0)
+      change Changes.ReleaseItems
+
+      change {Changes.RecordEvent, kind: :status_changed, summary: :cancelled}
     end
 
     # Only unpaid orders. Releases the items.

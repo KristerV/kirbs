@@ -19,7 +19,7 @@ defmodule Kirbs.Services.Orders.ExpireReservations do
 
   defp cancel_all(orders) do
     Enum.reduce_while(orders, {:ok, 0}, fn order, {:ok, count} ->
-      case Order.cancel(order, %{cancel_reason: "aegunud"}) do
+      case Order.expire(order) do
         {:ok, _} ->
           {:cont, {:ok, count + 1}}
 

@@ -217,6 +217,37 @@ defmodule Kirbs.Resources.OrderTest do
     end
   end
 
+  describe "reservation ownership" do
+    test "extend_reservation only works for the holder's deadline", %{item: item} do
+      {:ok, order} = Order.start([item.id])
+      reserved = Item.get!(item.id)
+      later = DateTime.add(DateTime.utc_now(), 3600, :second)
+      other_deadline = DateTime.add(order.reserved_until, 5, :second)
+
+      assert {:error, _} = Item.extend_reservation(reserved, later, other_deadline)
+      assert Item.get!(item.id).reserved_until == order.reserved_until
+
+      assert {:ok, extended} = Item.extend_reservation(reserved, later, order.reserved_until)
+      assert extended.reserved_until == later
+    end
+
+    test "expire skips an order whose hold was extended after the job read it", %{item: item} do
+      {:ok, order} = Order.start([item.id])
+
+      assert {:error, _} = Order.expire(order)
+      assert Order.get!(order.id).status == :pending
+      assert Item.get!(item.id).kirbs_status == :reserved
+    end
+
+    test "expire cancels an order whose hold really ran out", %{item: item} do
+      {:ok, order} = Order.start([item.id])
+      order = expire!(order)
+
+      assert {:ok, %{status: :cancelled}} = Order.expire(order)
+      assert Item.get!(item.id).kirbs_status == :available
+    end
+  end
+
   describe "expiry" do
     test "ExpireReservations cancels expired orders and frees items", %{item: item, other: other} do
       {:ok, stale} = Order.start([item.id])

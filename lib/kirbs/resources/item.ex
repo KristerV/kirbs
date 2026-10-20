@@ -44,7 +44,7 @@ defmodule Kirbs.Resources.Item do
     define :list_for_sitemap, args: []
     define :reserve, args: [:reserved_until]
     define :release_reservation, args: [:held_until]
-    define :extend_reservation, args: [:reserved_until]
+    define :extend_reservation, args: [:reserved_until, :held_until]
     define :sell_on_kirbs, args: [:sold_price, {:optional, :held_until}]
     define :list_expired_reservations, args: []
     define :list_unpublished_reviewed_by_bag, args: [:bag_id]
@@ -206,12 +206,14 @@ defmodule Kirbs.Resources.Item do
       change set_attribute(:reserved_until, arg(:reserved_until))
     end
 
-    # Pushes a held reservation out (checkout submitted -> longer payment hold).
+    # Pushes a held reservation out (checkout submitted -> longer payment hold). Only the order
+    # that holds it (`held_until` = its current deadline) may extend it.
     update :extend_reservation do
       accept []
       argument :reserved_until, :utc_datetime_usec, allow_nil?: false
+      argument :held_until, :utc_datetime_usec, allow_nil?: false
 
-      validate attribute_equals(:kirbs_status, :reserved)
+      validate Kirbs.Resources.Item.Validations.HoldMatches
       change set_attribute(:reserved_until, arg(:reserved_until))
     end
 

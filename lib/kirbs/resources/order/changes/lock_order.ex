@@ -4,8 +4,9 @@ defmodule Kirbs.Resources.Order.Changes.LockOrder do
   (`SELECT ... FOR UPDATE`) and swaps the changeset's data for the fresh row, so a payment,
   a cancel and a checkout submit can never act on a stale copy of each other's result.
 
-  Options: `statuses` (the order must currently be in one of these) and `unpaid` (the order
-  must not be paid yet). Both are checked against the locked row.
+  Options: `statuses` (the order must currently be in one of these), `unpaid` (the order
+  must not be paid yet) and `expired` (its hold must have run out). All are checked against
+  the locked row.
   """
   use Ash.Resource.Change
 
@@ -36,6 +37,12 @@ defmodule Kirbs.Resources.Order.Changes.LockOrder do
         Ash.Changeset.add_error(changeset,
           field: :status,
           message: "tellimuse staatus on muutunud"
+        )
+
+      opts[:expired] && DateTime.compare(order.reserved_until, DateTime.utc_now()) == :gt ->
+        Ash.Changeset.add_error(changeset,
+          field: :reserved_until,
+          message: "broneering ei ole aegunud"
         )
 
       opts[:unpaid] && order.payment_status == :paid ->

@@ -103,19 +103,20 @@ defmodule Kirbs.Resources.Order.Changes.ApplyCheckout do
   defp apply_hold(changeset, now) do
     payment_method = Ash.Changeset.get_attribute(changeset, :payment_method)
     until = Config.hold_deadline(payment_method, now)
+    held_until = changeset.data.reserved_until
 
     changeset
     |> Ash.Changeset.force_change_attribute(:status, :reserved)
     |> Ash.Changeset.force_change_attribute(:reserved_until, until)
-    |> Ash.Changeset.after_action(&extend_items(&1, &2, until))
+    |> Ash.Changeset.after_action(&extend_items(&1, &2, until, held_until))
   end
 
-  defp extend_items(_changeset, order, until) do
+  defp extend_items(_changeset, order, until, held_until) do
     order = Ash.load!(order, :order_items)
 
     Enum.reduce_while(order.order_items, {:ok, order}, fn order_item, acc ->
       with {:ok, item} <- Item.get(order_item.item_id),
-           {:ok, _} <- Item.extend_reservation(item, until) do
+           {:ok, _} <- Item.extend_reservation(item, until, held_until) do
         {:cont, acc}
       else
         {:error, error} -> {:halt, {:error, error}}
