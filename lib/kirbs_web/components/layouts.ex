@@ -41,6 +41,16 @@ defmodule KirbsWeb.Layouts do
     >
     </div>
     <div id="shop-shell" class="min-h-screen bg-[#fffaf4] text-stone-800 antialiased">
+      <div
+        id="shop-under-construction"
+        role="alert"
+        class="bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900"
+      >
+        See pood on alles ehitamisel ja ei tööta veel. Tellimusi ei saa praegu esitada.
+        <span class="font-normal">
+          / This shop is still being built and does not work yet. Orders cannot be placed.
+        </span>
+      </div>
       <header class="sticky top-0 z-30 border-b border-orange-100 bg-[#fffaf4]/90 backdrop-blur">
         <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <.link
