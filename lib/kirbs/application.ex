@@ -17,6 +17,8 @@ defmodule Kirbs.Application do
          Application.fetch_env!(:kirbs, :ash_domains),
          Application.fetch_env!(:kirbs, Oban)
        )},
+      # Runs once per boot: jobs this machine was executing before it restarted are orphans
+      {Task, &Kirbs.Services.Jobs.RequeueOrphanedJobs.run/0},
       {Phoenix.PubSub, name: Kirbs.PubSub},
       # Start a worker by calling: Kirbs.Worker.start_link(arg)
       # {Kirbs.Worker, arg},

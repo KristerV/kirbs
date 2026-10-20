@@ -42,7 +42,7 @@ defmodule KirbsWeb.ShopLiveTest do
       assert has_element?(view, "#items-#{ctx.pants.id}")
       refute has_element?(view, "#items-#{ctx.hidden.id}")
       assert has_element?(view, "#shop-count", "2 eset")
-      assert has_element?(view, "#shop-hero")
+      refute has_element?(view, "#shop-hero")
     end
 
     test "item cards link to the item page and use responsive images", %{conn: conn} = ctx do
