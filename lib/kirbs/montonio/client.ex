@@ -11,9 +11,9 @@ defmodule Kirbs.Montonio.Client do
     |> Req.merge(Config.req_options())
   end
 
-  @doc "Client for the Shipping API with a bearer JWT (access_key claim, 1h)."
+  @doc "Client for the Shipping API with a bearer JWT (accessKey claim, 1h)."
   def shipping do
-    token = Jwt.sign(%{"access_key" => Config.access_key()}, @shipping_token_ttl)
+    token = Jwt.sign(%{"accessKey" => Config.access_key()}, @shipping_token_ttl)
 
     Req.new(base_url: Config.shipping_base_url(), auth: {:bearer, token}, retry: false)
     |> Req.merge(Config.req_options())

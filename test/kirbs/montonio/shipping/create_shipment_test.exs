@@ -20,7 +20,7 @@ defmodule Kirbs.Montonio.Shipping.CreateShipmentTest do
     Req.Test.stub(Kirbs.Montonio, fn conn ->
       assert conn.request_path == "/api/v2/shipments"
       ["Bearer " <> token] = Plug.Conn.get_req_header(conn, "authorization")
-      assert {:ok, %{"access_key" => "test_access_key"}} = Kirbs.Montonio.Jwt.verify(token)
+      assert {:ok, %{"accessKey" => "test_access_key"}} = Kirbs.Montonio.Jwt.verify(token)
 
       {:ok, raw, conn} = Plug.Conn.read_body(conn)
       body = Jason.decode!(raw)
