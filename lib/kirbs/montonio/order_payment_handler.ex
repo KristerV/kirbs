@@ -4,8 +4,9 @@ defmodule Kirbs.Montonio.OrderPaymentHandler do
 
     * `:paid` -> `Order.mark_paid` with the payment facts from the verified token (no-op when
       already paid; also accepts a late payment of a cancelled/expired order, as long as the
-      items are still free). If the items were sold meanwhile the order is flagged for a manual
-      refund and the update is acknowledged (a retry would not help).
+      items are still free). If the items were sold or reserved by someone else meanwhile the order
+      is flagged for a manual refund and the update is acknowledged (a retry would not help).
+      Any other failure is returned as an error so Montonio retries.
     * `:failed | :cancelled` -> `Order.cancel` while the order is still unpaid.
     * `:pending | :unknown` -> only the latest status is stored.
 
@@ -95,7 +96,7 @@ defmodule Kirbs.Montonio.OrderPaymentHandler do
         # A concurrent webhook/return may have paid it between our read and this write.
         case Order.get(order.id) do
           {:ok, %{payment_status: :paid}} -> :ok
-          _ -> not_fulfillable(order, error, update)
+          _ -> unfulfillable_or_retry(order, error, update)
         end
     end
   end
@@ -162,6 +163,22 @@ defmodule Kirbs.Montonio.OrderPaymentHandler do
   end
 
   defp cents(_), do: nil
+
+  # Only a confirmed inventory conflict (an item sold or held by someone else) is acknowledged
+  # and flagged for a manual refund. Anything else (db trouble, a failing side effect) is
+  # returned as an error so Montonio retries the notification.
+  defp unfulfillable_or_retry(order, error, update) do
+    if inventory_conflict?(error),
+      do: not_fulfillable(order, error, update),
+      else: {:error, error}
+  end
+
+  defp inventory_conflict?(%{errors: errors}) when is_list(errors) do
+    Enum.any?(errors, &inventory_conflict?/1)
+  end
+
+  defp inventory_conflict?(%{field: :kirbs_status}), do: true
+  defp inventory_conflict?(_error), do: false
 
   defp not_fulfillable(order, error, update) do
     Logger.error("Montonio paid #{order.reference} but it cannot be fulfilled: #{inspect(error)}")

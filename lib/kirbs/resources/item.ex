@@ -45,7 +45,7 @@ defmodule Kirbs.Resources.Item do
     define :reserve, args: [:reserved_until]
     define :release_reservation, args: [:held_until]
     define :extend_reservation, args: [:reserved_until]
-    define :sell_on_kirbs, args: [:sold_price]
+    define :sell_on_kirbs, args: [:sold_price, {:optional, :held_until}]
     define :list_expired_reservations, args: []
     define :list_unpublished_reviewed_by_bag, args: [:bag_id]
     define :list_sold_with_stale_kirbs_status, args: []
@@ -245,8 +245,13 @@ defmodule Kirbs.Resources.Item do
     update :sell_on_kirbs do
       accept [:sold_price]
 
+      # the paying order's hold deadline; when given, another buyer's hold blocks the sale
+      argument :held_until, :utc_datetime_usec
+
       validate attribute_does_not_equal(:kirbs_status, :sold),
         message: "ese on juba müüdud"
+
+      validate Kirbs.Resources.Item.Validations.HeldBy
 
       change set_attribute(:kirbs_status, :sold)
       change set_attribute(:status, :sold)

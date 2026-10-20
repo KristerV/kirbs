@@ -172,6 +172,51 @@ defmodule Kirbs.Resources.OrderTest do
     end
   end
 
+  describe "concurrent transitions" do
+    setup %{item: item} do
+      {:ok, order} = Order.start([item.id])
+      {:ok, order} = Order.submit(order, @buyer)
+      %{order: order}
+    end
+
+    test "cancelling from a stale copy cannot undo a payment", %{order: stale, item: item} do
+      {:ok, _paid} = Order.mark_paid(stale)
+
+      assert {:error, _} = Order.cancel(stale, %{cancel_reason: "aegunud"})
+      assert Order.get!(stale.id).status == :paid
+      assert Item.get!(item.id).kirbs_status == :sold
+    end
+
+    test "paying from a stale copy twice is refused", %{order: stale} do
+      {:ok, _paid} = Order.mark_paid(stale)
+      assert {:error, _} = Order.mark_paid(stale)
+    end
+
+    test "submitting the same order twice is refused", %{other: other} do
+      {:ok, pending} = Order.start([other.id])
+      {:ok, _} = Order.submit(pending, @buyer)
+
+      assert {:error, _} = Order.submit(pending, %{@buyer | delivery_method: :pickup})
+      assert Order.get!(pending.id).delivery_method == :omniva_parcel_machine
+    end
+
+    test "a late payment cannot take another buyer's reservation", %{order: late, item: item} do
+      expire!(late)
+      {:ok, _newer} = Order.start([item.id])
+
+      assert {:error, _} = Order.mark_paid(late)
+      assert Item.get!(item.id).kirbs_status == :reserved
+      assert Order.get!(late.id).status == :reserved
+    end
+
+    test "a late payment still works when nobody else took the item", %{order: late, item: item} do
+      late = expire!(late)
+
+      assert {:ok, %{status: :paid}} = Order.mark_paid(late)
+      assert Item.get!(item.id).kirbs_status == :sold
+    end
+  end
+
   describe "expiry" do
     test "ExpireReservations cancels expired orders and frees items", %{item: item, other: other} do
       {:ok, stale} = Order.start([item.id])

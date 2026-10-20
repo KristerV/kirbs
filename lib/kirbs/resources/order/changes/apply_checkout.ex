@@ -8,16 +8,29 @@ defmodule Kirbs.Resources.Order.Changes.ApplyCheckout do
 
   alias Kirbs.Orders.Config
   alias Kirbs.Resources.Item
+  alias Kirbs.Resources.Order.Changes.LockOrder
   alias Kirbs.Shipping.{PickupPoints, Rates}
 
   @impl true
   def change(changeset, _opts, _context) do
+    # lock first: two tabs submitting the same pending order must not both apply
+    Ash.Changeset.before_action(changeset, fn changeset ->
+      changeset |> LockOrder.lock() |> apply_checkout()
+    end)
+  end
+
+  defp apply_checkout(%{valid?: false} = changeset), do: changeset
+
+  defp apply_checkout(changeset) do
     order = changeset.data
     now = DateTime.utc_now()
 
     cond do
       order.status != :pending ->
-        changeset
+        Ash.Changeset.add_error(changeset,
+          field: :base,
+          message: "tellimus on juba esitatud"
+        )
 
       DateTime.compare(order.reserved_until, now) != :gt ->
         Ash.Changeset.add_error(changeset,

@@ -4,6 +4,8 @@ defmodule Kirbs.Services.Orders.ExpireReservations do
   orphaned expired item reservations (reserved items without a live order).
   """
 
+  require Logger
+
   alias Kirbs.Resources.{Item, Order}
 
   def run do
@@ -18,8 +20,13 @@ defmodule Kirbs.Services.Orders.ExpireReservations do
   defp cancel_all(orders) do
     Enum.reduce_while(orders, {:ok, 0}, fn order, {:ok, count} ->
       case Order.cancel(order, %{cancel_reason: "aegunud"}) do
-        {:ok, _} -> {:cont, {:ok, count + 1}}
-        {:error, error} -> {:halt, {:error, error}}
+        {:ok, _} ->
+          {:cont, {:ok, count + 1}}
+
+        # e.g. paid a moment ago: skip it, don't block the rest of the sweep
+        {:error, error} ->
+          Logger.warning("Could not expire order #{order.reference}: #{inspect(error)}")
+          {:cont, {:ok, count}}
       end
     end)
   end

@@ -206,6 +206,8 @@ defmodule Kirbs.Resources.Order do
         :last_montonio_status
       ]
 
+      change {Changes.LockOrder, statuses: [:reserved, :cancelled], unpaid: true}
+
       validate attribute_in(:status, [:reserved, :cancelled]),
         message: "tellimust ei saa tasutuks märkida"
 
@@ -255,6 +257,8 @@ defmodule Kirbs.Resources.Order do
     update :cancel do
       require_atomic? false
       accept [:cancel_reason, :payment_failure_reason, :last_montonio_status]
+
+      change {Changes.LockOrder, statuses: [:pending, :reserved]}
 
       validate attribute_in(:status, [:pending, :reserved]),
         message: "tasutud tellimust ei saa tühistada"

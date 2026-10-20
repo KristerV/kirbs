@@ -9,9 +9,8 @@ defmodule Kirbs.Resources.Order.Changes.ReleaseItems do
 
   @impl true
   def change(changeset, _opts, _context) do
-    held_until = changeset.data.reserved_until
-
     Ash.Changeset.after_action(changeset, fn _changeset, order ->
+      held_until = order.reserved_until
       order = Ash.load!(order, :order_items)
 
       Enum.reduce_while(order.order_items, {:ok, order}, fn order_item, acc ->
