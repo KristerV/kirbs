@@ -1,7 +1,6 @@
 defmodule Kirbs.Orders.Emails do
   @moduledoc """
-  Builds the transactional order emails (Swoosh, Estonian): `received` (with bank-transfer
-  instructions for manual payment), `paid` and `shipped`. Delivery goes through
+  Builds the transactional order emails (Swoosh, Estonian): `paid` and `shipped`. Delivery goes through
   `Kirbs.Services.Orders.SendOrderEmail`.
 
   Sender: `config :kirbs, :shop_mail, from: {"Kirbs", "kirbs@krister.ee"}`
@@ -9,12 +8,8 @@ defmodule Kirbs.Orders.Emails do
   """
   import Swoosh.Email
 
-  alias Kirbs.Orders.BankDetails
   alias Kirbs.Shipping.Rates
   alias KirbsWeb.Shop.Labels
-
-  def build(:received, order),
-    do: base(order, "Kirbs: saime tellimuse #{order.reference} kätte", received_text(order))
 
   def build(:paid, order),
     do: base(order, "Kirbs: tellimus #{order.reference} on tasutud", paid_text(order))
@@ -35,43 +30,6 @@ defmodule Kirbs.Orders.Emails do
     :kirbs
     |> Application.get_env(:shop_mail, [])
     |> Keyword.get(:from, {"Kirbs", "kirbs@krister.ee"})
-  end
-
-  defp received_text(order) do
-    payment =
-      case order.payment_method do
-        :manual ->
-          bank = BankDetails.get()
-
-          """
-          Palun tasu #{Labels.cents(order.total_cents)} pangaülekandega:
-
-          Saaja: #{bank.recipient}
-          IBAN: #{bank.iban}
-          Summa: #{Labels.cents(order.total_cents)}
-          Selgitus: #{order.reference}
-
-          Hoiame esemeid sinu jaoks kuni #{format_time(order.reserved_until)}. Kui makset selleks ajaks ei laeku, broneering vabaneb.
-          """
-
-        _ ->
-          "Maksa tellimus ära lingil, mille said maksmise sammus.\n"
-      end
-
-    """
-    Tere, #{order.buyer_name}!
-
-    Täname tellimuse eest. Tellimuse number on #{order.reference}.
-
-    #{items_block(order)}
-    #{delivery_line(order)}
-    Kokku: #{Labels.cents(order.total_cents)}
-
-    #{payment}
-    Tellimuse seisu näed siin: #{order_url(order)}
-
-    Kirbs
-    """
   end
 
   defp paid_text(order) do
@@ -111,9 +69,6 @@ defmodule Kirbs.Orders.Emails do
     """
   end
 
-  defp next_step(%{delivery_method: :pickup}),
-    do: "Anname teada, kui tellimus on järeleminekuks valmis."
-
   defp next_step(_order), do: "Paneme saadetise peagi teele ja anname siis uuesti teada."
 
   defp items_block(order) do
@@ -121,21 +76,12 @@ defmodule Kirbs.Orders.Emails do
     Enum.join(["Tellitud:" | lines], "\n")
   end
 
-  defp delivery_line(%{delivery_method: :pickup} = order),
-    do: "Kättesaamine: #{Rates.label(:pickup)} (#{Rates.pickup_address()}), #{shipping(order)}"
-
   defp delivery_line(order),
     do:
       "Tarne: #{Rates.label(order.delivery_method)} – #{order.pickup_point_name}, #{shipping(order)}"
 
   defp shipping(%{shipping_cents: 0}), do: "tasuta"
   defp shipping(order), do: Labels.cents(order.shipping_cents)
-
-  defp format_time(nil), do: "-"
-
-  defp format_time(%DateTime{} = dt) do
-    dt |> DateTime.shift_zone!("Europe/Tallinn") |> Calendar.strftime("%d.%m.%Y %H:%M")
-  end
 
   defp order_url(order), do: KirbsWeb.Endpoint.url() <> "/order/#{order.token}"
 

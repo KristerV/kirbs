@@ -24,9 +24,7 @@ defmodule Kirbs.Services.Orders.CreateMontonioShipment do
   defp ensure_shippable(%{montonio_shipment_id: id} = order) when is_binary(id),
     do: {:skip, order}
 
-  defp ensure_shippable(%{status: :paid, delivery_method: method} = order) do
-    if method != nil and Rates.parcel_machine?(method), do: :ok, else: {:skip, order}
-  end
+  defp ensure_shippable(%{status: :paid, delivery_method: method}) when method != nil, do: :ok
 
   defp ensure_shippable(order), do: {:skip, order}
 

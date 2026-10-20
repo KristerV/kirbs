@@ -7,7 +7,6 @@ defmodule Kirbs.Resources.Order.Changes.EnqueueShipment do
   use Ash.Resource.Change
 
   alias Kirbs.Montonio.Config
-  alias Kirbs.Shipping.Rates
 
   @impl true
   def change(changeset, _opts, _context) do
@@ -22,7 +21,6 @@ defmodule Kirbs.Resources.Order.Changes.EnqueueShipment do
   end
 
   defp shipment?(order) do
-    order.payment_method == :montonio and Config.configured?() and
-      order.delivery_method != nil and Rates.parcel_machine?(order.delivery_method)
+    order.payment_method == :montonio and Config.configured?() and order.delivery_method != nil
   end
 end

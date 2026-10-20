@@ -94,23 +94,5 @@ defmodule KirbsWeb.OrdersAdminLiveTest do
       assert shipped.tracking_number == "CC9EE"
       refute has_element?(view, "#orders-#{order.id}")
     end
-
-    test "own pickup orders are handed over, not shipped", %{conn: conn, item: item} do
-      other = item!(bag!(), %{listed_price: 5})
-      {:ok, order} = Order.start([other.id])
-
-      {:ok, order} =
-        Order.submit(order, %{@buyer | delivery_method: :pickup, pickup_point_id: nil})
-
-      {:ok, order} = Order.mark_paid(order)
-
-      {:ok, view, _html} = live(admin_conn(conn), ~p"/orders/shipping")
-      assert has_element?(view, "#deliver-#{order.id}")
-      refute has_element?(view, "#ship-form-#{order.id}")
-
-      view |> element("#deliver-#{order.id}") |> render_click()
-      assert Order.get!(order.id).status == :delivered
-      _ = item
-    end
   end
 end

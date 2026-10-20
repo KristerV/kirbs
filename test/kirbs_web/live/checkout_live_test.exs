@@ -24,20 +24,6 @@ defmodule KirbsWeb.CheckoutLiveTest do
     {conn, view}
   end
 
-  defp form_params(overrides \\ %{}) do
-    Map.merge(
-      %{
-        "buyer_name" => "Mari Maasikas",
-        "buyer_email" => "mari@example.com",
-        "buyer_phone" => "5551234",
-        "delivery_method" => "omniva_parcel_machine",
-        "pickup_point_id" => "omniva-tallinn-ulemiste",
-        "payment_method" => "manual"
-      },
-      overrides
-    )
-  end
-
   describe "checkout" do
     test "reserving on mount creates a pending order and the item is held", %{
       conn: conn,
@@ -83,11 +69,45 @@ defmodule KirbsWeb.CheckoutLiveTest do
       assert has_element?(view, "#pickup-point select")
       assert has_element?(view, "#summary-shipping", "3,99 €")
       assert has_element?(view, "#summary-total", "33,99 €")
+    end
 
-      view |> form("#checkout-form", checkout: %{delivery_method: "pickup"}) |> render_change()
-      refute has_element?(view, "#pickup-point")
-      assert has_element?(view, "#pickup-address")
-      assert has_element?(view, "#summary-shipping", "Tasuta")
+    test "only Montonio parcel machines are offered", %{conn: conn, item: item} do
+      {_conn, view} = checkout(conn, item)
+
+      assert has_element?(view, "#delivery-omniva_parcel_machine")
+      assert has_element?(view, "#delivery-dpd_parcel_machine")
+      assert has_element?(view, "#delivery-smartposti_parcel_machine")
+      refute has_element?(view, "#delivery-pickup")
+      refute has_element?(view, "#payment-manual")
+      assert has_element?(view, "#payment-info")
+    end
+
+    test "without Montonio keys nothing is reserved", %{conn: conn, item: item} do
+      original = Application.get_env(:kirbs, :montonio)
+      Application.put_env(:kirbs, :montonio, Keyword.drop(original, [:access_key, :secret_key]))
+      on_exit(fn -> Application.put_env(:kirbs, :montonio, original) end)
+
+      conn = visit(conn)
+      {:ok, view, _html} = live(conn, ~p"/checkout/#{item.slug}")
+
+      assert has_element?(view, "#checkout-unavailable-payments")
+      assert Order.list_recent!() == []
+      assert Item.get!(item.id).kirbs_status == :available
+    end
+
+    test "in production a failing rates call blocks checkout instead of guessing a price", %{
+      conn: conn,
+      item: item
+    } do
+      original = Application.get_env(:kirbs, :montonio)
+      Application.put_env(:kirbs, :montonio, Keyword.put(original, :env, :production))
+      on_exit(fn -> Application.put_env(:kirbs, :montonio, original) end)
+      Kirbs.StubRatesFetcher.fail_with(:boom)
+
+      {_conn, view} = checkout(conn, item)
+
+      assert has_element?(view, "#checkout-unavailable-shipping")
+      refute has_element?(view, "#checkout-form")
     end
 
     test "submit validates required fields", %{conn: conn, item: item} do
@@ -101,28 +121,6 @@ defmodule KirbsWeb.CheckoutLiveTest do
       assert has_element?(view, "#checkout-form")
       assert html =~ "ei ole korrektne e-posti aadress"
       assert [%{status: :pending}] = Order.list_recent!()
-    end
-
-    test "submit reserves the order, redirects and queues the email", %{conn: conn, item: item} do
-      {_conn, view} = checkout(conn, item)
-
-      view
-      |> form("#checkout-form", checkout: %{delivery_method: "omniva_parcel_machine"})
-      |> render_change()
-
-      result =
-        view
-        |> form("#checkout-form", checkout: form_params())
-        |> render_submit()
-
-      {:error, {:live_redirect, %{to: "/order/" <> token}}} = result
-      assert {:ok, order} = Order.get_by_token(token)
-      assert order.status == :reserved
-      assert order.total_cents == 3349
-      assert order.buyer_email == "mari@example.com"
-      assert order.ab_visitor_id
-
-      assert_enqueued(worker: Kirbs.Jobs.SendOrderEmailJob, args: %{kind: "received"})
     end
 
     test "tracking: reserved, checkout_started and identify", %{conn: conn, item: item} do
@@ -143,26 +141,27 @@ defmodule KirbsWeb.CheckoutLiveTest do
   end
 
   describe "order page" do
-    setup %{conn: conn, item: item} do
-      {_conn, view} = checkout(conn, item)
+    setup %{item: item} do
+      {:ok, order} = Order.start([item.id])
 
-      view
-      |> form("#checkout-form", checkout: %{delivery_method: "omniva_parcel_machine"})
-      |> render_change()
+      {:ok, order} =
+        Order.submit(order, %{
+          buyer_name: "Mari Maasikas",
+          buyer_email: "mari@example.com",
+          buyer_phone: "5551234",
+          delivery_method: :omniva_parcel_machine,
+          pickup_point_id: "omniva-tallinn-ulemiste"
+        })
 
-      {:error, {:live_redirect, %{to: "/order/" <> token}}} =
-        view |> form("#checkout-form", checkout: form_params()) |> render_submit()
-
-      %{token: token}
+      %{token: order.token}
     end
 
-    test "shows bank transfer instructions while awaiting payment", %{conn: conn, token: token} do
+    test "shows the order while awaiting payment", %{conn: conn, token: token} do
       {:ok, view, _html} = live(conn, ~p"/order/#{token}")
 
       assert has_element?(view, "#order-status[data-status=reserved]")
-      assert has_element?(view, "#bank-instructions")
-      assert has_element?(view, "#bank-iban")
-      assert has_element?(view, "#bank-amount", "33,49 €")
+      assert has_element?(view, "#montonio-awaiting")
+      refute has_element?(view, "#bank-instructions")
       assert has_element?(view, "#order-items")
       assert has_element?(view, "#order-delivery", "Ülemiste")
     end
@@ -173,7 +172,7 @@ defmodule KirbsWeb.CheckoutLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/order/#{token}")
       assert has_element?(view, "#order-status[data-status=paid]")
-      refute has_element?(view, "#bank-instructions")
+      refute has_element?(view, "#montonio-awaiting")
     end
 
     test "unknown tokens redirect", %{conn: conn} do
@@ -182,29 +181,24 @@ defmodule KirbsWeb.CheckoutLiveTest do
 
     test "emails are built from the order", %{token: token} do
       {:ok, order} = Order.get_by_token(token)
-
-      assert {:ok, _} = Kirbs.Services.Orders.SendOrderEmail.run(order.id, :received)
-      assert_email_sent(subject: "Kirbs: saime tellimuse #{order.reference} kätte")
-
-      email = Kirbs.Orders.Emails.build(:received, order)
-      assert email.text_body =~ "IBAN"
-      assert email.text_body =~ order.reference
-      assert email.to == [{"Mari Maasikas", "mari@example.com"}]
-
       {:ok, order} = Order.mark_paid(order)
+      assert Kirbs.Orders.Emails.build(:paid, order).subject =~ "tasutud"
+
       {:ok, order} = Order.mark_shipped(order, %{tracking_number: "CC1EE"})
       order = Order.get!(order.id)
-      assert Kirbs.Orders.Emails.build(:paid, order).subject =~ "tasutud"
-      assert Kirbs.Orders.Emails.build(:shipped, order).text_body =~ "CC1EE"
+      email = Kirbs.Orders.Emails.build(:shipped, order)
+      assert email.text_body =~ "CC1EE"
+      assert email.to == [{"Mari Maasikas", "mari@example.com"}]
     end
 
     test "the email job delivers", %{token: token} do
       {:ok, order} = Order.get_by_token(token)
+      {:ok, order} = Order.mark_paid(order)
 
       assert :ok =
-               perform_job(Kirbs.Jobs.SendOrderEmailJob, %{order_id: order.id, kind: "received"})
+               perform_job(Kirbs.Jobs.SendOrderEmailJob, %{order_id: order.id, kind: "paid"})
 
-      assert_email_sent(to: {"Mari Maasikas", "mari@example.com"})
+      assert_email_sent(subject: "Kirbs: tellimus #{order.reference} on tasutud")
     end
   end
 

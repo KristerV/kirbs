@@ -1,8 +1,8 @@
 defmodule KirbsWeb.OrdersLive.Shipping do
   @moduledoc """
   Admin manual postage view: paid orders that still have to leave the house. Shows where to
-  send them (parcel machine or own pickup), and records "shipped" with an optional tracking
-  number (which triggers the shipped email) or "handed over" for own pickup.
+  send them (parcel machine), and records "shipped" with an optional tracking number (which
+  triggers the shipped email).
   """
   use KirbsWeb, :live_view
 
@@ -24,13 +24,6 @@ defmodule KirbsWeb.OrdersLive.Shipping do
     {:noreply,
      act(socket, id, "Marked shipped", fn order ->
        Order.mark_shipped(order, attrs, context: %{event_source: :admin})
-     end)}
-  end
-
-  def handle_event("deliver", %{"id" => id}, socket) do
-    {:noreply,
-     act(socket, id, "Marked handed over", fn order ->
-       Order.mark_delivered(order, %{}, context: %{event_source: :admin})
      end)}
   end
 
@@ -117,20 +110,15 @@ defmodule KirbsWeb.OrdersLive.Shipping do
                 </div>
                 <div>
                   <p class="text-xs uppercase text-base-content/60">Destination</p>
-                  <%= if order.delivery_method == :pickup do %>
-                    <p class="font-bold">Own pickup</p>
-                    <p class="text-sm">{Rates.pickup_address()}</p>
-                  <% else %>
-                    <p class="font-bold">{order.pickup_point_name}</p>
-                    <p class="text-sm text-base-content/70">
-                      {order.pickup_point_carrier} · {order.pickup_point_id}
-                    </p>
-                  <% end %>
+                  <p class="font-bold">{order.pickup_point_name}</p>
+                  <p class="text-sm text-base-content/70">
+                    {order.pickup_point_carrier} · {order.pickup_point_id}
+                  </p>
                 </div>
               </div>
 
               <div
-                :if={order.payment_method == :montonio and order.delivery_method != :pickup}
+                :if={order.payment_method == :montonio}
                 id={"shipment-#{order.id}"}
                 class="mt-3 rounded-lg bg-base-200 p-3 text-sm"
               >
@@ -187,31 +175,20 @@ defmodule KirbsWeb.OrdersLive.Shipping do
               </ul>
 
               <div class="card-actions mt-4">
-                <%= if order.delivery_method == :pickup do %>
-                  <button
-                    id={"deliver-#{order.id}"}
-                    phx-click="deliver"
-                    phx-value-id={order.id}
-                    class="btn btn-primary btn-sm"
-                  >
-                    Mark handed over
-                  </button>
-                <% else %>
-                  <form
-                    id={"ship-form-#{order.id}"}
-                    phx-submit="ship"
-                    class="flex flex-wrap items-center gap-2"
-                  >
-                    <input type="hidden" name="id" value={order.id} />
-                    <input
-                      type="text"
-                      name="ship[tracking_number]"
-                      placeholder="Tracking number (optional)"
-                      class="input input-bordered input-sm w-64"
-                    />
-                    <button type="submit" class="btn btn-primary btn-sm">Mark shipped</button>
-                  </form>
-                <% end %>
+                <form
+                  id={"ship-form-#{order.id}"}
+                  phx-submit="ship"
+                  class="flex flex-wrap items-center gap-2"
+                >
+                  <input type="hidden" name="id" value={order.id} />
+                  <input
+                    type="text"
+                    name="ship[tracking_number]"
+                    placeholder="Tracking number (optional)"
+                    class="input input-bordered input-sm w-64"
+                  />
+                  <button type="submit" class="btn btn-primary btn-sm">Mark shipped</button>
+                </form>
               </div>
             </div>
           </div>

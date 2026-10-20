@@ -5,7 +5,6 @@ defmodule KirbsWeb.ShopLive.Order do
   """
   use KirbsWeb, :live_view
 
-  alias Kirbs.Orders.BankDetails
   alias Kirbs.Resources.Order
   alias Kirbs.Shipping.Rates
   alias KirbsWeb.Shop.Labels
@@ -16,7 +15,6 @@ defmodule KirbsWeb.ShopLive.Order do
         {:ok,
          socket
          |> assign(:order, order)
-         |> assign(:bank, order.payment_method == :manual && BankDetails.get())
          |> assign(:page_title, "Tellimus #{order.reference} | Kirbs")
          |> assign(:meta, %{robots: "noindex,nofollow"})
          |> poll()}
@@ -61,23 +59,6 @@ defmodule KirbsWeb.ShopLive.Order do
             <span id="order-reference" class="font-bold text-stone-800">{@order.reference}</span>
           </p>
         </div>
-
-        <section
-          :if={@order.status == :reserved and @bank}
-          id="bank-instructions"
-          class="mt-8 rounded-3xl border-2 border-orange-300 bg-orange-50 p-6"
-        >
-          <h2 class="text-lg font-black text-stone-900">Maksa pangaülekandega</h2>
-          <dl class="mt-4 space-y-2 text-sm">
-            <.row label="Saaja" id="bank-recipient" value={@bank.recipient} />
-            <.row label="IBAN" id="bank-iban" value={@bank.iban} />
-            <.row label="Summa" id="bank-amount" value={Labels.cents(@order.total_cents)} />
-            <.row label="Selgitus" id="bank-reference" value={@order.reference} />
-          </dl>
-          <p class="mt-4 text-sm text-stone-600">
-            Hoiame esemeid sinu jaoks kuni {format_time(@order.reserved_until)}. Kui makset selleks ajaks ei laeku, broneering vabaneb.
-          </p>
-        </section>
 
         <section
           :if={@order.status == :reserved and @order.payment_method == :montonio}
@@ -192,17 +173,8 @@ defmodule KirbsWeb.ShopLive.Order do
 
   defp first_item(order), do: List.first(order.order_items)
 
-  defp delivery_text(%{delivery_method: :pickup}),
-    do: "#{Rates.label(:pickup)}: #{Rates.pickup_address()}"
-
   defp delivery_text(order),
     do: "#{Rates.label(order.delivery_method)}: #{order.pickup_point_name}"
-
-  defp format_time(nil), do: "-"
-
-  defp format_time(%DateTime{} = dt) do
-    dt |> DateTime.shift_zone!("Europe/Tallinn") |> Calendar.strftime("%d.%m.%Y %H:%M")
-  end
 
   defp status_icon(:pending), do: "hero-clock"
   defp status_icon(:reserved), do: "hero-banknotes"

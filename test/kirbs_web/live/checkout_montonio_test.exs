@@ -28,8 +28,7 @@ defmodule KirbsWeb.CheckoutMontonioTest do
         "buyer_email" => "mari@example.com",
         "buyer_phone" => "5551234",
         "delivery_method" => "omniva_parcel_machine",
-        "pickup_point_id" => "omniva-tallinn-ulemiste",
-        "payment_method" => "montonio"
+        "pickup_point_id" => "omniva-tallinn-ulemiste"
       },
       overrides
     )
@@ -48,14 +47,13 @@ defmodule KirbsWeb.CheckoutMontonioTest do
     end)
   end
 
-  test "the Montonio option is offered when configured and submit redirects to the bank", %{
+  test "submit prices the shipping and redirects to the bank", %{
     conn: conn,
     item: item
   } do
     stub_create_order()
     view = checkout(conn, item)
-    assert has_element?(view, "#payment-montonio")
-    assert has_element?(view, "#payment-manual")
+    assert has_element?(view, "#payment-info")
 
     view
     |> form("#checkout-form", checkout: %{delivery_method: "omniva_parcel_machine"})
@@ -68,13 +66,15 @@ defmodule KirbsWeb.CheckoutMontonioTest do
     [order] = Order.list_recent!()
     assert order.status == :reserved
     assert order.payment_method == :montonio
+    assert order.shipping_cents == 349
+    assert order.ab_visitor_id
     assert order.montonio_order_ref == "mont-1"
     assert order.montonio_payment_url == "https://pay.example/mont-1"
     assert claims["merchantReference"] == order.reference
     assert claims["grandTotal"] == 33.49
     assert claims["returnUrl"] =~ "/checkout/montonio/return"
     assert claims["notificationUrl"] =~ "/webhooks/montonio"
-    refute_enqueued(worker: Kirbs.Jobs.SendOrderEmailJob, args: %{kind: "received"})
+    refute_enqueued(worker: Kirbs.Jobs.SendOrderEmailJob)
   end
 
   test "Montonio failure cancels the order and frees the item", %{conn: conn, item: item} do
@@ -94,28 +94,6 @@ defmodule KirbsWeb.CheckoutMontonioTest do
     assert has_element?(view, "#retry-checkout")
     assert [%{status: :cancelled}] = Order.list_recent!()
     assert Item.get!(item.id).kirbs_status == :available
-  end
-
-  test "without Montonio keys only bank transfer is offered and montonio is coerced", %{
-    conn: conn,
-    item: item
-  } do
-    original = Application.get_env(:kirbs, :montonio)
-    Application.put_env(:kirbs, :montonio, Keyword.drop(original, [:access_key, :secret_key]))
-    on_exit(fn -> Application.put_env(:kirbs, :montonio, original) end)
-
-    view = checkout(conn, item)
-    refute has_element?(view, "#payment-montonio")
-    assert has_element?(view, "#payment-manual")
-
-    view
-    |> form("#checkout-form", checkout: %{delivery_method: "omniva_parcel_machine"})
-    |> render_change()
-
-    assert {:error, {:live_redirect, %{to: "/order/" <> _}}} =
-             view |> element("#checkout-form") |> render_submit(%{"checkout" => params()})
-
-    assert [%{payment_method: :manual}] = Order.list_recent!()
   end
 
   describe "searchable pickup points (Montonio provider)" do
@@ -206,16 +184,5 @@ defmodule KirbsWeb.CheckoutMontonioTest do
       assert {:error, _} = Order.submit(order, Map.put(attrs, :pickup_point_id, "nope"))
       assert {:ok, _} = Order.submit(order, Map.put(attrs, :pickup_point_id, "pp-tln"))
     end
-  end
-
-  test "shipping price depends on the parcel size", %{conn: conn} do
-    big = item!(bag!(), %{listed_price: 30, parcel_size: :l})
-    view = checkout(conn, big)
-
-    view
-    |> form("#checkout-form", checkout: %{delivery_method: "dpd_parcel_machine"})
-    |> render_change()
-
-    assert has_element?(view, "#summary-shipping", "5,49 €")
   end
 end

@@ -107,8 +107,8 @@ defmodule Kirbs.Resources.Order do
       change Changes.ReserveItems
     end
 
-    # Buyer submitted checkout: contact + delivery (+ payment method). Moves to :reserved and
-    # extends the hold according to the payment method.
+    # Buyer submitted checkout: contact + delivery. Prices the shipping, moves to :reserved and
+    # extends the hold while the buyer pays at Montonio.
     update :submit do
       require_atomic? false
 
@@ -117,8 +117,7 @@ defmodule Kirbs.Resources.Order do
         :buyer_email,
         :buyer_phone,
         :delivery_method,
-        :pickup_point_id,
-        :payment_method
+        :pickup_point_id
       ]
 
       validate attribute_equals(:status, :pending), message: "tellimus ei ole enam avatud"
@@ -134,8 +133,6 @@ defmodule Kirbs.Resources.Order do
       change Changes.ApplyCheckout
 
       change {Changes.RecordEvent, kind: :status_changed, summary: :submitted}
-
-      change {Changes.EnqueueEmail, kind: :received, payment_method: :manual}
     end
 
     update :set_montonio_ref do
@@ -234,9 +231,6 @@ defmodule Kirbs.Resources.Order do
 
       validate attribute_equals(:status, :paid), message: "tellimus ei ole tasutud"
 
-      validate attribute_does_not_equal(:delivery_method, :pickup),
-        message: "isevälja võtmist ei saadeta"
-
       change set_attribute(:status, :shipped)
       change set_attribute(:shipped_at, &DateTime.utc_now/0)
       change {Changes.RecordEvent, kind: :status_changed, summary: "Order shipped"}
@@ -320,8 +314,7 @@ defmodule Kirbs.Resources.Order do
       constraints one_of: [
                     :omniva_parcel_machine,
                     :dpd_parcel_machine,
-                    :smartposti_parcel_machine,
-                    :pickup
+                    :smartposti_parcel_machine
                   ]
     end
 
@@ -338,8 +331,8 @@ defmodule Kirbs.Resources.Order do
 
     attribute :payment_method, :atom do
       allow_nil? false
-      default :manual
-      constraints one_of: [:manual, :montonio]
+      default :montonio
+      constraints one_of: [:montonio]
     end
 
     attribute :payment_status, :atom do

@@ -1,6 +1,7 @@
 import Config
 config :kirbs, Oban, testing: :manual
 config :kirbs, :pickup_points_provider, Kirbs.Shipping.PickupPoints.Static
+config :kirbs, :rates_fetcher, Kirbs.StubRatesFetcher
 config :kirbs, token_signing_secret: "/VHDrBw1lZOfNa3S/rUjuXeLdVqnV3v8"
 config :bcrypt_elixir, log_rounds: 1
 

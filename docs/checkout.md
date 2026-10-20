@@ -1,16 +1,15 @@
-# Checkout, orders and manual payment (Phase 4)
+# Checkout and orders (Phase 4)
 
 Flow: item page `Broneeri` -> `/checkout/:slug` (connected mount reserves the item for 10 minutes
 via `Order.start`, patches to `?order=TOKEN` so reloads resume) -> submit (`Order.submit`, hold
-extended to 72h for bank transfer) -> `/order/:token` (bank instructions) -> admin `/orders`
-"Mark paid" -> `/orders/shipping` "Mark shipped" (+ tracking number). Emails (received / paid /
-shipped) are Oban jobs (`Kirbs.Jobs.SendOrderEmailJob`) enqueued inside the Order actions.
+extended to 30 min while the buyer pays) -> Montonio -> `/order/:token` -> `/orders/shipping`
+"Mark shipped" (+ tracking number). Payment is Montonio only and delivery is parcel machine only
+(Omniva, DPD, SmartPosti): no bank transfer, no own pickup. Emails (paid / shipped) are Oban jobs (`Kirbs.Jobs.SendOrderEmailJob`) enqueued inside the Order actions.
 
 ## Order lifecycle
 
 `pending` (items reserved, no contact yet) -> `reserved` (submitted, awaiting payment) -> `paid`
--> `shipped` -> `delivered`; `cancelled` from pending/reserved (expiry or admin). Own pickup goes
-`paid` -> `delivered` (`mark_delivered`).
+-> `shipped` -> `delivered`; `cancelled` from pending/reserved (expiry or admin).
 
 Item side: `Item.kirbs_status` `:available -> :reserved (reserved_until) -> :sold`.
 `Item.reserve` is a single atomic UPDATE guarded by `Reservable` (available, or reservation already
@@ -26,22 +25,20 @@ All in `Kirbs.Resources.Order` (code_interface):
 | Call | Use |
 |------|-----|
 | `Order.start(item_ids, %{ab_visitor_id:, ab_assignments:})` | reserve + open pending order (checkout does this) |
-| `Order.submit(order, %{buyer_name:, buyer_email:, buyer_phone:, delivery_method:, pickup_point_id:, payment_method: :montonio})` | contact + delivery; status -> `:reserved`; hold = `Orders.Config.hold_deadline(:montonio)` (30 min). Computes `shipping_cents`, `total_cents` (`order.total_cents` is what to charge, EUR cents) |
+| `Order.submit(order, %{buyer_name:, buyer_email:, buyer_phone:, delivery_method:, pickup_point_id:})` | contact + delivery; status -> `:reserved`; hold = `Orders.Config.hold_deadline(:montonio)` (30 min). Computes `shipping_cents`, `total_cents` (`order.total_cents` is what to charge, EUR cents) |
 | `Order.set_montonio_ref(order, %{montonio_order_ref:, montonio_payment_url:})` | store Montonio's order uuid / paymentUrl (unique); records `payment_created` |
 | `Order.get_by_token(token)` / `Order.get(id)` | load (with `order_items: [item: :images]`) |
 | `Order.mark_paid(order)` | webhook on `paymentStatus == PAID`: sells items, sends paid email, fires funnel `paid`. Errors if already paid or an item was sold elsewhere (check `order.payment_status == :paid` first for idempotency). Allowed from `:reserved` and `:cancelled` (late payment) |
 | `Order.cancel(order, %{cancel_reason: "..."})` | unpaid failure/abandon; releases the items |
 
-`order.payment_method` is `:manual | :montonio`; the `:received` email (bank instructions) is only
-sent for `:manual`. For a Montonio return LiveView that lands the buyer back in the app, fire the
+`order.payment_method` is always `:montonio`. For a Montonio return LiveView that lands the buyer back in the app, fire the
 pixel with `KirbsWeb.Track.event(socket, :paid, %{order_id:, value:, currency: "EUR"})`; the
 server-side ab_funnel `paid` event is already fired by `mark_paid` from the visitor stored on the order.
 The mailer adapter in production is not configured yet (see `config/runtime.exs`).
 
 ## Montonio payment path
 
-Checkout offers "Pangalink (Montonio)" when Montonio keys exist, else bank transfer only. Montonio
-submit -> `Services.Orders.StartMontonioPayment` -> external redirect; the webhook/return feed
+Without Montonio keys checkout reserves nothing and shows "Makseviis ei ole hetkel saadaval". Submit -> `Services.Orders.StartMontonioPayment` -> external redirect; the webhook/return feed
 `Kirbs.Montonio.OrderPaymentHandler` (`mark_paid` / `cancel`), the buyer lands on `/order/:token`
 (polls while `reserved`). After `mark_paid`, parcel orders get a Montonio shipment via an Oban job; see
 docs/montonio.md for the full flow, owner checklist and sandbox test plan. Admin `/orders` has
@@ -62,14 +59,18 @@ note form. `mix kirbs.montonio.smoke` runs the sandbox checkout, see docs/monton
 :smartposti`, point = `%{id, name, carrier, address}`) delegate to the module in
 `config :kirbs, :pickup_points_provider` (a `Kirbs.Shipping.PickupPoints.Provider`). Default:
 `PickupPoints.Montonio` when Montonio is configured, else `PickupPoints.Static`. The checkout picker is
-searchable (`PickupPoints.list(carrier, search, limit)`). Prices: `Kirbs.Shipping.Rates` per carrier and
-`Item.parcel_size` (placeholders).
+searchable (`PickupPoints.list(carrier, search, limit)`).
+
+Shipping price: `Kirbs.Shipping.Rates` asks Montonio (`POST /shipping-methods/rates`, via
+`Kirbs.Montonio.Shipping.FetchRates`) what the parcel costs under the store's contract and charges
+the buyer exactly that. The items are described by `Item.parcel_size` / `weight_grams`; the dimensions
+per size are assumptions in `Rates`. When the form is shown and again on submit the price is fetched;
+if Montonio fails the checkout says so (production) rather than charging a guessed price. In the
+Montonio sandbox, which cannot have carriers enabled, placeholder prices stand in.
 `Order.submit` validates `pickup_point_id` through `PickupPoints.get/2` and snapshots the name.
 
 ## TODO(owner)
 
-- Real IBAN and account holder on `/settings` ("Shop bank transfer details"); the placeholder
-  `EE00 ...` is shown until then (`Kirbs.Orders.BankDetails`).
 - Real sender address: `config :kirbs, :shop_mail, from: {"Kirbs", "kirbs@krister.ee"}`, and a
   production Swoosh adapter in `config/runtime.exs`.
-- Real shipping prices and own-pickup address in `Kirbs.Shipping.Rates`.
+- Check the parcel dimensions per `Item.parcel_size` in `Kirbs.Shipping.Rates`: they decide Montonio's price.

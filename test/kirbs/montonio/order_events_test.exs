@@ -26,8 +26,7 @@ defmodule Kirbs.Montonio.OrderEventsTest do
         buyer_email: "mari@example.com",
         buyer_phone: "+372 5551234",
         delivery_method: :omniva_parcel_machine,
-        pickup_point_id: "omniva-tallinn-ulemiste",
-        payment_method: :montonio
+        pickup_point_id: "omniva-tallinn-ulemiste"
       })
 
     {:ok, order} =

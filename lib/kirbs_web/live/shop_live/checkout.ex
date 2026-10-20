@@ -4,7 +4,8 @@ defmodule KirbsWeb.ShopLive.Checkout do
 
   The connected mount reserves the item (`Order.start`, 10 minutes) and patches to
   `?order=TOKEN` so a reload resumes the same pending order. The buyer fills in contact and
-  delivery, then submits (`Order.submit`) and lands on `/order/:token`.
+  delivery, then submits (`Order.submit`) and is sent to Montonio to pay. Shipping is priced
+  by Montonio (`Rates`) when the form is shown. Without Montonio keys nothing is reserved.
 
   Funnel tracking: `reserved` when the reservation is made, `checkout_started` when the form
   is first shown, `identify_by_email` once the buyer typed a valid email.
@@ -29,13 +30,15 @@ defmodule KirbsWeb.ShopLive.Checkout do
          socket
          |> assign(:item, item)
          |> assign(:order, nil)
-         |> assign(:phase, :loading)
+         |> assign(
+           :phase,
+           if(MontonioConfig.configured?(), do: :loading, else: :unavailable_payments)
+         )
+         |> assign(:rate_options, [])
          |> assign(:form, nil)
          |> assign(:delivery_method, nil)
          |> assign(:pickup_points, [])
          |> assign(:point_search, "")
-         |> assign(:payment_method, :manual)
-         |> assign(:montonio?, MontonioConfig.configured?())
          |> assign(:identified_email, nil)
          |> assign(:page_title, "Vormista tellimus | Kirbs")
          |> assign(:meta, %{robots: "noindex,nofollow"})}
@@ -50,6 +53,7 @@ defmodule KirbsWeb.ShopLive.Checkout do
   def handle_params(params, _uri, socket) do
     cond do
       not connected?(socket) -> {:noreply, socket}
+      socket.assigns.phase == :unavailable_payments -> {:noreply, socket}
       socket.assigns.order -> {:noreply, socket}
       token = params["order"] -> {:noreply, resume(socket, token)}
       true -> {:noreply, start_order(socket)}
@@ -57,29 +61,23 @@ defmodule KirbsWeb.ShopLive.Checkout do
   end
 
   def handle_event("validate", %{"checkout" => params} = all, socket) do
-    params = params |> reset_point_on_method_change(socket) |> force_payment_method(socket)
+    params = reset_point_on_method_change(params, socket)
     form = AshPhoenix.Form.validate(socket.assigns.form, params)
 
     {:noreply,
      socket
      |> assign(:point_search, search_text(all))
-     |> assign(:payment_method, parse_payment_method(params["payment_method"]))
      |> assign_form(form)
      |> assign_delivery(params["delivery_method"])
      |> maybe_identify(params["buyer_email"])}
   end
 
   def handle_event("submit", %{"checkout" => params}, socket) do
-    params = params |> reset_point_on_method_change(socket) |> force_payment_method(socket)
+    params = reset_point_on_method_change(params, socket)
 
     case AshPhoenix.Form.submit(socket.assigns.form, params: params) do
       {:ok, order} ->
-        socket = maybe_identify(socket, order.buyer_email)
-
-        case order.payment_method do
-          :montonio -> {:noreply, pay_with_montonio(socket, order)}
-          :manual -> {:noreply, push_navigate(socket, to: ~p"/order/#{order.token}")}
-        end
+        {:noreply, socket |> maybe_identify(order.buyer_email) |> pay_with_montonio(order)}
 
       {:error, form} ->
         {:noreply, socket |> assign_form(form) |> assign_delivery(params["delivery_method"])}
@@ -143,14 +141,21 @@ defmodule KirbsWeb.ShopLive.Checkout do
   end
 
   defp show_form(socket, order) do
-    ms = max(DateTime.diff(order.reserved_until, DateTime.utc_now(), :millisecond), 0)
-    Process.send_after(self(), :reservation_expired, ms)
+    case Rates.options([socket.assigns.item]) do
+      {:ok, options} ->
+        ms = max(DateTime.diff(order.reserved_until, DateTime.utc_now(), :millisecond), 0)
+        Process.send_after(self(), :reservation_expired, ms)
 
-    socket
-    |> assign(:order, order)
-    |> assign(:phase, :form)
-    |> assign_form(AshPhoenix.Form.for_update(order, :submit, as: "checkout"))
-    |> Track.event(:checkout_started, item_meta(socket.assigns.item))
+        socket
+        |> assign(:order, order)
+        |> assign(:rate_options, options)
+        |> assign(:phase, :form)
+        |> assign_form(AshPhoenix.Form.for_update(order, :submit, as: "checkout"))
+        |> Track.event(:checkout_started, item_meta(socket.assigns.item))
+
+      {:error, _reason} ->
+        assign(socket, :phase, :unavailable_shipping)
+    end
   end
 
   defp expired?(order), do: DateTime.compare(order.reserved_until, DateTime.utc_now()) != :gt
@@ -177,13 +182,9 @@ defmodule KirbsWeb.ShopLive.Checkout do
   defp points_for(nil, _search, _selected), do: []
 
   defp points_for(method, search, selected) do
-    if Rates.parcel_machine?(method) do
-      carrier = Rates.carrier(method)
-      points = PickupPoints.list(carrier, search, @max_points)
-      with_selected(points, carrier, selected)
-    else
-      []
-    end
+    carrier = Rates.carrier(method)
+    points = PickupPoints.list(carrier, search, @max_points)
+    with_selected(points, carrier, selected)
   end
 
   # Keep the chosen point in the list even when the search no longer matches it.
@@ -201,14 +202,6 @@ defmodule KirbsWeb.ShopLive.Checkout do
   end
 
   defp search_text(all), do: all |> Map.get("point_search", "") |> String.trim()
-
-  defp parse_payment_method("montonio"), do: :montonio
-  defp parse_payment_method(_), do: :manual
-
-  # Without Montonio keys a forged "montonio" value silently falls back to bank transfer.
-  defp force_payment_method(params, socket) do
-    if socket.assigns.montonio?, do: params, else: Map.put(params, "payment_method", "manual")
-  end
 
   defp parse_method(value) when is_binary(value) do
     Enum.find(Rates.methods(), &(Atom.to_string(&1) == value))
@@ -248,11 +241,17 @@ defmodule KirbsWeb.ShopLive.Checkout do
     }
   end
 
-  defp shipping_cents(nil, _item), do: nil
-  defp shipping_cents(method, item), do: Rates.cents(method, item.parcel_size)
+  defp shipping_cents(nil, _options), do: nil
 
-  defp total_cents(order, method, item),
-    do: order.items_total_cents + (shipping_cents(method, item) || 0)
+  defp shipping_cents(method, options) do
+    case List.keyfind(options, method, 0) do
+      {_method, _label, cents} -> cents
+      nil -> nil
+    end
+  end
+
+  defp total_cents(order, method, options),
+    do: order.items_total_cents + (shipping_cents(method, options) || 0)
 
   # --- view ---------------------------------------------------------------
 
@@ -283,7 +282,29 @@ defmodule KirbsWeb.ShopLive.Checkout do
             id="checkout-payment-failed"
             icon="hero-exclamation-triangle"
             title="Makse alustamine ebaõnnestus"
-            text="Maksekeskkonnaga ei õnnestunud ühendust luua. Broneering vabastati, proovi uuesti või vali pangaülekanne."
+            text="Maksekeskkonnaga ei õnnestunud ühendust luua. Broneering vabastati, proovi uuesti."
+          >
+            <.link navigate={~p"/checkout/#{@item.slug}"} id="retry-checkout" class={primary_button()}>
+              Proovi uuesti
+            </.link>
+          </.state_card>
+        <% :unavailable_payments -> %>
+          <.state_card
+            id="checkout-unavailable-payments"
+            icon="hero-wrench-screwdriver"
+            title="Makseviis ei ole hetkel saadaval"
+            text="Tellimusi ei saa praegu esitada. Proovi hiljem uuesti."
+          >
+            <.link navigate={~p"/p/#{@item.slug}"} id="back-to-item" class={primary_button()}>
+              Tagasi toote juurde
+            </.link>
+          </.state_card>
+        <% :unavailable_shipping -> %>
+          <.state_card
+            id="checkout-unavailable-shipping"
+            icon="hero-exclamation-triangle"
+            title="Tarne hinda ei õnnestunud arvutada"
+            text="Broneering hoitakse mõne minuti. Proovi hetke pärast uuesti."
           >
             <.link navigate={~p"/checkout/#{@item.slug}"} id="retry-checkout" class={primary_button()}>
               Proovi uuesti
@@ -383,7 +404,7 @@ defmodule KirbsWeb.ShopLive.Checkout do
             <h2 class="text-lg font-black text-stone-900">2. Kättesaamine</h2>
             <div id="delivery-options" class="mt-4 grid gap-3">
               <label
-                :for={{method, label, cents} <- Rates.options(@item.parcel_size)}
+                :for={{method, label, cents} <- @rate_options}
                 id={"delivery-#{method}"}
                 class={[
                   "flex cursor-pointer items-center gap-4 rounded-2xl border-2 px-4 py-3.5 transition",
@@ -401,9 +422,7 @@ defmodule KirbsWeb.ShopLive.Checkout do
                   class="size-4 accent-orange-500"
                 />
                 <span class="flex-1 font-bold text-stone-800">{label}</span>
-                <span class="font-black text-stone-900">
-                  {if cents == 0, do: "Tasuta", else: Labels.cents(cents)}
-                </span>
+                <span class="font-black text-stone-900">{Labels.cents(cents)}</span>
               </label>
             </div>
             <p
@@ -415,7 +434,7 @@ defmodule KirbsWeb.ShopLive.Checkout do
             </p>
 
             <div
-              :if={Rates.parcel_machine?(@delivery_method || :pickup)}
+              :if={@delivery_method}
               id="pickup-point"
               class="mt-5"
             >
@@ -449,39 +468,16 @@ defmodule KirbsWeb.ShopLive.Checkout do
                 error_class={field_error_class()}
               />
             </div>
-
-            <p
-              :if={@delivery_method == :pickup}
-              id="pickup-address"
-              class="mt-5 rounded-2xl bg-orange-50 px-4 py-3 text-sm text-stone-700"
-            >
-              {Rates.pickup_address()}
-            </p>
           </section>
 
           <section class="rounded-3xl border border-orange-100 bg-white p-5 sm:p-7">
             <h2 class="text-lg font-black text-stone-900">3. Makse</h2>
-            <div id="payment-options" class="mt-4 grid gap-3">
-              <.payment_option
-                :if={@montonio?}
-                id="payment-montonio"
-                name={@form[:payment_method].name}
-                value="montonio"
-                checked={@payment_method == :montonio}
-                icon="hero-credit-card"
-                title="Pangalink / pangamakse (Montonio)"
-                text="Maksa kohe oma internetipangas. Hoiame eset sinu jaoks 30 minutit."
-              />
-              <.payment_option
-                id="payment-manual"
-                name={@form[:payment_method].name}
-                value="manual"
-                checked={@payment_method == :manual or not @montonio?}
-                icon="hero-banknotes"
-                title="Pangaülekanne"
-                text="Saadame pangaandmed e-postile ja tellimuse lehele. Hoiame eset sinu jaoks 72 tundi."
-              />
-            </div>
+            <p id="payment-info" class="mt-4 flex items-start gap-3 text-stone-700">
+              <.icon name="hero-credit-card" class="mt-0.5 size-6 shrink-0 text-orange-500" />
+              <span>
+                Maksa turvaliselt oma internetipangas (Montonio). Hoiame eset sinu jaoks 30 minutit.
+              </span>
+            </p>
           </section>
         </div>
 
@@ -516,17 +512,17 @@ defmodule KirbsWeb.ShopLive.Checkout do
                   <%= cond do %>
                     <% is_nil(@delivery_method) -> %>
                       <span class="text-stone-400">vali kättesaamise viis</span>
-                    <% shipping_cents(@delivery_method, @item) == 0 -> %>
+                    <% shipping_cents(@delivery_method, @rate_options) == 0 -> %>
                       Tasuta
                     <% true -> %>
-                      {Labels.cents(shipping_cents(@delivery_method, @item))}
+                      {Labels.cents(shipping_cents(@delivery_method, @rate_options))}
                   <% end %>
                 </dd>
               </div>
               <div class="flex justify-between border-t border-orange-100 pt-3 text-base">
                 <dt class="font-black text-stone-900">Kokku</dt>
                 <dd id="summary-total" class="font-black text-stone-900">
-                  {Labels.cents(total_cents(@order, @delivery_method, @item))}
+                  {Labels.cents(total_cents(@order, @delivery_method, @rate_options))}
                 </dd>
               </div>
             </dl>
@@ -551,42 +547,6 @@ defmodule KirbsWeb.ShopLive.Checkout do
 
   defp delivery_error?(form) do
     Phoenix.Component.used_input?(form[:delivery_method]) and form[:delivery_method].errors != []
-  end
-
-  attr :id, :string, required: true
-  attr :name, :string, required: true
-  attr :value, :string, required: true
-  attr :checked, :boolean, required: true
-  attr :icon, :string, required: true
-  attr :title, :string, required: true
-  attr :text, :string, required: true
-
-  defp payment_option(assigns) do
-    ~H"""
-    <label
-      id={@id}
-      class={[
-        "flex cursor-pointer items-start gap-4 rounded-2xl border-2 px-4 py-3.5 transition",
-        if(@checked,
-          do: "border-orange-500 bg-orange-50",
-          else: "border-stone-200 hover:border-orange-300"
-        )
-      ]}
-    >
-      <input
-        type="radio"
-        name={@name}
-        value={@value}
-        checked={@checked}
-        class="mt-1 size-4 accent-orange-500"
-      />
-      <.icon name={@icon} class="mt-0.5 size-6 text-orange-500" />
-      <div>
-        <p class="font-bold text-stone-800">{@title}</p>
-        <p class="text-sm text-stone-600">{@text}</p>
-      </div>
-    </label>
-    """
   end
 
   attr :id, :string, required: true

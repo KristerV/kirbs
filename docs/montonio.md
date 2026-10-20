@@ -52,9 +52,9 @@ Shipping `https://sandbox-shipping.montonio.com/api/v2` / `https://shipping.mont
 
 Everything below is implemented and covered by Req.Test stubs (no real call has been made yet).
 
-1. **Checkout** (`ShopLive.Checkout`): the "Pangalink / pangamakse (Montonio)" option is only shown when
-   `Kirbs.Montonio.Config.configured?/0`; otherwise the shop is bank-transfer only (a forged `montonio`
-   value is coerced to manual). Submit calls `Order.submit(payment_method: :montonio)` (30 min hold),
+1. **Checkout** (`ShopLive.Checkout`): Montonio is the only payment method. Without
+   `Kirbs.Montonio.Config.configured?/0` nothing is reserved and the page says payments are unavailable.
+   Submit calls `Order.submit` (30 min hold),
    then `Services.Orders.StartMontonioPayment.run/1`: `Payments.CreateOrder` with
    `merchant_reference = order.reference` (unique, "K1234567"), items + shipping as line items,
    `Order.set_montonio_ref`, redirect (external) to `payment_url`. If Montonio is unreachable the order
@@ -70,12 +70,14 @@ Everything below is implemented and covered by Req.Test stubs (no real call has 
    `PickupPoints.Montonio` (cached Montonio data) when configured, else `PickupPoints.Static`.
    Checkout has a search box (name/address substring, max 50 shown); `Order.submit` validates the id
    with `provider.get/2`.
-5. **Shipping price**: `Kirbs.Shipping.Rates` by carrier and `Item.parcel_size` (order = largest item,
-   default `m`). All prices and default parcel weights are PLACEHOLDERS (see moduledoc).
+5. **Shipping price**: Montonio's own price via `POST /shipping-methods/rates`
+   (`Montonio.Shipping.FetchRates`), passed on to the buyer without markup. `Kirbs.Shipping.Rates`
+   describes the items (dimensions per `Item.parcel_size`, weight) and, in sandbox only, falls back to
+   placeholder prices because sandbox stores cannot have carriers enabled. Production never guesses.
 6. **Shipment**: `Order.mark_paid` enqueues `Kirbs.Jobs.CreateMontonioShipmentJob` for Montonio-paid
    parcel-machine orders. `Services.Orders.CreateMontonioShipment` is idempotent (skips if
    `montonio_shipment_id` is set), stores shipment id/status/tracking, or stores `shipment_error` and lets
-   Oban retry (5 attempts). Own pickup / manual payment orders get no job.
+   Oban retry (5 attempts).
 7. **Admin** `/orders/shipping`: per Montonio order shows shipment status, tracking and error, with
    "Create/Retry shipment", "Prepare label" (FetchLabel) and "Download label" (PDF link).
    `/orders`: "Cancel / refund" for paid orders only records `payment_status: :refunded` + `cancelled`;
@@ -130,8 +132,7 @@ Partner system (https://partner.montonio.com, sandbox: https://sandbox-partner.m
 - [ ] Refunds: do them in the partner system, then press "Cancel / refund" in `/orders` to keep our records.
 
 App / env (fly secrets): `MONTONIO_ACCESS_KEY`, `MONTONIO_SECRET_KEY`, `MONTONIO_ENV` (`sandbox` or
-`production`). Without them the shop silently stays manual-only. Also replace the placeholder prices in
-`Kirbs.Shipping.Rates` and set `PHX_HOST`/endpoint url correctly (return and webhook URLs are built from it).
+`production`). Without them checkout is closed. Also set `PHX_HOST`/endpoint url correctly (return and webhook URLs are built from it).
 
 End-to-end in sandbox:
 1. Set sandbox env vars, deploy publicly (fly, or ngrok with `PHX_HOST` set).
@@ -172,8 +173,8 @@ One command once the keys exist (no credentials are stored in the repo):
    (`PHX_HOST`/endpoint url decides the return and webhook URLs sent to Montonio; for local use
    http://localhost:4010).
 3. In another terminal: `mix kirbs.montonio.smoke`. It creates a dev test item if none is available
-   (dev seed), opens an order, submits it with `payment_method: :montonio` and an Omniva parcel machine
-   from the pickup point list (own pickup if there are none), starts the Montonio payment and prints the
+   (dev seed), opens an order, submits it with an Omniva parcel machine
+   from the pickup point list (fails if there are none), starts the Montonio payment and prints the
    sandbox payment URL plus next steps. Without keys it prints these instructions and exits non-zero.
 4. Open the URL and pay with the sandbox bank. You land on `/checkout/montonio/return`, which verifies the
    order token and drives the same `OrderPaymentHandler` as the webhook, then redirects to `/order/:token`

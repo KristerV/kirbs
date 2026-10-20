@@ -1,7 +1,7 @@
 defmodule Kirbs.Resources.Order.Changes.EnqueueEmail do
   @moduledoc """
   Enqueues a transactional email (`Kirbs.Jobs.SendOrderEmailJob`) in the action's transaction.
-  Options: `kind` (:received | :paid | :shipped) and optionally `payment_method` to only
+  Options: `kind` (:paid | :shipped) and optionally `payment_method` to only
   send for that payment method.
   """
   use Ash.Resource.Change

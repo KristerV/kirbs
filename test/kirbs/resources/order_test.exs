@@ -73,7 +73,7 @@ defmodule Kirbs.Resources.OrderTest do
   end
 
   describe "submit" do
-    test "moves to reserved, prices shipping, extends hold and enqueues the email", %{item: item} do
+    test "moves to reserved, prices shipping through Montonio and extends the hold", %{item: item} do
       {:ok, order} = Order.start([item.id])
       assert {:ok, order} = Order.submit(order, @buyer)
 
@@ -82,23 +82,27 @@ defmodule Kirbs.Resources.OrderTest do
       assert order.total_cents == 3349
       assert order.pickup_point_name =~ "Ülemiste"
       assert order.pickup_point_carrier == :omniva
-      assert DateTime.diff(order.reserved_until, DateTime.utc_now(), :hour) >= 70
+      assert DateTime.diff(order.reserved_until, DateTime.utc_now(), :minute) in 28..30
 
       item = Item.get!(item.id)
       assert item.reserved_until == order.reserved_until
-
-      assert_enqueued(
-        worker: Kirbs.Jobs.SendOrderEmailJob,
-        args: %{order_id: order.id, kind: "received"}
-      )
     end
 
-    test "own pickup is free and needs no point", %{item: item} do
+    test "own pickup is no longer a delivery method", %{item: item} do
       {:ok, order} = Order.start([item.id])
       attrs = %{@buyer | delivery_method: :pickup} |> Map.delete(:pickup_point_id)
-      assert {:ok, order} = Order.submit(order, attrs)
-      assert order.shipping_cents == 0
-      assert order.total_cents == 3000
+      assert {:error, _} = Order.submit(order, attrs)
+    end
+
+    test "fails instead of guessing when Montonio has no price in production", %{item: item} do
+      original = Application.get_env(:kirbs, :montonio)
+      Application.put_env(:kirbs, :montonio, Keyword.put(original, :env, :production))
+      on_exit(fn -> Application.put_env(:kirbs, :montonio, original) end)
+      Kirbs.StubRatesFetcher.fail_with(:boom)
+
+      {:ok, order} = Order.start([item.id])
+      assert {:error, _} = Order.submit(order, @buyer)
+      assert Order.get!(order.id).status == :pending
     end
 
     test "requires a valid pickup point, contact and email", %{item: item} do

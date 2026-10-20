@@ -1,8 +1,8 @@
 defmodule Kirbs.Resources.Order.Changes.ApplyCheckout do
   @moduledoc """
-  `Order.submit`: resolves the delivery choice (shipping price, pickup point), computes the
-  total, moves the order to :reserved and extends the hold (order and its items) for the
-  chosen payment method.
+  `Order.submit`: resolves the delivery choice (Montonio shipping price, pickup point), computes the
+  total, moves the order to :reserved and extends the hold (order and its items) for
+  the Montonio payment.
   """
   use Ash.Resource.Change
 
@@ -47,30 +47,28 @@ defmodule Kirbs.Resources.Order.Changes.ApplyCheckout do
 
   defp apply_delivery(changeset, order) do
     case Ash.Changeset.get_attribute(changeset, :delivery_method) do
-      nil ->
-        changeset
-
-      :pickup ->
-        changeset
-        |> clear_point()
-        |> set_shipping(order, :pickup)
-
-      method ->
-        changeset |> set_shipping(order, method) |> set_point(method)
+      nil -> changeset
+      method -> changeset |> set_shipping(order, method) |> set_point(method)
     end
   end
 
   defp set_shipping(changeset, order, method) do
-    shipping = Rates.cents(method, parcel_size(order))
-
-    changeset
-    |> Ash.Changeset.force_change_attribute(:shipping_cents, shipping)
-    |> Ash.Changeset.force_change_attribute(:total_cents, order.items_total_cents + shipping)
+    with {:ok, shipping} <- Rates.cents(method, items(order)) do
+      changeset
+      |> Ash.Changeset.force_change_attribute(:shipping_cents, shipping)
+      |> Ash.Changeset.force_change_attribute(:total_cents, order.items_total_cents + shipping)
+    else
+      {:error, _reason} ->
+        Ash.Changeset.add_error(changeset,
+          field: :delivery_method,
+          message: "tarne hinda ei õnnestunud praegu arvutada, proovi hetke pärast uuesti"
+        )
+    end
   end
 
-  defp parcel_size(order) do
+  defp items(order) do
     order = Ash.load!(order, order_items: :item)
-    order.order_items |> Enum.map(& &1.item) |> Rates.parcel_size()
+    Enum.map(order.order_items, & &1.item)
   end
 
   defp set_point(changeset, method) do
@@ -91,18 +89,10 @@ defmodule Kirbs.Resources.Order.Changes.ApplyCheckout do
     end
   end
 
-  defp clear_point(changeset) do
-    changeset
-    |> Ash.Changeset.force_change_attribute(:pickup_point_id, nil)
-    |> Ash.Changeset.force_change_attribute(:pickup_point_name, nil)
-    |> Ash.Changeset.force_change_attribute(:pickup_point_carrier, nil)
-  end
-
   defp apply_hold(%{valid?: false} = changeset, _now), do: changeset
 
   defp apply_hold(changeset, now) do
-    payment_method = Ash.Changeset.get_attribute(changeset, :payment_method)
-    until = Config.hold_deadline(payment_method, now)
+    until = Config.hold_deadline(now)
     held_until = changeset.data.reserved_until
 
     changeset

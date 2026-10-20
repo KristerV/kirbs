@@ -33,8 +33,7 @@ defmodule Kirbs.Montonio.OrderFlowTest do
             buyer_email: "mari@example.com",
             buyer_phone: "+372 5551234",
             delivery_method: :omniva_parcel_machine,
-            pickup_point_id: "omniva-tallinn-ulemiste",
-            payment_method: :montonio
+            pickup_point_id: "omniva-tallinn-ulemiste"
           },
           overrides
         )
@@ -103,7 +102,8 @@ defmodule Kirbs.Montonio.OrderFlowTest do
           buyer_name: "Teine Ostja",
           buyer_email: "t@example.com",
           buyer_phone: "5550000",
-          delivery_method: :pickup
+          delivery_method: :omniva_parcel_machine,
+          pickup_point_id: "omniva-tallinn-ulemiste"
         })
 
       {:ok, _} = Order.mark_paid(other)
@@ -195,12 +195,6 @@ defmodule Kirbs.Montonio.OrderFlowTest do
       assert {:ok, retried} = CreateMontonioShipment.run(order.id)
       assert retried.montonio_shipment_id == "ship-1"
       assert retried.shipment_error == nil
-    end
-
-    test "manual and own pickup orders get no shipment job", %{conn: conn} do
-      {order, _} = montonio_order(%{delivery_method: :pickup, pickup_point_id: nil})
-      assert conn |> pay_webhook(order, "PAID") |> response(200)
-      refute_enqueued(worker: CreateMontonioShipmentJob)
     end
   end
 
