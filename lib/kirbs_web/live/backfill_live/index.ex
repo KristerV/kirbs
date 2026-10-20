@@ -117,7 +117,7 @@ defmodule KirbsWeb.BackfillLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <div class="bg-base-300 min-h-screen">
       <div id="backfill" class="max-w-6xl mx-auto p-6">
         <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
           <h1 class="text-3xl font-bold">Categorization backfill</h1>
@@ -259,7 +259,7 @@ defmodule KirbsWeb.BackfillLive.Index do
           </div>
         </div>
       </div>
-    </Layouts.app>
+    </div>
     """
   end
 end
