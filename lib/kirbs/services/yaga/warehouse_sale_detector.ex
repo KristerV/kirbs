@@ -4,7 +4,7 @@ defmodule Kirbs.Services.Yaga.WarehouseSaleDetector do
   order exists — typically warehouse sales where the buyer paid us directly
   and the platform never produced an escrow flow.
 
-  Returns the subset of those that we still have as `:uploaded_to_yaga`,
+  Returns the subset of those that we still have as listed on Yaga,
   enriched with Yaga's listed price and `updated_at` so the review page can
   prefill a manual mark-sold action.
   """
@@ -31,7 +31,7 @@ defmodule Kirbs.Services.Yaga.WarehouseSaleDetector do
 
     candidates =
       Item.list!()
-      |> Enum.filter(&(&1.status == :uploaded_to_yaga and not is_nil(&1.yaga_slug)))
+      |> Enum.filter(&(&1.yaga_listing_status == :listed and not is_nil(&1.yaga_slug)))
       |> Enum.filter(&Map.has_key?(by_slug, &1.yaga_slug))
       |> Enum.map(fn item ->
         product = Map.fetch!(by_slug, item.yaga_slug)

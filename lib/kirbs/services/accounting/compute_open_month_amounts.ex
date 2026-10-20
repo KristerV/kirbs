@@ -41,7 +41,6 @@ defmodule Kirbs.Services.Accounting.ComputeOpenMonthAmounts do
       i.status == :sold and not is_nil(i.sold_price) and not is_nil(i.sold_at) and
         Accounting.tallinn_month(i.sold_at) == {year, month}
     end)
-    |> Enum.reduce(Decimal.new(0), fn i, acc -> Decimal.add(acc, i.sold_price) end)
-    |> Decimal.div(2)
+    |> Accounting.client_share_total()
   end
 end

@@ -1,9 +1,11 @@
 defmodule KirbsWeb.ItemLive.Show do
   use KirbsWeb, :live_view
   import LiveSelect
+  import KirbsWeb.CategoryComponents
 
   alias Kirbs.Resources.{Item, Image}
   alias Kirbs.YagaTaxonomy
+  alias Kirbs.Services.Channels.PublishReviewedToShop
   alias Kirbs.Services.FindFirstReviewTarget
   alias Kirbs.Services.FindNextBagItemToReview
 
@@ -38,7 +40,7 @@ defmodule KirbsWeb.ItemLive.Show do
     if is_nil(id) do
       {:ok, socket}
     else
-      item = Item.get!(id) |> Ash.load!([:bag])
+      item = Item.get!(id) |> Ash.load!([:bag, :item_categories])
       images = Image.list!() |> Enum.filter(&(&1.item_id == item.id)) |> Enum.sort_by(& &1.order)
 
       # Load Yaga taxonomy from static data
@@ -88,6 +90,7 @@ defmodule KirbsWeb.ItemLive.Show do
        |> assign(:color_options, color_options)
        |> assign(:material_options, material_options)
        |> assign(:size_options, size_options)
+       |> assign(:shop_category_options, shop_category_options())
        |> assign(:delete_confirmation, false)
        |> assign(:selected_image, nil)
        |> assign(:review_bag_id, params["bag_id"])}
@@ -126,6 +129,9 @@ defmodule KirbsWeb.ItemLive.Show do
         "suggested_category",
         "listed_price"
       ])
+      |> Map.merge(shop_attribute_params(item_params))
+      |> Map.merge(extra_category_params(item_params))
+      |> Map.put("waterproof", item_params["waterproof"] == "true")
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
       |> Map.put("status", new_status)
@@ -137,7 +143,7 @@ defmodule KirbsWeb.ItemLive.Show do
         {:noreply,
          socket
          |> put_flash(:info, "Item saved!")
-         |> assign(:item, item)}
+         |> assign(:item, Ash.load!(item, [:item_categories]))}
 
       {:error, error} ->
         {:noreply, put_flash(socket, :error, "Failed to save item: #{inspect(error)}")}
@@ -175,6 +181,9 @@ defmodule KirbsWeb.ItemLive.Show do
         "suggested_category",
         "listed_price"
       ])
+      |> Map.merge(shop_attribute_params(item_params))
+      |> Map.merge(extra_category_params(item_params))
+      |> Map.put("waterproof", item_params["waterproof"] == "true")
       |> Map.put("colors", colors)
       |> Map.put("materials", materials)
       |> Map.put("status", new_status)
@@ -301,6 +310,28 @@ defmodule KirbsWeb.ItemLive.Show do
   end
 
   @impl true
+  def handle_event("publish_to_shop", _params, socket) do
+    item = socket.assigns.item
+
+    cond do
+      PublishReviewedToShop.publishable?(item) ->
+        case Item.publish(item) do
+          {:ok, published} ->
+            {:noreply,
+             socket
+             |> assign(:item, published)
+             |> put_flash(:info, "Published to the shop")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Could not publish to the shop")}
+        end
+
+      true ->
+        {:noreply, put_flash(socket, :error, "Set a category and a listed price first")}
+    end
+  end
+
+  @impl true
   def handle_event("show_image", %{"image_id" => image_id}, socket) do
     selected_image = Enum.find(socket.assigns.images, &(&1.id == image_id))
     {:noreply, assign(socket, :selected_image, selected_image)}
@@ -352,7 +383,7 @@ defmodule KirbsWeb.ItemLive.Show do
   @impl true
   def handle_info({:item_processed, _item_id}, socket) do
     # Reload item data when AI processing completes
-    item = Item.get!(socket.assigns.item.id) |> Ash.load!([:bag])
+    item = Item.get!(socket.assigns.item.id) |> Ash.load!([:bag, :item_categories])
     form = AshPhoenix.Form.for_update(item, :update, as: "item")
 
     {:noreply,
@@ -360,6 +391,49 @@ defmodule KirbsWeb.ItemLive.Show do
      |> assign(:item, item)
      |> assign(:form, to_form(form))}
   end
+
+  @shop_attribute_keys ~w(category_id age_group gender season condition)
+
+  # The checkbox list always submits a blank value, so a present key means "replace the set".
+  defp extra_category_params(%{"extra_category_ids" => ids}) when is_list(ids),
+    do: %{"extra_category_ids" => ids |> Enum.reject(&(&1 == "")) |> Enum.uniq()}
+
+  defp extra_category_params(_), do: %{}
+
+  defp extra_ids(item), do: Enum.map(item.item_categories, & &1.category_id)
+
+  # Typed shop attributes come from plain selects; a blank option clears the value.
+  defp shop_attribute_params(item_params) do
+    for key <- @shop_attribute_keys, Map.has_key?(item_params, key), into: %{} do
+      {key, if(item_params[key] == "", do: nil, else: item_params[key])}
+    end
+  end
+
+  defp shop_category_options do
+    {:ok, options} = Kirbs.Services.Categories.GroupedLeafOptions.run()
+    options
+  end
+
+  @age_groups [
+    baby: "Beebi",
+    toddler: "Väikelaps",
+    child: "Laps",
+    teen: "Teismeline",
+    adult: "Täiskasvanu"
+  ]
+  @genders [girl: "Tüdruk", boy: "Poiss", unisex: "Unisex", woman: "Naine", man: "Mees"]
+  @seasons [
+    spring_autumn: "Kevad/sügis",
+    summer: "Suvi",
+    winter: "Talv",
+    all_year: "Aastaringne"
+  ]
+  @shop_conditions [
+    new_with_tags: "Uus (siltidega)",
+    like_new: "Uueväärne",
+    good: "Hea",
+    fair: "Keskmine"
+  ]
 
   defp parse_live_select_array(nil), do: []
   defp parse_live_select_array([]), do: []
@@ -449,6 +523,33 @@ defmodule KirbsWeb.ItemLive.Show do
     end
   end
 
+  defp age_groups, do: @age_groups
+  defp genders, do: @genders
+  defp seasons, do: @seasons
+  defp shop_conditions, do: @shop_conditions
+
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :label, :string, required: true
+  attr :options, :list, required: true
+  attr :value, :any, default: nil
+
+  defp shop_select(assigns) do
+    ~H"""
+    <div class="form-control">
+      <label class="label" for={@id}>
+        <span class="label-text font-semibold">{@label}</span>
+      </label>
+      <select id={@id} name={@name} class="select select-bordered w-full">
+        <option value="">--</option>
+        <option :for={{key, text} <- @options} value={key} selected={@value == key}>
+          {text}
+        </option>
+      </select>
+    </div>
+    """
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -472,6 +573,14 @@ defmodule KirbsWeb.ItemLive.Show do
             <button class="btn btn-sm" phx-click="run_ai">
               Run AI
             </button>
+            <%= if @item.status == :reviewed and is_nil(@item.published_at) do %>
+              <button id="publish-to-shop" class="btn btn-sm btn-success" phx-click="publish_to_shop">
+                Publish to shop
+              </button>
+            <% end %>
+            <%= if @item.published_at do %>
+              <span id="published-badge" class="badge badge-success">In shop</span>
+            <% end %>
             <button
               class={"btn btn-sm #{if @delete_confirmation, do: "btn-error", else: ""}"}
               phx-click="delete_item"
@@ -534,7 +643,7 @@ defmodule KirbsWeb.ItemLive.Show do
         </div>
         
     <!-- Item Data Form -->
-        <form phx-submit="save_item" phx-change="form_change">
+        <form id="item-form" phx-submit="save_item" phx-change="form_change">
           <div class="card bg-base-100 shadow-xl mb-6">
             <div class="card-body">
               <h2 class="card-title mb-4">Basic Information</h2>
@@ -659,6 +768,91 @@ defmodule KirbsWeb.ItemLive.Show do
             </div>
           </div>
 
+          <div id="shop-attributes" class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+              <h2 class="card-title mb-4">Shop category and attributes</h2>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-control md:col-span-2">
+                  <label class="label" for="item-category-id">
+                    <span class="label-text font-semibold">Shop category</span>
+                  </label>
+                  <select
+                    id="item-category-id"
+                    name="item[category_id]"
+                    class="select select-bordered w-full"
+                  >
+                    <option value="">-- no category --</option>
+                    <optgroup :for={{label, options} <- @shop_category_options} label={label}>
+                      <option
+                        :for={{name, id} <- options}
+                        value={id}
+                        selected={@item.category_id == id}
+                      >
+                        {name}
+                      </option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                <div class="form-control md:col-span-2">
+                  <span class="label-text font-semibold mb-1">Extra categories (sets)</span>
+                  <.extra_categories
+                    id="item-extra-categories"
+                    name="item[extra_category_ids]"
+                    options={@shop_category_options}
+                    selected={extra_ids(@item)}
+                    primary_id={@item.category_id}
+                  />
+                </div>
+
+                <div class="form-control md:col-span-2">
+                  <input type="hidden" name="item[waterproof]" value="false" />
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      id="item-waterproof"
+                      type="checkbox"
+                      name="item[waterproof]"
+                      value="true"
+                      checked={@item.waterproof}
+                      class="checkbox"
+                    />
+                    <span class="label-text font-semibold">Waterproof (veekindel)</span>
+                  </label>
+                </div>
+
+                <.shop_select
+                  id="item-age-group"
+                  name="item[age_group]"
+                  label="Age group"
+                  options={age_groups()}
+                  value={@item.age_group}
+                />
+                <.shop_select
+                  id="item-gender"
+                  name="item[gender]"
+                  label="Gender"
+                  options={genders()}
+                  value={@item.gender}
+                />
+                <.shop_select
+                  id="item-season"
+                  name="item[season]"
+                  label="Season"
+                  options={seasons()}
+                  value={@item.season}
+                />
+                <.shop_select
+                  id="item-condition"
+                  name="item[condition]"
+                  label="Shop condition"
+                  options={shop_conditions()}
+                  value={@item.condition}
+                />
+              </div>
+            </div>
+          </div>
+
           <div class="card bg-base-100 shadow-xl mb-6">
             <div class="card-body">
               <h2 class="card-title mb-4">Pricing</h2>
@@ -706,6 +900,9 @@ defmodule KirbsWeb.ItemLive.Show do
 
               <div class="flex flex-wrap items-center gap-4">
                 <div class="badge badge-lg">{@item.status}</div>
+                <%= if @item.yaga_listing_status do %>
+                  <div class="badge badge-lg badge-outline">yaga: {@item.yaga_listing_status}</div>
+                <% end %>
 
                 <div class="text-sm">
                   <span class="font-semibold">Created:</span>

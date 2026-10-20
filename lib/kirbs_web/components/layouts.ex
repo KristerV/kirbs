@@ -12,11 +12,7 @@ defmodule KirbsWeb.Layouts do
   embed_templates "layouts/*"
 
   @doc """
-  Renders your app layout.
-
-  This function is typically invoked from every template,
-  and it often contains your application menu, sidebar,
-  or similar.
+  Renders the public storefront layout (header, footer, flash group).
 
   ## Examples
 
@@ -31,42 +27,108 @@ defmodule KirbsWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :meta_pixel_id, :string, default: nil, doc: "Meta pixel id (`@meta_pixel_id`); nil = off"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
+    <div
+      :if={@meta_pixel_id}
+      id="meta-pixel"
+      phx-hook="MetaPixel"
+      data-pixel-id={@meta_pixel_id}
+    >
+    </div>
+    <div id="shop-shell" class="min-h-screen bg-[#fffaf4] text-stone-800 antialiased">
+      <div
+        id="shop-under-construction"
+        role="alert"
+        class="bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900"
+      >
+        See pood on alles ehitamisel ja ei tööta veel. Tellimusi ei saa praegu esitada.
+        <span class="font-normal">
+          / This shop is still being built and does not work yet. Orders cannot be placed.
+        </span>
       </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </header>
+      <header class="sticky top-0 z-30 border-b border-orange-100 bg-[#fffaf4]/90 backdrop-blur">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+          <.link
+            navigate={~p"/"}
+            id="shop-logo"
+            class="group flex items-baseline gap-2 font-[ui-rounded,'Nunito',system-ui,sans-serif]"
+          >
+            <span class="text-2xl font-black tracking-tight text-orange-500 transition-transform group-hover:-rotate-2">
+              Kirbs
+            </span>
+            <span class="hidden text-xs font-medium uppercase tracking-[0.18em] text-stone-400 sm:inline">
+              lastekaup
+            </span>
+          </.link>
+          <nav class="flex items-center gap-1 text-sm font-semibold text-stone-600">
+            <.link
+              navigate={~p"/"}
+              id="nav-shop"
+              class="rounded-full px-3 py-1.5 transition-colors hover:bg-orange-100 hover:text-orange-600"
+            >
+              Pood
+            </.link>
+            <.link
+              navigate={~p"/muuda"}
+              id="nav-sell"
+              class="rounded-full bg-orange-500 px-4 py-1.5 text-white shadow-sm shadow-orange-500/30 transition hover:bg-orange-600"
+            >
+              Müü meiega
+            </.link>
+          </nav>
+        </div>
+      </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
+      <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {render_slot(@inner_block)}
-      </div>
-    </main>
+      </main>
+
+      <footer class="mt-16 border-t border-orange-100 bg-orange-50/60">
+        <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-8 text-sm text-stone-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p>
+            <span class="font-bold text-orange-500">Kirbs</span>
+            &middot; kvaliteetsed kasutatud lasteriided uue elu ootel
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <.link navigate={~p"/muuda"} class="transition-colors hover:text-orange-600">
+              Müü oma riided
+            </.link>
+            <.link navigate={~p"/uudised"} class="transition-colors hover:text-orange-600">
+              Uudised
+            </.link>
+            <.link
+              navigate={~p"/tingimused"}
+              id="footer-terms"
+              class="transition-colors hover:text-orange-600"
+            >
+              Müügitingimused
+            </.link>
+            <.link
+              navigate={~p"/tagastus"}
+              id="footer-returns"
+              class="transition-colors hover:text-orange-600"
+            >
+              Tagastus
+            </.link>
+            <.link
+              navigate={~p"/privaatsus"}
+              id="footer-privacy"
+              class="transition-colors hover:text-orange-600"
+            >
+              Privaatsus
+            </.link>
+          </div>
+        </div>
+        <div class="mx-auto max-w-7xl border-t border-orange-100/70 px-4 py-4 sm:px-6 lg:px-8">
+          <KirbsWeb.LegalComponents.company_details />
+        </div>
+      </footer>
+    </div>
 
     <.flash_group flash={@flash} />
     """

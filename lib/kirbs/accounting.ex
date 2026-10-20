@@ -19,8 +19,41 @@ defmodule Kirbs.Accounting do
   the carryover, with negative carryover rolling forward.
   """
 
+  # Per sales channel: what the platform keeps from `sold_price` before the split
+  # (`fee_rate`), and the client's share of what remains (`client_rate`).
+  #
+  #   * yaga: buyer pays Yaga's fees on top, so sold_price == what reaches us.
+  #   * kirbs: sold_price is the item price; shipping is charged to the buyer separately.
+  #     Payment-processor (Montonio) fees are NOT deducted from the client (assumption,
+  #     TODO owner to confirm; change `fee_rate` here if that ever changes).
+  #   * warehouse: buyer paid us directly.
+  @channels %{
+    yaga: %{fee_rate: Decimal.new(0), client_rate: Decimal.new("0.5")},
+    kirbs: %{fee_rate: Decimal.new(0), client_rate: Decimal.new("0.5")},
+    warehouse: %{fee_rate: Decimal.new(0), client_rate: Decimal.new("0.5")}
+  }
+
   @cutoff ~U[2026-04-01 12:00:00Z]
   @tz "Europe/Tallinn"
+
+  @doc "Client's share (Decimal, unrounded) of a sold item, by its `sales_channel`."
+  def client_share(%{sold_price: nil}), do: Decimal.new(0)
+
+  def client_share(%{sold_price: sold_price} = item) do
+    %{fee_rate: fee_rate, client_rate: client_rate} =
+      Map.fetch!(@channels, Map.get(item, :sales_channel) || :yaga)
+
+    fee = Decimal.mult(sold_price, fee_rate)
+
+    sold_price
+    |> Decimal.sub(fee)
+    |> Decimal.mult(client_rate)
+  end
+
+  @doc "Sum of `client_share/1` over items."
+  def client_share_total(items) do
+    Enum.reduce(items, Decimal.new(0), &Decimal.add(&2, client_share(&1)))
+  end
 
   def cutoff_datetime, do: @cutoff
 

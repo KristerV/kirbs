@@ -12,5 +12,14 @@ defmodule Kirbs do
     resource Kirbs.Resources.Image
     resource Kirbs.Resources.Settings
     resource Kirbs.Resources.Payout
+    resource Kirbs.Resources.YagaListing
+    resource Kirbs.Resources.Category
+    resource Kirbs.Resources.ItemCategory
+    resource Kirbs.Resources.YagaCategoryMapping
+    resource Kirbs.Resources.CategorizationProposal
+    resource Kirbs.Resources.SearchSynonym
+    resource Kirbs.Resources.Order
+    resource Kirbs.Resources.OrderItem
+    resource Kirbs.Resources.OrderEvent
   end
 end

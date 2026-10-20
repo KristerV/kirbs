@@ -4,7 +4,7 @@ defmodule Kirbs.Services.Yaga.Importer do
   Parses multiple links, fetches product data, downloads images, and creates items.
   """
 
-  alias Kirbs.Resources.{Bag, Item, Image}
+  alias Kirbs.Resources.{Bag, Item, Image, YagaListing}
   alias Kirbs.Services.Yaga.ProductFetcher
 
   @doc """
@@ -86,14 +86,19 @@ defmodule Kirbs.Services.Yaga.Importer do
       colors: product.colors,
       materials: product.materials,
       size: product.size,
-      yaga_id: product.yaga_id,
-      yaga_slug: product.yaga_slug,
-      status: :uploaded_to_yaga,
-      uploaded_at: product.created_at
+      status: :reviewed
     }
 
-    case Item.create(attrs) do
-      {:ok, item} -> {:ok, item}
+    with {:ok, item} <- Item.create(attrs),
+         {:ok, _listing} <-
+           YagaListing.mark_listed(%{
+             item_id: item.id,
+             yaga_id: product.yaga_id,
+             yaga_slug: product.yaga_slug,
+             uploaded_at: product.created_at
+           }) do
+      Ash.get(Item, item.id)
+    else
       {:error, error} -> {:error, "Failed to create item: #{inspect(error)}"}
     end
   end

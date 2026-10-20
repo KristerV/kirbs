@@ -3,6 +3,12 @@ defmodule Kirbs.Resources.Item do
     domain: Kirbs,
     data_layer: AshPostgres.DataLayer
 
+  # Yaga channel data lives on YagaListing; these aggregates expose it on Item.
+  @listing_fields [:yaga_id, :yaga_slug, :uploaded_at, :upload_error, :yaga_listing_status]
+
+  @doc false
+  def listing_fields, do: @listing_fields
+
   postgres do
     table "items"
     repo Kirbs.Repo
@@ -25,6 +31,25 @@ defmodule Kirbs.Resources.Item do
     define :recently_sold, args: []
     define :list_reviewed_by_bag, args: [:bag_id]
     define :list_by_combination_group, args: [:combination_group]
+    define :publish
+    define :apply_categorization
+    define :set_extra_categories, args: [:extra_category_ids]
+    define :list_uncategorized, args: [:after_id, :limit]
+    define :list_by_category, args: [:category_id]
+    define :mark_sold
+    define :mark_unsold
+    define :search
+    define :facets, args: [:params]
+    define :get_published_by_slug, args: [:slug]
+    define :list_for_sitemap, args: []
+    define :reserve, args: [:reserved_until]
+    define :release_reservation, args: [:held_until]
+    define :extend_reservation, args: [:reserved_until, :held_until]
+    define :sell_on_kirbs, args: [:sold_price, {:optional, :held_until}]
+    define :list_expired_reservations, args: []
+    define :list_unpublished_reviewed_by_bag, args: [:bag_id]
+    define :list_sold_with_stale_kirbs_status, args: []
+    define :list_kirbs_sold_with_stale_status, args: []
   end
 
   actions do
@@ -42,34 +67,215 @@ defmodule Kirbs.Resources.Item do
       :listed_price,
       :sold_price,
       :status,
-      :yaga_id,
-      :yaga_slug,
-      :upload_error,
-      :uploaded_at,
       :sold_at,
-      :combination_group
+      :combination_group,
+      :category_id,
+      :age_group,
+      :gender,
+      :season,
+      :condition,
+      :waterproof,
+      :search_text,
+      :parcel_size,
+      :weight_grams,
+      :slug,
+      :published_at,
+      :kirbs_status,
+      :reserved_until,
+      :sales_channel
     ]
 
-    defaults [:create, :read, :destroy]
+    defaults [:destroy]
+
+    create :create do
+      primary? true
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
+
+    read :read do
+      primary? true
+    end
 
     update :update do
       primary? true
       require_atomic? false
 
-      change fn changeset, _context ->
-        # Prevent status from being demoted past the upload boundary.
-        # Once an item is uploaded/sold/discarded, only explicit status
-        # transitions (e.g. mark_sold, clear_ai_data) should change it.
-        protected = [:uploaded_to_yaga, :sold, :discarded]
-        current = changeset.data.status
-        new = Ash.Changeset.get_attribute(changeset, :status)
+      argument :extra_category_ids, {:array, :uuid}
 
-        if current in protected and new not in protected do
-          Ash.Changeset.force_change_attribute(changeset, :status, current)
-        else
-          changeset
-        end
+      change Kirbs.Resources.Item.Changes.ProtectLifecycleStatus
+      change Kirbs.Resources.Item.Changes.SyncExtraCategories
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
+
+    update :apply_categorization do
+      accept [
+        :category_id,
+        :age_group,
+        :gender,
+        :season,
+        :condition,
+        :waterproof,
+        :brand,
+        :size,
+        :colors,
+        :materials
+      ]
+
+      require_atomic? false
+
+      # nil keeps the current extras, a list replaces them
+      argument :extra_category_ids, {:array, :uuid}
+
+      change Kirbs.Resources.Item.Changes.KeepExistingExtraction
+      change Kirbs.Resources.Item.Changes.SyncExtraCategories
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
+
+    # Replaces the set of extra (non-primary) categories atomically. Extras must be leaves,
+    # differ from the primary and be unique.
+    update :set_extra_categories do
+      accept []
+      require_atomic? false
+
+      argument :extra_category_ids, {:array, :uuid}, allow_nil?: false
+
+      change Kirbs.Resources.Item.Changes.SyncExtraCategories
+      change Kirbs.Resources.Item.Changes.BuildSearchText
+      change load(@listing_fields)
+    end
+
+    read :list_by_category do
+      argument :category_id, :uuid, allow_nil?: false
+      filter expr(category_id == ^arg(:category_id))
+    end
+
+    read :list_uncategorized do
+      argument :after_id, :uuid
+      argument :limit, :integer, allow_nil?: false, default: 25
+
+      prepare fn query, _context ->
+        query
+        |> Ash.Query.sort(id: :asc)
+        |> Ash.Query.limit(Ash.Query.get_argument(query, :limit))
       end
+
+      filter expr(
+               is_nil(category_id) and status in [:ai_processed, :reviewed] and
+                 not exists(categorization_proposal, true) and
+                 (is_nil(^arg(:after_id)) or id > ^arg(:after_id))
+             )
+    end
+
+    # Every sale path (Yaga checker, warehouse review, kirbs shop via
+    # Kirbs.Services.Channels.MarkSoldOnKirbs) goes through here, so kirbs_status
+    # can never disagree with status == :sold. Pass `sales_channel` to say where it sold.
+    update :mark_sold do
+      accept [:sold_price, :sold_at, :sales_channel]
+      require_atomic? false
+
+      change set_attribute(:status, :sold)
+      change set_attribute(:kirbs_status, :sold)
+      change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :sold}
+      change load(@listing_fields)
+    end
+
+    update :mark_unsold do
+      accept []
+      require_atomic? false
+
+      change set_attribute(:status, :reviewed)
+      change set_attribute(:kirbs_status, :available)
+      change set_attribute(:sales_channel, :yaga)
+      change set_attribute(:sold_price, nil)
+      change set_attribute(:sold_at, nil)
+      change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :listed}
+      change load(@listing_fields)
+    end
+
+    # Kirbs shop reservation. Atomic: one UPDATE ... WHERE-style guard, so two buyers racing
+    # for a qty-1 item can never both win. An expired reservation (job not yet run) may be taken.
+    update :reserve do
+      accept []
+      argument :reserved_until, :utc_datetime_usec, allow_nil?: false
+
+      validate Kirbs.Resources.Item.Validations.Reservable
+      change set_attribute(:kirbs_status, :reserved)
+      change set_attribute(:reserved_until, arg(:reserved_until))
+    end
+
+    # Pushes a held reservation out (checkout submitted -> longer payment hold). Only the order
+    # that holds it (`held_until` = its current deadline) may extend it.
+    update :extend_reservation do
+      accept []
+      argument :reserved_until, :utc_datetime_usec, allow_nil?: false
+      argument :held_until, :utc_datetime_usec, allow_nil?: false
+
+      validate Kirbs.Resources.Item.Validations.HoldMatches
+      change set_attribute(:reserved_until, arg(:reserved_until))
+    end
+
+    # Idempotent and owner-safe: only releases an item that is still reserved with exactly the
+    # `held_until` deadline the releasing order holds (never un-sells, never frees another
+    # buyer's newer reservation).
+    update :release_reservation do
+      accept []
+      argument :held_until, :utc_datetime_usec, allow_nil?: false
+
+      change atomic_update(
+               :kirbs_status,
+               expr(
+                 if kirbs_status == :reserved and reserved_until == ^arg(:held_until),
+                   do: :available,
+                   else: kirbs_status
+               )
+             )
+
+      change atomic_update(
+               :reserved_until,
+               expr(
+                 if kirbs_status == :reserved and reserved_until == ^arg(:held_until),
+                   do: nil,
+                   else: reserved_until
+               )
+             )
+    end
+
+    # A purchase through Kirbs: kirbs_status + lifecycle status + sold price/time in one atomic step.
+    update :sell_on_kirbs do
+      accept [:sold_price]
+
+      # the paying order's hold deadline; when given, another buyer's hold blocks the sale
+      argument :held_until, :utc_datetime_usec
+
+      validate attribute_does_not_equal(:kirbs_status, :sold),
+        message: "ese on juba müüdud"
+
+      validate Kirbs.Resources.Item.Validations.HeldBy
+
+      change set_attribute(:kirbs_status, :sold)
+      change set_attribute(:status, :sold)
+      change set_attribute(:reserved_until, nil)
+      change set_attribute(:sales_channel, :kirbs)
+      change atomic_update(:sold_at, expr(now()))
+      change {Kirbs.Resources.Item.Changes.SyncListingStatus, listing_status: :sold}
+
+      # a shop sale must come down from Yaga too
+      change Kirbs.Resources.Item.Changes.EnqueueYagaDelist
+    end
+
+    read :list_expired_reservations do
+      filter expr(kirbs_status == :reserved and reserved_until < now())
+    end
+
+    update :publish do
+      accept []
+      require_atomic? false
+
+      change Kirbs.Resources.Item.Changes.PublishItem
+      change load(@listing_fields)
     end
 
     read :get do
@@ -77,6 +283,87 @@ defmodule Kirbs.Resources.Item do
     end
 
     read :list
+
+    # Public shop: published + available items matching the filters. See
+    # Kirbs.Resources.Item.Preparations.Search for the FTS/trigram/synonym logic.
+    read :search do
+      pagination offset?: true,
+                 default_limit: 24,
+                 max_page_size: 100,
+                 countable: true,
+                 required?: false
+
+      argument :q, :string
+      argument :category, :string
+      argument :brand, :string
+      argument :size, :string
+
+      argument :age_group, :atom do
+        constraints one_of: [:baby, :toddler, :child, :teen, :adult]
+      end
+
+      argument :gender, :atom do
+        constraints one_of: [:girl, :boy, :unisex, :woman, :man]
+      end
+
+      # One season or a list; `:all_year` items match every season filter.
+      argument :season, {:array, :atom} do
+        constraints items: [one_of: [:spring_autumn, :summer, :winter, :all_year]]
+      end
+
+      # true = only waterproof items; false/nil = no filter
+      argument :waterproof, :boolean
+
+      argument :min_price, :decimal
+      argument :max_price, :decimal
+
+      argument :sort, :atom do
+        constraints one_of: [:relevance, :newest, :price_asc, :price_desc]
+      end
+
+      prepare Kirbs.Resources.Item.Preparations.Search
+    end
+
+    # Facet counts for the shop filter sidebar: %{brand: [{value, count}], ...}.
+    # Each facet is counted with its own filter removed so alternatives stay visible.
+    action :facets, :map do
+      argument :params, :map, allow_nil?: false, default: %{}
+      run Kirbs.Resources.Item.Actions.Facets
+    end
+
+    read :get_published_by_slug do
+      get? true
+      argument :slug, :string, allow_nil?: false
+
+      filter expr(slug == ^arg(:slug) and not is_nil(published_at))
+
+      prepare build(
+                load: [
+                  :images,
+                  category: [parent: [:parent]],
+                  extra_categories: [parent: [:parent]]
+                ]
+              )
+    end
+
+    read :list_for_sitemap do
+      filter expr(not is_nil(published_at) and not is_nil(slug) and kirbs_status != :sold)
+      prepare build(sort: [published_at: :desc])
+    end
+
+    read :list_unpublished_reviewed_by_bag do
+      argument :bag_id, :uuid, allow_nil?: false
+      filter expr(bag_id == ^arg(:bag_id) and status == :reviewed and is_nil(published_at))
+    end
+
+    # Repair queries: status and kirbs_status must agree on "sold".
+    read :list_sold_with_stale_kirbs_status do
+      filter expr(status == :sold and kirbs_status != :sold)
+    end
+
+    read :list_kirbs_sold_with_stale_status do
+      filter expr(status != :sold and kirbs_status == :sold)
+    end
 
     read :get_by_bag do
       argument :bag_id, :uuid do
@@ -117,7 +404,7 @@ defmodule Kirbs.Resources.Item do
 
     read :recently_uploaded do
       prepare build(sort: [uploaded_at: :desc], limit: 10, load: [:images])
-      filter expr(status == :uploaded_to_yaga and not is_nil(uploaded_at))
+      filter expr(yaga_listing_status == :listed and not is_nil(uploaded_at))
     end
 
     read :recently_sold do
@@ -128,7 +415,7 @@ defmodule Kirbs.Resources.Item do
     read :list_reviewed_by_bag do
       argument :bag_id, :uuid, allow_nil?: false
       prepare build(sort: [created_at: :asc], load: [:images])
-      filter expr(bag_id == ^arg(:bag_id) and status == :reviewed)
+      filter expr(bag_id == ^arg(:bag_id) and status == :reviewed and is_nil(yaga_listing_status))
     end
 
     read :list_by_combination_group do
@@ -154,7 +441,13 @@ defmodule Kirbs.Resources.Item do
         |> Ash.Changeset.force_change_attribute(:ai_price_explanation, nil)
         |> Ash.Changeset.force_change_attribute(:status, :pending)
       end
+
+      change load(@listing_fields)
     end
+  end
+
+  preparations do
+    prepare build(load: @listing_fields)
   end
 
   attributes do
@@ -184,22 +477,64 @@ defmodule Kirbs.Resources.Item do
                     :pending,
                     :ai_processed,
                     :reviewed,
-                    :uploaded_to_yaga,
                     :sold,
-                    :discarded,
-                    :upload_failed
+                    :discarded
                   ]
     end
 
     # Combinations
     attribute :combination_group, :uuid
 
-    # Yaga integration
-    attribute :yaga_id, :integer
-    attribute :yaga_slug, :string
-    attribute :upload_error, :string
-    attribute :uploaded_at, :utc_datetime_usec
     attribute :sold_at, :utc_datetime_usec
+
+    # Typed shop attributes (see docs/taxonomy.md)
+    attribute :age_group, :atom do
+      constraints one_of: [:baby, :toddler, :child, :teen, :adult]
+    end
+
+    attribute :gender, :atom do
+      constraints one_of: [:girl, :boy, :unisex, :woman, :man]
+    end
+
+    attribute :season, :atom do
+      constraints one_of: [:spring_autumn, :summer, :winter, :all_year]
+    end
+
+    attribute :condition, :atom do
+      constraints one_of: [:new_with_tags, :like_new, :good, :fair]
+    end
+
+    attribute :waterproof, :boolean do
+      allow_nil? false
+      default false
+    end
+
+    attribute :parcel_size, :atom do
+      constraints one_of: [:s, :m, :l]
+    end
+
+    attribute :weight_grams, :integer do
+      constraints min: 0
+    end
+
+    attribute :search_text, :string
+    attribute :slug, :string
+    attribute :published_at, :utc_datetime_usec
+
+    attribute :reserved_until, :utc_datetime_usec
+    # Where the sale happened. Drives accounting (fees per channel) and whether a
+    # Yaga listing still has to be delisted. :warehouse = paid to us directly.
+    attribute :sales_channel, :atom do
+      allow_nil? false
+      default :yaga
+      constraints one_of: [:yaga, :kirbs, :warehouse]
+    end
+
+    attribute :kirbs_status, :atom do
+      allow_nil? false
+      default :available
+      constraints one_of: [:available, :reserved, :sold]
+    end
 
     create_timestamp :created_at
     update_timestamp :updated_at
@@ -210,6 +545,20 @@ defmodule Kirbs.Resources.Item do
       allow_nil? false
     end
 
+    belongs_to :category, Kirbs.Resources.Category
+
+    has_many :item_categories, Kirbs.Resources.ItemCategory
+
+    # Extra (non-primary) categories, e.g. a jacket+trousers set also found under Valipuksid.
+    many_to_many :extra_categories, Kirbs.Resources.Category do
+      through Kirbs.Resources.ItemCategory
+      source_attribute_on_join_resource :item_id
+      destination_attribute_on_join_resource :category_id
+    end
+
+    has_one :yaga_listing, Kirbs.Resources.YagaListing
+    has_one :categorization_proposal, Kirbs.Resources.CategorizationProposal
+
     has_many :images, Kirbs.Resources.Image do
       sort created_at: :asc
     end
@@ -219,5 +568,29 @@ defmodule Kirbs.Resources.Item do
     calculate :seconds_to_sell,
               :integer,
               expr(fragment("EXTRACT(EPOCH FROM (? - ?))::integer", sold_at, uploaded_at))
+
+    calculate :search_rank,
+              :float,
+              expr(
+                fragment(
+                  "coalesce(word_similarity((?)::text, immutable_unaccent(lower(coalesce(?, '')))), 0)::float8",
+                  ^arg(:q),
+                  search_text
+                )
+              ) do
+      argument :q, :string, allow_nil?: false
+    end
+  end
+
+  aggregates do
+    first :yaga_id, :yaga_listing, :yaga_id
+    first :yaga_slug, :yaga_listing, :yaga_slug
+    first :uploaded_at, :yaga_listing, :uploaded_at
+    first :upload_error, :yaga_listing, :upload_error
+    first :yaga_listing_status, :yaga_listing, :status
+  end
+
+  identities do
+    identity :unique_slug, [:slug]
   end
 end

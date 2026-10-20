@@ -1,0 +1,134 @@
+<Layouts.app flash={@flash} meta_pixel_id={@meta_pixel_id}>
+  <.breadcrumbs crumbs={@crumbs} />
+
+  <div class="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-14">
+    <%!-- Gallery --%>
+    <section id="gallery" aria-label="Fotod" class="lg:sticky lg:top-20 lg:self-start">
+      <div class="relative aspect-[4/5] overflow-hidden rounded-3xl bg-orange-100/60 ring-1 ring-orange-900/5">
+        <%= if @photos != [] do %>
+          <.shop_image
+            image={Enum.at(@photos, @current)}
+            alt={item_title(@item)}
+            priority
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            id="gallery-main"
+            class="size-full object-cover"
+          />
+        <% else %>
+          <div class="flex size-full items-center justify-center text-orange-300">
+            <.icon name="hero-photo" class="size-16" />
+          </div>
+        <% end %>
+        <span
+          :if={!@available?}
+          id="status-badge"
+          class="absolute left-4 top-4 rounded-full bg-stone-900/85 px-4 py-1.5 text-sm font-bold text-white backdrop-blur"
+        >
+          {Labels.label(:kirbs_status, @item.kirbs_status)}
+        </span>
+      </div>
+      <ul :if={length(@photos) > 1} id="gallery-thumbs" class="mt-3 grid grid-cols-5 gap-2.5">
+        <li :for={{photo, index} <- Enum.with_index(@photos)}>
+          <button
+            id={"thumb-#{index}"}
+            type="button"
+            phx-click="select_photo"
+            phx-value-index={index}
+            aria-label={"Foto #{index + 1}"}
+            class={[
+              "block aspect-square w-full overflow-hidden rounded-xl ring-2 transition",
+              if(index == @current,
+                do: "ring-orange-500",
+                else: "opacity-70 ring-transparent hover:opacity-100"
+              )
+            ]}
+          >
+            <img
+              src={~p"/img/320/#{photo.id}"}
+              alt=""
+              loading="lazy"
+              width="320"
+              height="320"
+              class="size-full object-cover"
+            />
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <%!-- Details --%>
+    <section aria-label="Toote info">
+      <p :if={@item.brand} class="text-sm font-bold uppercase tracking-[0.18em] text-orange-500">
+        {@item.brand}
+      </p>
+      <h1
+        id="item-title"
+        class="mt-1 font-[ui-rounded,'Nunito',system-ui,sans-serif] text-3xl font-black leading-tight tracking-tight text-stone-900 sm:text-4xl"
+      >
+        {(@item.category && @item.category.name_et) || @item.suggested_category || "Toode"}
+        <span :if={@item.size} class="text-stone-400">· {@item.size}</span>
+      </h1>
+
+      <p :if={@also_in != []} id="item-also-in" class="mt-2 text-sm text-stone-500">
+        Leiad ka:
+        <%= for {{name, path}, index} <- Enum.with_index(@also_in) do %>
+          <span :if={index > 0}>, </span><.link
+            id={"also-in-#{index}"}
+            navigate={path}
+            class="font-semibold text-orange-600 underline-offset-2 hover:underline"
+          >{name}</.link>
+        <% end %>
+      </p>
+
+      <p id="item-price" class="mt-4 text-4xl font-black text-stone-900">
+        {Labels.price(@item.listed_price)}
+      </p>
+
+      <div class="mt-6">
+        <%= if @available? do %>
+          <.link
+            id="reserve-button"
+            navigate={~p"/checkout/#{@item.slug}"}
+            class="flex w-full items-center justify-center gap-2 rounded-full bg-orange-500 px-8 py-4 text-lg font-extrabold text-white shadow-lg shadow-orange-500/30 transition hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-xl hover:shadow-orange-500/40 sm:w-auto sm:min-w-72"
+          >
+            <.icon name="hero-shopping-bag" class="size-6" /> Broneeri
+          </.link>
+          <p class="mt-3 text-sm text-stone-500">
+            Ese on ainult üks. Broneerides hoiame selle sinu jaoks.
+          </p>
+        <% else %>
+          <p
+            id="unavailable-notice"
+            class="rounded-2xl bg-stone-100 px-5 py-4 font-semibold text-stone-600"
+          >
+            See ese ei ole enam saadaval.
+            <.link navigate={~p"/"} class="text-orange-600 underline underline-offset-2">
+              Vaata teisi tooteid
+            </.link>
+          </p>
+        <% end %>
+      </div>
+
+      <p
+        :if={@item.description}
+        id="item-description"
+        class="mt-8 max-w-prose text-base leading-relaxed text-stone-600"
+      >
+        {@item.description}
+      </p>
+
+      <dl
+        id="item-attributes"
+        class="mt-8 divide-y divide-orange-100 overflow-hidden rounded-2xl border border-orange-100 bg-white"
+      >
+        <div
+          :for={{label, value} <- @attributes}
+          class="flex justify-between gap-4 px-5 py-3 text-sm"
+        >
+          <dt class="text-stone-500">{label}</dt>
+          <dd class="text-right font-semibold text-stone-800">{value}</dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+</Layouts.app>

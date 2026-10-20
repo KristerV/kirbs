@@ -14,6 +14,10 @@ defmodule KirbsWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :load_from_session
+    # Must come after the current user is loaded. Any additional browser-facing pipeline
+    # (e.g. a future :ad_landing one) needs both of these plugs too.
+    plug AbFunnel.Plug.Visitor
+    plug KirbsWeb.Plugs.CaptureUtm
   end
 
   pipeline :api do
@@ -40,11 +44,30 @@ defmodule KirbsWeb.Router do
   scope "/", KirbsWeb do
     pipe_through :browser
 
-    live "/", LandingLive.Index, :index
-    live "/uudised", BlogLive.Index, :index
+    ash_authentication_live_session :public_routes,
+      on_mount: [
+        {KirbsWeb.LiveUserAuth, :live_user_optional},
+        AbFunnel.LiveView,
+        KirbsWeb.LiveTracking
+      ] do
+      live "/", ShopLive.Index, :index
+      live "/k/*path", ShopLive.Index, :category
+      live "/p/:slug", ShopLive.Show, :show
+      live "/checkout/:slug", ShopLive.Checkout, :show
+      live "/order/:token", ShopLive.Order, :show
+      live "/muuda", LandingLive.Index, :index
+      live "/uudised", BlogLive.Index, :index
+      live "/tingimused", LegalLive.Terms, :show
+      live "/tagastus", LegalLive.Returns, :show
+      live "/privaatsus", LegalLive.Privacy, :show
+    end
 
     ash_authentication_live_session :authenticated_routes,
-      on_mount: {KirbsWeb.LiveUserAuth, :live_user_required} do
+      on_mount: [
+        {KirbsWeb.LiveUserAuth, :live_user_required},
+        AbFunnel.LiveView,
+        KirbsWeb.LiveTracking
+      ] do
       live "/dashboard", DashboardLive.Index, :index
       live "/bags", BagLive.Index, :index
       live "/bags/capture", BagLive.Capture, :capture
@@ -56,10 +79,21 @@ defmodule KirbsWeb.Router do
       live "/clients", ClientLive.Index, :index
       live "/clients/:id", ClientLive.Show, :show
       live "/payouts", PayoutLive.Index, :index
+      live "/orders", OrdersLive.Index, :index
+      live "/orders/shipping", OrdersLive.Shipping, :index
+      live "/orders/:id", OrdersLive.Show, :show
       live "/warehouse-sales", WarehouseSalesLive.Index, :index
       live "/accounting", AccountingLive.Index, :index
       live "/settings", SettingsLive.Index, :index
+      live "/backfill", BackfillLive.Index, :index
     end
+  end
+
+  # Public crawler/image endpoints (no session needed)
+  scope "/", KirbsWeb do
+    get "/img/:width/:id", ImageController, :show
+    get "/sitemap.xml", SeoController, :sitemap
+    get "/robots.txt", SeoController, :robots
   end
 
   scope "/", KirbsWeb do
@@ -99,6 +133,13 @@ defmodule KirbsWeb.Router do
     )
   end
 
+  # Montonio webhooks + payment return: no session/CSRF, auth is the signed JWT.
+  scope "/", KirbsWeb do
+    post "/webhooks/montonio", MontonioWebhookController, :payment
+    post "/webhooks/montonio/shipping", MontonioWebhookController, :shipping
+    get "/checkout/montonio/return", MontonioReturnController, :show
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", KirbsWeb do
   #   pipe_through :api
@@ -113,6 +154,7 @@ defmodule KirbsWeb.Router do
 
     live_dashboard "/dashboard", metrics: KirbsWeb.Telemetry
     oban_dashboard("/oban")
+    live "/ab", AbFunnel.AdminLive
     ash_admin "/"
   end
 

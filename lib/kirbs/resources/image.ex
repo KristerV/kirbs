@@ -10,6 +10,7 @@ defmodule Kirbs.Resources.Image do
 
   code_interface do
     define :get, args: [:id]
+    define :get_public, args: [:id]
     define :list
     define :get_uncompressed, args: [:limit]
     define :create
@@ -36,13 +37,23 @@ defmodule Kirbs.Resources.Image do
 
     read :list
 
+    # Public shop images: item photos (not labels) of published items only.
+    read :get_public do
+      get? true
+      argument :id, :uuid, allow_nil?: false
+
+      filter expr(
+               id == ^arg(:id) and is_label == false and exists(item, not is_nil(published_at))
+             )
+    end
+
     read :get_uncompressed do
       argument :limit, :integer do
         allow_nil? false
       end
 
       prepare build(limit: arg(:limit))
-      filter expr(compressed == false and item.status == :uploaded_to_yaga)
+      filter expr(compressed == false and exists(item.yaga_listing, status == :listed))
     end
   end
 

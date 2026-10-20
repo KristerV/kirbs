@@ -7,6 +7,11 @@
     <.live_title default="Kirbs" suffix={assigns[:title_suffix] || ""}>
       {assigns[:page_title]}
     </.live_title>
+    <KirbsWeb.SeoComponents.meta_tags
+      :if={assigns[:meta]}
+      meta={@meta}
+      title={assigns[:page_title]}
+    />
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
@@ -91,6 +96,8 @@
                     tabindex="0"
                     class="dropdown-content menu bg-base-200 rounded-box z-50 p-2 w-44 !mt-0"
                   >
+                    <li><a href="/orders">Orders</a></li>
+                    <li><a href="/orders/shipping">Postage</a></li>
                     <li><a href="/payouts">Payouts</a></li>
                     <li><a href="/warehouse-sales">Warehouse sales</a></li>
                     <li><a href="/accounting">Accounting</a></li>
@@ -143,6 +150,8 @@
               <details open>
                 <summary>Money</summary>
                 <ul>
+                  <li><a href="/orders">Orders</a></li>
+                  <li><a href="/orders/shipping">Postage</a></li>
                   <li><a href="/payouts">Payouts</a></li>
                   <li><a href="/warehouse-sales">Warehouse sales</a></li>
                   <li><a href="/accounting">Accounting</a></li>

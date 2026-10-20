@@ -2,16 +2,21 @@ defmodule KirbsWeb.BagLive.Show do
   use KirbsWeb, :live_view
 
   alias Kirbs.Resources.{Bag, Client, Image, Item}
+  alias Kirbs.Services.Channels.PublishReviewedToShop
   alias Kirbs.Services.FindFirstReviewTarget
   alias Kirbs.Services.FindNextBagItemToReview
   alias Kirbs.Services.Yaga.Importer
+
+  defp load_bag(id) do
+    Bag.get!(id) |> Ash.load!([:client, :images, items: [:images]])
+  end
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     # Subscribe to bag updates
     Phoenix.PubSub.subscribe(Kirbs.PubSub, "bag:#{id}")
 
-    bag = Bag.get!(id) |> Ash.load!([:client, :images, items: [:images]])
+    bag = load_bag(id)
     clients = Client.list!()
 
     upload_dir = Application.get_env(:kirbs, :image_upload_dir)
@@ -198,6 +203,23 @@ defmodule KirbsWeb.BagLive.Show do
          socket
          |> assign(:importing, false)
          |> put_flash(:error, "Import failed: #{reason}")}
+    end
+  end
+
+  @impl true
+  def handle_event("publish_reviewed", _params, socket) do
+    case PublishReviewedToShop.run(socket.assigns.bag.id) do
+      {:ok, %{published: published, skipped: skipped}} ->
+        {:noreply,
+         socket
+         |> assign(:bag, load_bag(socket.assigns.bag.id))
+         |> put_flash(
+           :info,
+           "Published #{published} items, skipped #{skipped} (no category/price)"
+         )}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Publishing failed")}
     end
   end
 
@@ -490,6 +512,19 @@ defmodule KirbsWeb.BagLive.Show do
                 >
                   Run AI on Items ({pending_count})
                 </button>
+                <% publishable_count =
+                  Enum.count(
+                    @bag.items,
+                    &(&1.status == :reviewed and is_nil(&1.published_at))
+                  ) %>
+                <button
+                  id="publish-reviewed"
+                  class="btn btn-success btn-sm"
+                  phx-click="publish_reviewed"
+                  disabled={publishable_count == 0}
+                >
+                  Publish reviewed to shop ({publishable_count})
+                </button>
                 <button class="btn btn-secondary btn-sm" phx-click="review_bag">
                   Review Bag
                 </button>
@@ -562,8 +597,8 @@ defmodule KirbsWeb.BagLive.Show do
                               {length(item.images)} photos
                             </p>
                             <div class="flex flex-wrap items-center gap-2 mt-2">
-                              <div class={"badge badge-sm #{status_badge_class(item.status)}"}>
-                                {item.status}
+                              <div class={"badge badge-sm #{status_badge_class(display_status(item))}"}>
+                                {display_status(item)}
                               </div>
                               <%= if item.yaga_slug do %>
                                 <a
@@ -778,6 +813,11 @@ defmodule KirbsWeb.BagLive.Show do
     idx = Enum.find_index(groups, &(&1 == group)) || 0
     Enum.at(@group_colors, rem(idx, length(@group_colors)))
   end
+
+  # Lifecycle status combined with the Yaga channel status for display.
+  defp display_status(%{status: :reviewed, yaga_listing_status: :listed}), do: :uploaded_to_yaga
+  defp display_status(%{status: :reviewed, yaga_listing_status: :failed}), do: :upload_failed
+  defp display_status(item), do: item.status
 
   defp status_badge_class(:sold), do: "badge-success"
   defp status_badge_class(:uploaded_to_yaga), do: "badge-success"

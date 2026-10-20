@@ -14,7 +14,7 @@ config :ash_oban, pro?: false
 config :kirbs, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10, ai: 1, yaga: 1],
+  queues: [default: 10, ai: 1, yaga: 1, backfill: 1],
   repo: Kirbs.Repo,
   plugins: [
     {Oban.Plugins.Cron,
@@ -25,8 +25,12 @@ config :kirbs, Oban,
        {"0 3 * * *", Kirbs.Jobs.CompressImagesJob},
        # Refresh Yaga JWT daily at 4 AM (30-day token, kept rolling)
        {"0 4 * * *", Kirbs.Jobs.YagaTokenRefreshJob},
+       # Refresh cached Montonio pickup points daily at 5 AM
+       {"0 5 * * *", Kirbs.Jobs.RefreshMontonioPickupPointsJob},
        # Monthly Yaga withdraw at midnight on the 1st (Tallinn)
-       {"0 0 1 * *", Kirbs.Jobs.YagaMonthlyWithdrawJob}
+       {"0 0 1 * *", Kirbs.Jobs.YagaMonthlyWithdrawJob},
+       # Release expired shop reservations / cancel unpaid orders
+       {"* * * * *", Kirbs.Jobs.ExpireReservationsJob}
      ]}
   ]
 
@@ -100,6 +104,13 @@ config :kirbs, KirbsWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
+config :ab_funnel,
+  repo: Kirbs.Repo,
+  experiments: Kirbs.ABTests
+
+# Meta pixel is off by default; enable per environment in runtime.exs.
+config :kirbs, :meta_pixel, enabled: false, pixel_id: nil
+
 config :kirbs, Kirbs.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)

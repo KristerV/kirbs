@@ -15,7 +15,7 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
 
   Accounting needs to mirror "money is actually mine", so we only mark an item
   `:sold` once its order is `complete`/`completed`, and we stamp `sold_at` from
-  the order's `complete_at`. Items in earlier states stay `:uploaded_to_yaga`
+  the order's `complete_at`. Items in earlier states stay listed (`:listed`)
   and get picked up on a later sync once they finalize.
   """
 
@@ -207,7 +207,7 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
   defp sync_items(status_map) do
     items =
       Item.list!()
-      |> Enum.filter(&(&1.status in [:uploaded_to_yaga, :sold]))
+      |> Enum.filter(&(&1.yaga_listing_status in [:listed, :sold]))
 
     results = Enum.map(items, &sync_item(&1, status_map))
 
@@ -228,7 +228,13 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
       nil ->
         {:ok, :not_found}
 
-      %{status: "sold"} = data when item.status == :uploaded_to_yaga ->
+      # Sold on kirbs: Yaga still lists it as published until it is delisted by hand,
+      # which must not flip the item back to unsold. (If Yaga also reports a sale, that is
+      # a double sale for the owner to resolve; we keep the kirbs sale.)
+      _ when item.status == :sold and item.sales_channel == :kirbs ->
+        {:ok, :no_change}
+
+      %{status: "sold"} = data when item.yaga_listing_status == :listed ->
         mark_as_sold(item, data)
 
       %{status: "sold"} = data when item.status == :sold and is_nil(item.sold_at) ->
@@ -243,22 +249,14 @@ defmodule Kirbs.Services.Yaga.SoldChecker do
   end
 
   defp mark_as_sold(item, %{sold_price: sold_price, sold_at: sold_at}) do
-    case Item.update(item, %{
-           status: :sold,
-           sold_price: parse_price(sold_price),
-           sold_at: sold_at
-         }) do
+    case Item.mark_sold(item, %{sold_price: parse_price(sold_price), sold_at: sold_at}) do
       {:ok, _item} -> {:ok, :marked_sold}
       {:error, error} -> {:error, "Failed to mark item #{item.id} as sold: #{inspect(error)}"}
     end
   end
 
   defp mark_as_unsold(item) do
-    case Item.update(item, %{
-           status: :uploaded_to_yaga,
-           sold_price: nil,
-           sold_at: nil
-         }) do
+    case Item.mark_unsold(item) do
       {:ok, _item} -> {:ok, :marked_unsold}
       {:error, error} -> {:error, "Failed to mark item #{item.id} as unsold: #{inspect(error)}"}
     end
