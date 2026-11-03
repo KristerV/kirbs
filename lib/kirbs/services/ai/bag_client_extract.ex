@@ -1,11 +1,24 @@
 defmodule Kirbs.Services.Ai.BagClientExtract do
   @moduledoc """
   Extracts client information from the third bag photo (handwritten info).
-  Uses Gemini vision to read: name, phone, email, IBAN.
+  Uses the OpenRouter vision model to read: name, phone, email, IBAN.
   """
 
   alias Kirbs.Resources.Bag
-  alias Kirbs.Services.Ai.OpenrouterModel
+  alias Kirbs.Services.Ai.OpenrouterChat
+
+  @nullable_string %{"type" => ["string", "null"]}
+  @schema %{
+    "type" => "object",
+    "additionalProperties" => false,
+    "required" => ~w(name phone email iban),
+    "properties" => %{
+      "name" => @nullable_string,
+      "phone" => @nullable_string,
+      "email" => @nullable_string,
+      "iban" => @nullable_string
+    }
+  }
 
   def run(bag_id) do
     with {:ok, bag} <- load_bag(bag_id),
@@ -44,19 +57,12 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
 
   defp extract_with_ai(image_path) do
     with {:ok, image_data} <- File.read(image_path),
-         {:ok, base64_image} <- encode_image(image_data),
-         {:ok, result} <- call_gemini(base64_image) do
+         {:ok, result} <- call_llm(Base.encode64(image_data)) do
       parse_response(result)
     end
   end
 
-  defp encode_image(image_data) do
-    {:ok, Base.encode64(image_data)}
-  end
-
-  defp call_gemini(base64_image) do
-    alias LangChain.Message.ContentPart
-
+  defp call_llm(base64_image) do
     prompt = """
     Please extract the following information from this handwritten note:
     - Name (full name of the client)
@@ -64,59 +70,20 @@ defmodule Kirbs.Services.Ai.BagClientExtract do
     - Email (email address, if present)
     - IBAN (bank account number)
 
-    Return the information in JSON format with these exact keys: name, phone, email, iban.
     If any field is not present or unclear, use null for that field.
     """
 
-    message =
-      LangChain.Message.new_user!([
-        ContentPart.image!(base64_image, media: :jpeg),
-        ContentPart.text!(prompt)
-      ])
-
-    {:ok, llm} = OpenrouterModel.run()
-
-    case LangChain.Chains.LLMChain.new!(%{llm: llm})
-         |> LangChain.Chains.LLMChain.add_message(message)
-         |> LangChain.Chains.LLMChain.run() do
-      {:ok, updated_chain} ->
-        # Extract text from ContentParts
-        text_content =
-          updated_chain.last_message.content
-          |> Enum.find(&(&1.type == :text))
-          |> case do
-            %{content: text} -> text
-            _ -> ""
-          end
-
-        {:ok, text_content}
-
-      {:error, _chain, %LangChain.LangChainError{} = error} ->
-        {:error, format_ai_error(error)}
-
-      {:error, reason} ->
-        {:error, "AI extraction failed: #{inspect(reason)}"}
-    end
+    OpenrouterChat.run(prompt, images: [base64_image], json_schema: @schema)
   end
 
   defp parse_response(response_text) do
-    with [json_str] <- Regex.run(~r/\{.*\}/s, response_text),
-         {:ok, %{"name" => name} = data} <- Jason.decode(json_str) do
-      {:ok, %{name: name, phone: data["phone"], email: data["email"], iban: data["iban"]}}
-    else
+    case Jason.decode(response_text) do
+      {:ok, %{"name" => name} = data} ->
+        {:ok, %{name: name, phone: data["phone"], email: data["email"], iban: data["iban"]}}
+
       _ ->
         {:cancel,
          "Could not extract client info from photo. AI response: #{String.slice(response_text, 0..500)}"}
     end
-  end
-
-  defp format_ai_error(%LangChain.LangChainError{
-         original: %{"promptFeedback" => %{"blockReason" => reason}}
-       }) do
-    "AI extraction blocked by safety filter: #{reason}"
-  end
-
-  defp format_ai_error(%LangChain.LangChainError{message: message, original: original}) do
-    "AI extraction failed: #{message}. Original: #{inspect(original)}"
   end
 end

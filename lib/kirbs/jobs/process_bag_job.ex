@@ -24,6 +24,7 @@ defmodule Kirbs.Jobs.ProcessBagJob do
     else
       {:error, :not_found} -> {:ok, "Bag #{bag_id} not found, skipping"}
       {:cancel, reason} -> {:cancel, reason}
+      {:error, {:rate_limited, seconds}} -> {:snooze, seconds + 60}
       {:error, reason} -> {:error, "Bag #{bag_id}: #{inspect(reason)}"}
     end
   end

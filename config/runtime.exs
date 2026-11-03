@@ -11,32 +11,6 @@ import Config
 config :kirbs,
   image_upload_dir: System.get_env("IMAGE_UPLOAD_DIR") || "/tmp/kirbs_uploads"
 
-# LangChain Anthropic API key
-if config_env() == :prod do
-  config :langchain,
-    anthropic_key:
-      System.get_env("ANTHROPIC_API_KEY") ||
-        raise("Missing environment variable `ANTHROPIC_API_KEY`!")
-else
-  # In dev/test, only set if environment variable exists (allows dev.secret.exs to take precedence)
-  if anthropic_key = System.get_env("ANTHROPIC_API_KEY") do
-    config :langchain, anthropic_key: anthropic_key
-  end
-end
-
-# LangChain Google API key for Gemini
-if config_env() == :prod do
-  config :langchain,
-    google_ai_key:
-      System.get_env("GOOGLE_API_KEY") ||
-        raise("Missing environment variable `GOOGLE_API_KEY`!")
-else
-  # In dev/test, only set if environment variable exists (allows dev.secret.exs to take precedence)
-  if google_ai_key = System.get_env("GOOGLE_API_KEY") do
-    config :langchain, google_ai_key: google_ai_key
-  end
-end
-
 # OpenRouter API key
 if config_env() == :prod do
   config :kirbs,

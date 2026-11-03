@@ -1,14 +1,21 @@
 defmodule Kirbs.Services.Ai.ItemInfoExtract do
   @moduledoc """
   Extracts item information from ALL item photos.
-  Uses Gemini vision to identify: brand, size, colors, materials, description, quality, suggested_category, price.
+  Uses the OpenRouter vision model with web search to identify: brand, size, colors, materials,
+  description, quality, suggested_category, price.
   """
 
   require Logger
 
   alias Kirbs.Resources.Item
+  alias Kirbs.Services.Ai.OpenrouterChat
   alias Kirbs.YagaTaxonomy
-  alias LangChain.NativeTool
+
+  @system_prompt """
+  You extract item information from photos of used children's clothing.
+  Use web search to find prices of comparable used items on yaga.ee (then vinted.ee)
+  before deciding the price.
+  """
 
   def run(item_id) do
     with {:ok, item} <- load_item(item_id),
@@ -19,8 +26,6 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
          {:ok, updated_item} <- update_item(item, validated) do
       {:ok, updated_item}
     end
-
-    # |> dbg
   end
 
   defp load_item(item_id) do
@@ -39,7 +44,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
   defp extract_with_ai(images) do
     with {:ok, encoded_images} <- encode_images(images),
-         {:ok, result} <- call_gemini(encoded_images) do
+         {:ok, result} <- call_llm(encoded_images) do
       parse_response(result)
     end
   end
@@ -67,9 +72,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     end
   end
 
-  defp call_gemini(encoded_images) do
-    alias LangChain.Message.ContentPart
-
+  defp call_llm(encoded_images) do
     # Get valid options from taxonomy
     kids_categories = YagaTaxonomy.kids_categories() |> Enum.map(& &1.name) |> Enum.uniq()
     colors = YagaTaxonomy.all_colors() |> Enum.map(& &1.name)
@@ -107,11 +110,6 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     - price: KASUTATUD eseme müügihind eurodes yaga.ee turul. Search "site:yaga.ee [brand] [category] laste" to find actual yaga.ee listings. Kasutatud riided on 20-40% uue hinnast. Bodyd tavaliselt €1-2, pluusid €2-3. Kui ei leia yaga.ee hindu, kasuta vinted.ee või üldist Eesti second-hand hinnataset. Kui ei suuda hinnata, tagasta null.
     - price_explanation: English explanation (1-2 sentences) for the price. Mention if you found similar listings on yaga.ee or vinted.ee with prices, or if you estimated based on typical Estonian second-hand prices. Example: "Found similar bodysuits on yaga.ee for €1-2." or "No exact matches, estimated €1.50 based on typical used bodysuit prices on yaga.ee."
 
-    VASTUSE FORMAAT:
-    Tagasta AINULT puhas JSON objekt ilma lisateksti või selgitusteta.
-    Ära kasuta markdown koodiplokke (```).
-    Tagasta täpselt nende võtmetega: brand, size, colors, materials, description, quality, suggested_category, price, price_explanation.
-
     Näited:
     Üks asi: {"brand": "H&M", "size": "74/80", "colors": ["Sinine"], "materials": ["Puuvill"], "description": "Armas sinine body, kergelt kantud aga väga heas seisukorras", "quality": "Hea", "suggested_category": "Bodyd", "price": 1.50, "price_explanation": "Found similar H&M bodysuits on yaga.ee for €1-2."}
     Komplekt: {"brand": "Muu", "size": "74/80", "colors": ["Sinine", "Valge"], "materials": ["Puuvill"], "description": "Komplekt: 2 armsat bodyt, üks sinine ja üks valge, mõlemad hästi hoitud", "quality": "Hea", "suggested_category": "Bodyd", "price": 3.00, "price_explanation": "Set of 2 bodysuits, priced at €1.50 each based on typical yaga.ee prices."}
@@ -133,106 +131,55 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
     - Hind: KRIITILINE! KASUTATUD riie hind! Search "site:yaga.ee" first! Used baby clothes are CHEAP: bodysuits €1-2, NOT €4-5! These are 20-40% of new price. KOMPLEKTI puhul liida üksikute asjade hinnad kokku! Don't use eBay or foreign prices!
     """
 
-    # Build content array with all images followed by the prompt
-    image_contents =
-      Enum.map(encoded_images, fn base64_image ->
-        ContentPart.image!(base64_image, media: :jpeg)
-      end)
+    OpenrouterChat.run(prompt,
+      images: encoded_images,
+      system: @system_prompt,
+      json_schema: schema(kids_categories, colors, materials, sizes),
+      web_search: true
+    )
+  end
 
-    content = image_contents ++ [ContentPart.text!(prompt)]
-
-    user_message = LangChain.Message.new_user!(content)
-
-    system_message =
-      LangChain.Message.new_system!("""
-      You extract item information and return it as JSON.
-
-      WORKFLOW:
-      1. First, silently use web search tool to find pricing for used items on yaga.ee
-      2. After you have the search results, output ONLY valid JSON with all extracted data
-      3. Your final response must be ONLY the JSON object, starting with { and ending with }
-      4. Do not include explanations, markdown blocks, or any text outside the JSON
-
-      Use tools when needed, then return JSON.
-      """)
-
-    model = Application.get_env(:kirbs, :ai_model, "gemini-2.5-flash")
-
-    google_search_tool =
-      NativeTool.new!(%{name: "google_search", configuration: %{}})
-
-    case LangChain.Chains.LLMChain.new!(%{
-           llm:
-             LangChain.ChatModels.ChatGoogleAI.new!(%{
-               model: model,
-               temperature: 0,
-               stream: false
-             })
-         })
-         |> LangChain.Chains.LLMChain.add_message(system_message)
-         |> LangChain.Chains.LLMChain.add_message(user_message)
-         |> LangChain.Chains.LLMChain.add_tools([google_search_tool])
-         |> LangChain.Chains.LLMChain.run() do
-      {:ok, updated_chain} ->
-        # Extract ALL text parts and get the last one (which contains the JSON)
-        # Gemini returns multiple text parts when using web search:
-        # 1. Explanation that it will search
-        # 2. Search progress messages
-        # 3. Final JSON response (this is what we want)
-        text_parts =
-          updated_chain.last_message.content
-          |> Enum.filter(&(&1.type == :text))
-          |> Enum.map(& &1.content)
-
-        # Get the last text part (should contain the JSON)
-        text_content = List.last(text_parts) || ""
-
-        {:ok, text_content}
-
-      {:error, _chain, %LangChain.LangChainError{} = error} ->
-        {:error, format_ai_error(error)}
-
-      {:error, reason} ->
-        {:error, "AI extraction failed: #{inspect(reason)}"}
+  @doc false
+  def schema(categories, colors, materials, sizes) do
+    nullable_enum = fn values ->
+      %{"type" => ["string", "null"], "enum" => Enum.uniq(values) ++ [nil]}
     end
+
+    conditions = Enum.map(YagaTaxonomy.all_conditions(), & &1.name)
+
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" =>
+        ~w(brand size colors materials description quality suggested_category price price_explanation),
+      "properties" => %{
+        "brand" => %{"type" => ["string", "null"]},
+        "size" => nullable_enum.(sizes),
+        "colors" => %{
+          "type" => "array",
+          "items" => %{"type" => "string", "enum" => Enum.uniq(colors)}
+        },
+        "materials" => %{
+          "type" => "array",
+          "items" => %{"type" => "string", "enum" => Enum.uniq(materials)}
+        },
+        "description" => %{"type" => ["string", "null"]},
+        "quality" => nullable_enum.(conditions),
+        "suggested_category" => nullable_enum.(categories),
+        "price" => %{"type" => ["number", "null"]},
+        "price_explanation" => %{"type" => ["string", "null"]}
+      }
+    }
   end
 
   defp parse_response(response_text) do
-    # Try to extract JSON from the response
     case Jason.decode(response_text) do
       {:ok, data} ->
         parse_extracted_data(data)
 
-      {:error, _} ->
-        # Try to extract from markdown code block first
-        json_str =
-          case Regex.run(~r/```(?:json)?\s*(\{.*?\})\s*```/s, response_text) do
-            [_, json] ->
-              json
-
-            _ ->
-              # Try to find JSON object (non-greedy match for better nesting support)
-              case Regex.run(~r/(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})/s, response_text) do
-                [_, json] -> json
-                _ -> nil
-              end
-          end
-
-        case json_str do
-          nil ->
-            {:cancel,
-             "Could not extract item info from photos. AI response: #{String.slice(response_text, 0..500)}"}
-
-          json ->
-            case Jason.decode(json) do
-              {:ok, data} ->
-                parse_extracted_data(data)
-
-              {:error, err} ->
-                {:cancel,
-                 "Could not parse AI response JSON: #{inspect(err)}. Extracted: #{String.slice(json, 0..500)}"}
-            end
-        end
+      {:error, error} ->
+        {:cancel,
+         "Could not parse AI response JSON: #{inspect(error)}. Response: #{String.slice(response_text, 0..500)}"}
     end
   end
 
@@ -253,7 +200,7 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
 
   defp parse_extracted_data(data) do
     Logger.error(
-      "Expected map but got invalid data structure from Gemini: #{inspect(data, pretty: true, limit: :infinity)}"
+      "Expected map but got invalid data structure from AI: #{inspect(data, pretty: true, limit: :infinity)}"
     )
 
     {:error, "Invalid data structure received from AI"}
@@ -329,35 +276,4 @@ defmodule Kirbs.Services.Ai.ItemInfoExtract do
   defp update_item(item, extracted) do
     Ash.update(item, extracted)
   end
-
-  defp format_ai_error(%LangChain.LangChainError{
-         original: %Req.Response{status: 429, body: body}
-       }) do
-    {:rate_limited, retry_delay_seconds(body)}
-  end
-
-  defp format_ai_error(%LangChain.LangChainError{
-         original: %{"promptFeedback" => %{"blockReason" => reason}}
-       }) do
-    "AI extraction blocked by Gemini safety filter: #{reason}"
-  end
-
-  defp format_ai_error(%LangChain.LangChainError{message: message, original: original}) do
-    "AI extraction failed: #{message}. Original: #{inspect(original)}"
-  end
-
-  defp retry_delay_seconds(%{"error" => %{"details" => details}}) do
-    Enum.find_value(details, 60, fn
-      %{"retryDelay" => delay} ->
-        case Integer.parse(delay) do
-          {seconds, _} -> seconds
-          :error -> nil
-        end
-
-      _ ->
-        nil
-    end)
-  end
-
-  defp retry_delay_seconds(_), do: 60
 end

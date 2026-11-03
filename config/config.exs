@@ -83,7 +83,6 @@ config :kirbs,
   ecto_repos: [Kirbs.Repo],
   generators: [timestamp_type: :utc_datetime],
   ash_domains: [Kirbs.Accounts, Kirbs],
-  ai_model: "gemini-2.5-flash",
   openrouter_model: "openai/gpt-6-luna"
 
 # Configures the endpoint

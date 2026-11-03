@@ -52,3 +52,8 @@ config :phoenix_live_view,
 
 # Never hit OpenRouter in tests: categorization uses a stub (see test/support/stub_categorize_llm.ex)
 config :kirbs, :item_categorize_llm, Kirbs.Test.StubCategorizeLlm
+
+# OpenrouterChat goes through Req.Test stubs (see test/kirbs/services/ai/openrouter_chat_test.exs)
+config :kirbs,
+  openrouter_api_key: "test-key",
+  openrouter_req_options: [plug: {Req.Test, Kirbs.Services.Ai.OpenrouterChat}]

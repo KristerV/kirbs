@@ -412,12 +412,6 @@ _The PostgreSQL data layer for Ash Framework_
 
 [ash_postgres usage rules](deps/ash_postgres/usage-rules.md)
 <!-- ash_postgres-end -->
-<!-- ash_ai-start -->
-## ash_ai usage
-_Integrated LLM features for your Ash application._
-
-[ash_ai usage rules](deps/ash_ai/usage-rules.md)
-<!-- ash_ai-end -->
 <!-- igniter-start -->
 ## igniter usage
 _A code generation and project patching framework_
