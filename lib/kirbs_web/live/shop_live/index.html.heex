@@ -373,6 +373,7 @@
       <div :if={@more?} class="mt-10 flex justify-center">
         <button
           id="load-more"
+          phx-hook="InfiniteScroll"
           type="button"
           phx-click="load_more"
           phx-disable-with="Laen …"

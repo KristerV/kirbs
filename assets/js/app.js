@@ -31,13 +31,14 @@ import {SeasonalChart} from "./hooks/seasonal_chart"
 import {MetaPixel} from "./hooks/meta_pixel"
 import {Countdown} from "./hooks/countdown"
 import {ShopVisit} from "./hooks/shop_visit"
+import {InfiniteScroll} from "./hooks/infinite_scroll"
 import live_select from "live_select"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, Camera, MonthlyEarningsChart, DailyChart, SeasonalChart, MetaPixel, Countdown, ShopVisit, ...live_select},
+  hooks: {...colocatedHooks, Camera, MonthlyEarningsChart, DailyChart, SeasonalChart, MetaPixel, Countdown, ShopVisit, InfiniteScroll, ...live_select},
 })
 
 // Show progress bar on live navigation and form submits
