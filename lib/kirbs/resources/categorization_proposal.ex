@@ -19,6 +19,8 @@ defmodule Kirbs.Resources.CategorizationProposal do
   code_interface do
     define :get, args: [:id]
     define :list_pending, args: []
+    define :list_pending_top, args: [:limit]
+    define :list_pending_by_ids, args: [:ids]
     define :list_pending_above, args: [:min_confidence]
     define :get_by_item, args: [:item_id]
     define :list_by_category, args: [:category_id]
@@ -74,6 +76,22 @@ defmodule Kirbs.Resources.CategorizationProposal do
                 sort: [confidence: :desc, created_at: :asc],
                 load: [:category, item: [:images]]
               )
+    end
+
+    read :list_pending_top do
+      argument :limit, :integer, allow_nil?: false
+      filter expr(status == :pending)
+
+      prepare build(
+                sort: [confidence: :desc, created_at: :asc],
+                load: [:category, item: [:images]],
+                limit: arg(:limit)
+              )
+    end
+
+    read :list_pending_by_ids do
+      argument :ids, {:array, :uuid}, allow_nil?: false
+      filter expr(status == :pending and id in ^arg(:ids) and not is_nil(category_id))
     end
 
     read :list_pending_above do

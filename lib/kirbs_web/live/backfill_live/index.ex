@@ -8,10 +8,18 @@ defmodule KirbsWeb.BackfillLive.Index do
   import KirbsWeb.CategoryComponents
 
   alias Kirbs.Resources.CategorizationProposal
-  alias Kirbs.Services.Backfill.{ApplyProposal, ApplyProposalsAbove, EnqueueCategorize}
+
+  alias Kirbs.Services.Backfill.{
+    ApplyProposal,
+    ApplyProposalsAbove,
+    ApplyProposalsByIds,
+    EnqueueCategorize
+  }
+
   alias Kirbs.Services.Categories.GroupedLeafOptions
 
   @default_threshold "0.9"
+  @visible_limit 300
 
   @impl true
   def mount(_params, _session, socket) do
@@ -42,7 +50,7 @@ defmodule KirbsWeb.BackfillLive.Index do
   def handle_event("approve", %{"id" => id}, socket) do
     with {:ok, proposal} <- CategorizationProposal.get(id),
          {:ok, _item} <- ApplyProposal.run(proposal) do
-      {:noreply, socket |> update_count(-1) |> stream_delete(:proposals, proposal)}
+      {:noreply, socket |> drop_visible(proposal) |> stream_delete(:proposals, proposal)}
     else
       error -> {:noreply, put_flash(socket, :error, "Could not apply: #{inspect(error)}")}
     end
@@ -51,7 +59,7 @@ defmodule KirbsWeb.BackfillLive.Index do
   def handle_event("reject", %{"id" => id}, socket) do
     with {:ok, proposal} <- CategorizationProposal.get(id),
          {:ok, proposal} <- CategorizationProposal.reject(proposal) do
-      {:noreply, socket |> update_count(-1) |> stream_delete(:proposals, proposal)}
+      {:noreply, socket |> drop_visible(proposal) |> stream_delete(:proposals, proposal)}
     else
       error -> {:noreply, put_flash(socket, :error, "Could not reject: #{inspect(error)}")}
     end
@@ -99,15 +107,30 @@ defmodule KirbsWeb.BackfillLive.Index do
     end
   end
 
+  def handle_event("apply_visible", _params, socket) do
+    {:ok, %{applied: applied, failed: failed}} =
+      socket.assigns.visible_ids |> MapSet.to_list() |> ApplyProposalsByIds.run()
+
+    {:noreply,
+     socket
+     |> put_flash(:info, "Applied #{applied} visible proposals (#{failed} failed)")
+     |> load_proposals()}
+  end
+
   defp load_proposals(socket) do
-    proposals = CategorizationProposal.list_pending!()
+    proposals = CategorizationProposal.list_pending_top!(@visible_limit)
 
     socket
-    |> assign(:pending_count, length(proposals))
+    |> assign(:pending_count, length(CategorizationProposal.count_pending!()))
+    |> assign(:visible_ids, MapSet.new(proposals, & &1.id))
     |> stream(:proposals, proposals, reset: true)
   end
 
-  defp update_count(socket, delta), do: update(socket, :pending_count, &(&1 + delta))
+  defp drop_visible(socket, proposal) do
+    socket
+    |> update(:pending_count, &(&1 - 1))
+    |> update(:visible_ids, &MapSet.delete(&1, proposal.id))
+  end
 
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value
@@ -157,8 +180,18 @@ defmodule KirbsWeb.BackfillLive.Index do
           >
             Apply all above threshold
           </button>
+          <button
+            id="apply-visible"
+            type="button"
+            class="btn btn-primary"
+            phx-click="apply_visible"
+            disabled={MapSet.size(@visible_ids) == 0}
+            data-confirm={"Apply all #{MapSet.size(@visible_ids)} visible proposals?"}
+          >
+            Apply visible ({MapSet.size(@visible_ids)})
+          </button>
           <span id="pending-count" class="ml-auto text-sm opacity-70">
-            {@pending_count} pending
+            showing {MapSet.size(@visible_ids)} of {@pending_count} pending
           </span>
         </form>
 

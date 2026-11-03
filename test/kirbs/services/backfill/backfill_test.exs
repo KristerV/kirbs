@@ -5,7 +5,14 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
 
   alias Kirbs.Jobs.BackfillCategorizeJob
   alias Kirbs.Resources.{CategorizationProposal, Item}
-  alias Kirbs.Services.Backfill.{ApplyProposal, ApplyProposalsAbove, CategorizeBatch}
+
+  alias Kirbs.Services.Backfill.{
+    ApplyProposal,
+    ApplyProposalsAbove,
+    ApplyProposalsByIds,
+    CategorizeBatch
+  }
+
   alias Kirbs.Test.StubCategorizeLlm
 
   setup do
@@ -111,6 +118,20 @@ defmodule Kirbs.Services.Backfill.BackfillTest do
     StubCategorizeLlm.respond_with({:error, {:rate_limited, 5}})
     item_with_image()
     assert {:snooze, 65} = perform_job(BackfillCategorizeJob, %{})
+  end
+
+  test "top list is limited and visible ids can be applied" do
+    for _ <- 1..3, do: item_with_image()
+    StubCategorizeLlm.respond_with(llm_response("lapsed-valisriided-joped"))
+    {:ok, _} = CategorizeBatch.run()
+
+    visible = CategorizationProposal.list_pending_top!(2)
+    assert length(visible) == 2
+
+    assert {:ok, %{applied: 2, failed: 0}} =
+             visible |> Enum.map(& &1.id) |> ApplyProposalsByIds.run()
+
+    assert length(CategorizationProposal.list_pending!()) == 1
   end
 
   defp perform_job(worker, args), do: Oban.Testing.perform_job(worker, args, repo: Kirbs.Repo)
