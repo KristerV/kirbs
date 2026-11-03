@@ -100,11 +100,14 @@ defmodule KirbsWeb.ShopLiveTest do
       assert has_element?(view, ~s(#breadcrumbs a[href="/?season=winter%2Csummer"]))
     end
 
-    test "all_year items match every season", %{conn: conn} do
+    test "seasons are exclusive: all_year items only match all_year", %{conn: conn} do
       all_year =
         item!(bag!(), %{season: :all_year, brand: "Zara", category: "lapsed-valisriided-joped"})
 
       {:ok, view, _html} = live(conn, ~p"/?season=winter")
+      refute has_element?(view, "#items-#{all_year.id}")
+
+      {:ok, view, _html} = live(conn, ~p"/?season=all_year")
       assert has_element?(view, "#items-#{all_year.id}")
     end
 

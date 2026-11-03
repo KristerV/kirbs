@@ -95,13 +95,14 @@ defmodule Kirbs.Resources.ItemSearchTest do
     assert ctx.jacket.id
   end
 
-  test "season accepts a list and all_year items match every season", ctx do
+  test "season accepts a list and seasons are exclusive", ctx do
     all_year = item!(bag!(), %{season: :all_year, category: "lapsed-jalatsid-saapad"})
 
-    assert Enum.sort(ids(%{season: [:winter]})) == Enum.sort([ctx.jacket.id, all_year.id])
-    assert ids(%{season: [:summer]}) == [all_year.id]
+    assert ids(%{season: [:winter]}) == [ctx.jacket.id]
+    assert ids(%{season: [:summer]}) == []
+    assert ids(%{season: [:all_year]}) == [all_year.id]
 
-    assert Enum.sort(ids(%{season: [:summer, :winter]})) ==
+    assert Enum.sort(ids(%{season: [:all_year, :winter]})) ==
              Enum.sort([ctx.jacket.id, all_year.id])
   end
 

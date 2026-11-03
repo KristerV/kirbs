@@ -142,13 +142,9 @@ defmodule Kirbs.Resources.Item.Preparations.Search do
 
   defp filter_gender(query, gender), do: filter_equal(query, :gender, gender)
 
-  # `all_year` items belong to every season.
+  # Seasons are exclusive: `all_year` only matches when `all_year` itself is selected.
   defp filter_season(query, seasons) when seasons in [nil, []], do: query
-
-  defp filter_season(query, seasons) do
-    seasons = Enum.uniq([:all_year | seasons])
-    Ash.Query.filter(query, season in ^seasons)
-  end
+  defp filter_season(query, seasons), do: Ash.Query.filter(query, season in ^seasons)
 
   defp filter_equal(query, _field, nil), do: query
   defp filter_equal(query, _field, ""), do: query

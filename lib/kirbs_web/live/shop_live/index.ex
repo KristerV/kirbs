@@ -17,7 +17,7 @@ defmodule KirbsWeb.ShopLive.Index do
   @page_size 24
   @text_filters [:q, :brand, :size]
   @enum_filters [:gender, :age_group]
-  @season_pills [:winter, :spring_autumn, :summer]
+  @season_pills [:winter, :spring_autumn, :summer, :all_year]
   @persistent_filters [:season, :gender, :age_group, :waterproof]
   @sorts ~w(relevance newest price_asc price_desc)
 
@@ -318,13 +318,12 @@ defmodule KirbsWeb.ShopLive.Index do
     end
   end
 
-  # `[{season, label, count}]`; `all_year` items count towards every season.
+  # `[{season, label, count}]`
   defp season_pills(facets) do
     counts = Map.new(facets.season)
-    all_year = Map.get(counts, :all_year, 0)
 
     for season <- @season_pills do
-      {season, Labels.label(:season, season), Map.get(counts, season, 0) + all_year}
+      {season, Labels.label(:season, season), Map.get(counts, season, 0)}
     end
   end
 
