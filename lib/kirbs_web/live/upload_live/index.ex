@@ -3,6 +3,7 @@ defmodule KirbsWeb.UploadLive.Index do
 
   alias Kirbs.Resources.Bag
   alias Kirbs.Resources.Item
+  alias Kirbs.Services.Channels.PublishReviewedToShop
 
   @impl true
   def mount(_params, _session, socket) do
@@ -38,6 +39,8 @@ defmodule KirbsWeb.UploadLive.Index do
         |> Kirbs.Jobs.UploadItemJob.new()
         |> Oban.insert()
       end
+
+      {:ok, _} = PublishReviewedToShop.run(bag.id)
 
       {:noreply,
        socket
