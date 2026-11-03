@@ -19,7 +19,7 @@ defmodule KirbsWeb.BackfillLive.Index do
   alias Kirbs.Services.Categories.GroupedLeafOptions
 
   @default_threshold "0.9"
-  @visible_limit 300
+  @visible_limit 100
 
   @impl true
   def mount(_params, _session, socket) do
