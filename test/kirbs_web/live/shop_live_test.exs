@@ -179,6 +179,24 @@ defmodule KirbsWeb.ShopLiveTest do
       refute html =~ "Seisukord"
     end
 
+    test "teen items are offered in the age filter", %{conn: conn} do
+      item!(bag!(), %{age_group: :teen, brand: "Teenbrand", category: "lapsed-valisriided-joped"})
+
+      item!(bag!(), %{
+        age_group: :adult,
+        brand: "Adultbrand",
+        category: "lapsed-valisriided-joped"
+      })
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      assert has_element?(view, "#facet-age_group-teen", "1")
+      refute has_element?(view, "#facet-age_group-adult")
+
+      {:ok, view, _html} = live(conn, ~p"/?age_group=teen")
+      assert has_element?(view, "#shop-items article", "Teenbrand")
+      refute has_element?(view, "#shop-items article", "Adultbrand")
+    end
+
     test "unisex items match boy and girl filters and counts", %{conn: conn} do
       uni =
         item!(bag!(), %{

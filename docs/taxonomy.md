@@ -49,7 +49,7 @@ Season is an ordinary sidebar facet block (Hooaeg: Talv · Kevad/sügis · Suvi)
 Toggles and combine (URL `season=winter,summer`), persist across every category, breadcrumb and audience
 link, and filter the grid and the sidebar counts. `all_year` items match every season filter. Season counts are
 computed with all other filters applied. The sidebar lists only families (and, for the active family, types)
-with available published items, with counts. Sidebar order: Kategooriad, Hooaeg, Veekindel, Sugu (Poiss / Tüdruk), Vanus (Beebi / Väikelaps / Laps),
+with available published items, with counts. Sidebar order: Kategooriad, Hooaeg, Veekindel, Sugu (Poiss / Tüdruk), Vanus (Beebi / Väikelaps / Laps / Teismeline),
 Suurus, Bränd, Hind. `gender` and `age_group` are single-select URL params that persist across category
 navigation like season; `unisex` items also match the Poiss and Tüdruk filters and count towards both (so Unisex is not offered as a
 filter option of its own; the attribute value stays). There

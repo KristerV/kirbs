@@ -350,7 +350,7 @@ defmodule KirbsWeb.ShopLive.Index do
   # The shop sells children's clothes: only these gender / age values are filterable.
   @shown_values %{
     gender: [:boy, :girl],
-    age_group: [:baby, :toddler, :child]
+    age_group: [:baby, :toddler, :child, :teen]
   }
 
   defp shown_value?(key, value) when is_map_key(@shown_values, key),
