@@ -143,11 +143,11 @@
             <li :for={{season, label, count} <- season_pills(@facets)}>
               <.link
                 id={"season-#{season}"}
-                patch={shop_path(@tree, @category, toggle_season(@filters, season))}
-                aria-pressed={to_string(season in (@filters[:season] || []))}
+                patch={shop_path(@tree, @category, toggle_value(@filters, :season, season))}
+                aria-pressed={to_string(selected?(@filters, :season, season))}
                 class={[
                   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition",
-                  if(season in (@filters[:season] || []),
+                  if(selected?(@filters, :season, season),
                     do: "border-orange-500 bg-orange-500 font-bold text-white",
                     else:
                       "border-orange-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-600"
@@ -201,10 +201,11 @@
               <li :for={{value, label, count} <- links}>
                 <.link
                   id={"facet-#{key}-#{value}"}
-                  patch={shop_path(@tree, @category, toggle_filter(@filters, key, value))}
+                  patch={shop_path(@tree, @category, toggle_value(@filters, key, value))}
+                  aria-pressed={to_string(selected?(@filters, key, value))}
                   class={[
                     "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition",
-                    if(to_string(@filters[key]) == to_string(value),
+                    if(selected?(@filters, key, value),
                       do: "border-orange-500 bg-orange-500 font-bold text-white",
                       else:
                         "border-orange-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-600"
@@ -229,11 +230,12 @@
             }>
               <.link
                 id={"facet-size-#{value}"}
-                patch={shop_path(@tree, @category, toggle_filter(@filters, :size, value))}
+                patch={shop_path(@tree, @category, toggle_value(@filters, :size, value))}
                 title={"#{count} eset"}
+                aria-pressed={to_string(selected?(@filters, :size, value))}
                 class={[
                   "inline-flex min-w-10 items-center justify-center rounded-lg border px-2.5 py-1 text-sm font-semibold transition",
-                  if(@filters[:size] == value,
+                  if(selected?(@filters, :size, value),
                     do: "border-orange-500 bg-orange-500 text-white",
                     else:
                       "border-orange-200 bg-white text-stone-600 hover:border-orange-400 hover:text-orange-600"
@@ -255,10 +257,11 @@
             <li :for={{value, label, count} <- facet_links(@facets, :brand, @filters)}>
               <.link
                 id={"facet-brand-#{String.replace(value, ~r/[^a-zA-Z0-9]+/, "-")}"}
-                patch={shop_path(@tree, @category, toggle_filter(@filters, :brand, value))}
+                patch={shop_path(@tree, @category, toggle_value(@filters, :brand, value))}
+                aria-pressed={to_string(selected?(@filters, :brand, value))}
                 class={[
                   "flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                  if(@filters[:brand] == value,
+                  if(selected?(@filters, :brand, value),
                     do: "bg-orange-100 font-bold text-orange-700",
                     else: "text-stone-600 hover:bg-orange-50 hover:text-orange-600"
                   )

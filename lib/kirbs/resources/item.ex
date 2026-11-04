@@ -295,15 +295,16 @@ defmodule Kirbs.Resources.Item do
 
       argument :q, :string
       argument :category, :string
-      argument :brand, :string
-      argument :size, :string
+      # Facet lists: values within one facet are OR-ed, facets are AND-ed.
+      argument :brand, {:array, :string}
+      argument :size, {:array, :string}
 
-      argument :age_group, :atom do
-        constraints one_of: [:baby, :toddler, :child, :teen, :adult]
+      argument :age_group, {:array, :atom} do
+        constraints items: [one_of: [:baby, :toddler, :child, :teen, :adult]]
       end
 
-      argument :gender, :atom do
-        constraints one_of: [:girl, :boy, :unisex, :woman, :man]
+      argument :gender, {:array, :atom} do
+        constraints items: [one_of: [:girl, :boy, :unisex, :woman, :man]]
       end
 
       # One season or a list; `:all_year` items match every season filter.

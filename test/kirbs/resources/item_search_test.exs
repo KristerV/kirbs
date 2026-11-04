@@ -70,19 +70,28 @@ defmodule Kirbs.Resources.ItemSearchTest do
   end
 
   test "facet filters", ctx do
-    assert ids(%{gender: :girl}) == [ctx.pants.id]
+    assert ids(%{gender: [:girl]}) == [ctx.pants.id]
     assert ids(%{season: [:winter]}) == [ctx.jacket.id]
-    assert ids(%{brand: "H&M"}) == [ctx.pants.id]
-    assert ids(%{size: "110"}) == [ctx.jacket.id]
+    assert ids(%{brand: ["H&M"]}) == [ctx.pants.id]
+    assert ids(%{size: ["110"]}) == [ctx.jacket.id]
+  end
+
+  test "values within one facet are OR-ed, facets are AND-ed", ctx do
+    both = Enum.sort([ctx.jacket.id, ctx.pants.id])
+
+    assert Enum.sort(ids(%{brand: ["H&M", "Reima"]})) == both
+    assert Enum.sort(ids(%{size: ["98", "110"]})) == both
+    assert Enum.sort(ids(%{gender: [:boy, :girl]})) == both
+    assert ids(%{brand: ["H&M", "Reima"], size: ["110"]}) == [ctx.jacket.id]
   end
 
   test "unisex items match boy and girl filters", ctx do
     uni = item!(bag!(), %{gender: :unisex, age_group: :baby, category: "lapsed-jalatsid-saapad"})
 
-    assert Enum.sort(ids(%{gender: :girl})) == Enum.sort([ctx.pants.id, uni.id])
-    assert Enum.sort(ids(%{gender: :boy})) == Enum.sort([ctx.jacket.id, uni.id])
-    assert ids(%{gender: :unisex}) == [uni.id]
-    assert ids(%{age_group: :baby}) == [uni.id]
+    assert Enum.sort(ids(%{gender: [:girl]})) == Enum.sort([ctx.pants.id, uni.id])
+    assert Enum.sort(ids(%{gender: [:boy]})) == Enum.sort([ctx.jacket.id, uni.id])
+    assert ids(%{gender: [:unisex]}) == [uni.id]
+    assert ids(%{age_group: [:baby]}) == [uni.id]
   end
 
   test "gender facet counts unisex towards boy and girl", ctx do
@@ -90,7 +99,7 @@ defmodule Kirbs.Resources.ItemSearchTest do
 
     assert Map.new(Item.facets!(%{}).gender) == %{boy: 2, girl: 2, unisex: 1}
     # own filter removed; other filters respected
-    assert Map.new(Item.facets!(%{gender: :boy, season: [:winter]}).gender) == %{boy: 1}
+    assert Map.new(Item.facets!(%{gender: [:boy], season: [:winter]}).gender) == %{boy: 1}
     assert Item.facets!(%{}).age_group == [{:baby, 1}]
     assert ctx.jacket.id
   end
@@ -121,7 +130,7 @@ defmodule Kirbs.Resources.ItemSearchTest do
   end
 
   test "facets count values with their own filter removed", ctx do
-    facets = Item.facets!(%{brand: "H&M"})
+    facets = Item.facets!(%{brand: ["H&M"]})
     assert Enum.sort(facets.brand) == [{"H&M", 1}, {"Reima", 1}]
     refute Map.has_key?(facets, :condition)
     assert facets.size == [{"98", 1}]

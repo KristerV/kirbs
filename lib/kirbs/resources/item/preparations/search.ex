@@ -22,9 +22,9 @@ defmodule Kirbs.Resources.Item.Preparations.Search do
     |> Ash.Query.filter(kirbs_status == :available and not is_nil(published_at))
     |> filter_text(q)
     |> filter_category(Ash.Query.get_argument(query, :category))
-    |> filter_equal(:brand, Ash.Query.get_argument(query, :brand))
-    |> filter_equal(:size, Ash.Query.get_argument(query, :size))
-    |> filter_equal(:age_group, Ash.Query.get_argument(query, :age_group))
+    |> filter_any(:brand, Ash.Query.get_argument(query, :brand))
+    |> filter_any(:size, Ash.Query.get_argument(query, :size))
+    |> filter_any(:age_group, Ash.Query.get_argument(query, :age_group))
     |> filter_gender(Ash.Query.get_argument(query, :gender))
     |> filter_season(Ash.Query.get_argument(query, :season))
     |> filter_waterproof(Ash.Query.get_argument(query, :waterproof))
@@ -137,18 +137,21 @@ defmodule Kirbs.Resources.Item.Preparations.Search do
   defp filter_waterproof(query, _), do: query
 
   # Unisex items match the boy and girl filters too.
-  defp filter_gender(query, gender) when gender in [:boy, :girl],
-    do: Ash.Query.filter(query, gender in ^[gender, :unisex])
+  defp filter_gender(query, genders) when genders in [nil, []], do: query
 
-  defp filter_gender(query, gender), do: filter_equal(query, :gender, gender)
+  defp filter_gender(query, genders) do
+    genders =
+      if Enum.any?(genders, &(&1 in [:boy, :girl])), do: [:unisex | genders], else: genders
+
+    filter_any(query, :gender, Enum.uniq(genders))
+  end
 
   # Seasons are exclusive: `all_year` only matches when `all_year` itself is selected.
   defp filter_season(query, seasons) when seasons in [nil, []], do: query
   defp filter_season(query, seasons), do: Ash.Query.filter(query, season in ^seasons)
 
-  defp filter_equal(query, _field, nil), do: query
-  defp filter_equal(query, _field, ""), do: query
-  defp filter_equal(query, field, value), do: Ash.Query.do_filter(query, [{field, value}])
+  defp filter_any(query, _field, values) when values in [nil, []], do: query
+  defp filter_any(query, field, values), do: Ash.Query.filter(query, ^ref(field) in ^values)
 
   defp filter_price(query, min, max) do
     query

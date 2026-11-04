@@ -129,7 +129,7 @@ defmodule Kirbs.Resources.ItemMultiCategoryTest do
     end
 
     test "category facet ignores the category filter but respects the others", ctx do
-      facets = Item.facets!(%{category: "lapsed-valisriided-joped", brand: "Reima"})
+      facets = Item.facets!(%{category: "lapsed-valisriided-joped", brand: ["Reima"]})
       rollup = Map.new(facets.category_rollup)
       assert rollup[ctx.valipuksid.id] == 1
       assert rollup[ctx.vestid.id] == 1
@@ -150,7 +150,7 @@ defmodule Kirbs.Resources.ItemMultiCategoryTest do
 
       # the waterproof facet ignores its own filter, but respects the others
       assert Map.new(Item.facets!(%{waterproof: true}).waterproof) == %{true => 1, false => 3}
-      assert Map.new(Item.facets!(%{brand: "Zara"}).waterproof) == %{false => 1}
+      assert Map.new(Item.facets!(%{brand: ["Zara"]}).waterproof) == %{false => 1}
     end
   end
 end

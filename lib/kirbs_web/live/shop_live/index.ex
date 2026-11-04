@@ -15,7 +15,9 @@ defmodule KirbsWeb.ShopLive.Index do
   alias KirbsWeb.Shop.{CategoryTree, Labels}
 
   @page_size 24
-  @text_filters [:q, :brand, :size]
+  # Multi-select facets: values within one facet are OR-ed. Text values are `|`-separated in
+  # the URL (brands/sizes may contain commas), enum values `,`-separated.
+  @text_list_filters [:brand, :size]
   @enum_filters [:gender, :age_group]
   @season_pills [:winter, :spring_autumn, :summer, :all_year]
   @persistent_filters [:season, :gender, :age_group, :waterproof]
@@ -163,16 +165,24 @@ defmodule KirbsWeb.ShopLive.Index do
 
   defp parse_filters(params) do
     text =
-      for key <- @text_filters,
-          value = blank_to_nil(params[Atom.to_string(key)]),
+      case blank_to_nil(params["q"]) do
+        nil -> %{}
+        q -> %{q: String.slice(q, 0, 100)}
+      end
+
+    text_lists =
+      for key <- @text_list_filters,
+          values = parse_text_list(params[Atom.to_string(key)]),
+          values != [],
           into: %{},
-          do: {key, String.slice(value, 0, 100)}
+          do: {key, values}
 
     enums =
       for key <- @enum_filters,
-          atom = Labels.parse(key, params[Atom.to_string(key)]),
+          values = parse_enum_list(key, params[Atom.to_string(key)]),
+          values != [],
           into: %{},
-          do: {key, atom}
+          do: {key, values}
 
     seasons =
       case parse_seasons(params["season"]) do
@@ -192,6 +202,7 @@ defmodule KirbsWeb.ShopLive.Index do
       if params["sort"] in @sorts, do: %{sort: String.to_existing_atom(params["sort"])}, else: %{}
 
     text
+    |> Map.merge(text_lists)
     |> Map.merge(enums)
     |> Map.merge(seasons)
     |> Map.merge(waterproof)
@@ -206,6 +217,30 @@ defmodule KirbsWeb.ShopLive.Index do
   end
 
   defp parse_seasons(_), do: []
+
+  # `brand=Reima|H&M` -> `["Reima", "H&M"]`
+  defp parse_text_list(value) when is_binary(value) do
+    value
+    |> String.split("|")
+    |> Enum.map(&blank_to_nil/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&String.slice(&1, 0, 100))
+    |> Enum.uniq()
+    |> Enum.take(50)
+  end
+
+  defp parse_text_list(_), do: []
+
+  # `gender=boy,girl` -> `[:boy, :girl]` (unknown values dropped)
+  defp parse_enum_list(key, value) when is_binary(value) do
+    value
+    |> String.split(",")
+    |> Enum.map(&Labels.parse(key, String.trim(&1)))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp parse_enum_list(_key, _), do: []
 
   defp blank_to_nil(value) when is_binary(value) do
     case String.trim(value) do
@@ -299,24 +334,31 @@ defmodule KirbsWeb.ShopLive.Index do
 
     query =
       filters
-      |> Enum.map(fn {key, value} -> {Atom.to_string(key), param_value(value)} end)
+      |> Enum.map(fn {key, value} -> {Atom.to_string(key), param_value(key, value)} end)
       |> Enum.sort()
 
     if query == [], do: base, else: base <> "?" <> URI.encode_query(query)
   end
 
-  defp param_value(values) when is_list(values), do: Enum.map_join(values, ",", &to_string/1)
-  defp param_value(value), do: to_string(value)
+  defp param_value(key, values) when key in @text_list_filters, do: Enum.join(values, "|")
 
-  # Season pills: each pill toggles its season, the rest of the selection stays.
-  defp toggle_season(filters, season) do
-    current = filters[:season] || []
+  defp param_value(_key, values) when is_list(values),
+    do: Enum.map_join(values, ",", &to_string/1)
 
-    case if(season in current, do: List.delete(current, season), else: current ++ [season]) do
-      [] -> Map.delete(filters, :season)
-      list -> Map.put(filters, :season, list)
+  defp param_value(_key, value), do: to_string(value)
+
+  # Multi-select pills (season, gender, age, size, brand): each toggles its value, the rest of
+  # the selection stays.
+  defp toggle_value(filters, key, value) do
+    current = filters[key] || []
+
+    case if(value in current, do: List.delete(current, value), else: current ++ [value]) do
+      [] -> Map.delete(filters, key)
+      list -> Map.put(filters, key, list)
     end
   end
+
+  defp selected?(filters, key, value), do: value in (filters[key] || [])
 
   # `[{season, label, count}]`
   defp season_pills(facets) do
@@ -364,16 +406,16 @@ defmodule KirbsWeb.ShopLive.Index do
 
   defp order_links(links, _key), do: links
 
+  # Selected values stay visible even when no item matches them any more.
   defp ensure_active(links, key, filters) do
-    case filters[key] do
-      nil ->
-        links
+    shown = MapSet.new(links, fn {value, _, _} -> value end)
 
-      active ->
-        if Enum.any?(links, fn {value, _, _} -> to_string(value) == to_string(active) end),
-          do: links,
-          else: links ++ [{active, facet_label(key, active), 0}]
-    end
+    missing =
+      for active <- filters[key] || [],
+          not MapSet.member?(shown, active),
+          do: {active, facet_label(key, active), 0}
+
+    links ++ missing
   end
 
   defp facet_label(key, value) when key in @enum_filters, do: Labels.label(key, value)
@@ -457,9 +499,9 @@ defmodule KirbsWeb.ShopLive.Index do
     do: Enum.map_join(values, ", ", &Labels.label(:season, &1))
 
   defp chip_label(:waterproof, _value), do: "Veekindel"
-  defp chip_label(:brand, value), do: value
-  defp chip_label(:size, value), do: "suurus #{value}"
-  defp chip_label(key, value), do: Labels.label(key, value)
+  defp chip_label(:brand, values), do: Enum.join(values, ", ")
+  defp chip_label(:size, values), do: "suurus #{Enum.join(values, ", ")}"
+  defp chip_label(key, values), do: Enum.map_join(values, ", ", &Labels.label(key, &1))
 
   defp sort_options(filters) do
     base = [

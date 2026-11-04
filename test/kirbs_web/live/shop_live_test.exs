@@ -254,6 +254,32 @@ defmodule KirbsWeb.ShopLiveTest do
       assert_patch(view, "/k/valisriided?age_group=baby&season=winter")
     end
 
+    test "sizes and brands are multi-select (OR within a facet)", %{conn: conn} = ctx do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      view |> element("#facet-size-110") |> render_click()
+      assert_patch(view, "/?size=110")
+      refute has_element?(view, "#items-#{ctx.pants.id}")
+
+      view |> element("#facet-size-98") |> render_click()
+      assert_patch(view, "/?size=110%7C98")
+      assert has_element?(view, "#items-#{ctx.jacket.id}")
+      assert has_element?(view, "#items-#{ctx.pants.id}")
+      assert has_element?(view, ~s(#facet-size-98[aria-pressed="true"]))
+
+      view |> element("#facet-brand-Reima") |> render_click()
+      assert has_element?(view, "#items-#{ctx.jacket.id}")
+      refute has_element?(view, "#items-#{ctx.pants.id}")
+
+      view |> element("#facet-brand-H-M") |> render_click()
+      assert has_element?(view, "#items-#{ctx.pants.id}")
+
+      view |> element("#facet-size-110") |> render_click()
+      assert_patch(view, "/?brand=Reima%7CH%26M&size=98")
+      refute has_element?(view, "#items-#{ctx.jacket.id}")
+      assert has_element?(view, "#chip-brand", "Reima, H&M")
+    end
+
     test "legacy condition param is ignored", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/?condition=good")
       assert has_element?(view, "#shop-items article", "Reima")
