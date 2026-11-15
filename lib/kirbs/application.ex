@@ -20,6 +20,7 @@ defmodule Kirbs.Application do
       # Runs once per boot: jobs this machine was executing before it restarted are orphans
       {Task, &Kirbs.Services.Jobs.RequeueOrphanedJobs.run/0},
       {Phoenix.PubSub, name: Kirbs.PubSub},
+      Kirbs.Resources.Item.FacetCache,
       # Start a worker by calling: Kirbs.Worker.start_link(arg)
       # {Kirbs.Worker, arg},
       # Start to serve requests, typically the last entry

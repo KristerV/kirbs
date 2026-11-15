@@ -12,6 +12,7 @@ defmodule KirbsWeb.ShopLive.Index do
   import KirbsWeb.ShopComponents
 
   alias Kirbs.Resources.{Category, Item}
+  alias Kirbs.Resources.Item.FacetCache
   alias KirbsWeb.Shop.{CategoryTree, Labels}
 
   @page_size 24
@@ -113,13 +114,22 @@ defmodule KirbsWeb.ShopLive.Index do
     |> assign(:more?, page.more? == true)
   end
 
+  # Facets are computed twice per visit (static render + connected mount). The static render
+  # only gets them when cached (landing/category pages, so crawlers still see the category
+  # nav); filtered pages fill the sidebar once the socket connects.
   defp assign_facets(socket) do
     %{filters: filters, category: category} = socket.assigns
-    facets = Item.facets!(search_params(filters, category))
+    params = search_params(filters, category)
 
-    socket
-    |> assign(:facets, facets)
-    |> assign(:category_counts, Map.new(facets.category_rollup))
+    if connected?(socket) or FacetCache.cacheable?(params) do
+      facets = Item.facets!(params)
+
+      socket
+      |> assign(:facets, facets)
+      |> assign(:category_counts, Map.new(facets.category_rollup))
+    else
+      socket
+    end
   end
 
   defp search_params(filters, category) do

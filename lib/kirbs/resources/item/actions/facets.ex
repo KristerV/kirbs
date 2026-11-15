@@ -1,7 +1,11 @@
 defmodule Kirbs.Resources.Item.Actions.Facets do
   @moduledoc """
-  Implementation of `Item.facets`: for every facet, runs the same search with that facet's own
-  filter removed and counts the values. Gender counts unisex items towards boy and girl too. Season keeps `nil` (items without a season) so the shop can show an "all" count. Returns `%{brand: [{"Name", 3}, ...], ...}`.
+  Implementation of `Item.facets`: for every facet, aggregates the same search with that facet's
+  own filter removed and counts the values. Gender counts unisex items towards boy and girl too. Season keeps `nil` (items without a season) so the shop can show an "all" count. Returns `%{brand: [{"Name", 3}, ...], ...}`.
+
+  Values are collected in SQL with `:list` aggregates over the search query (no records are
+  loaded); facets that end up with the same search params share one query, so an unfiltered
+  page is a single query. Unfiltered and category-only results are cached (`FacetCache`).
 
   Category facets use primary AND extra categories (an item counts once in every category it
   is in, never twice in the same one):
@@ -13,70 +17,62 @@ defmodule Kirbs.Resources.Item.Actions.Facets do
   use Ash.Resource.Actions.Implementation
 
   alias Kirbs.Resources.{Category, Item}
+  alias Kirbs.Resources.Item.FacetCache
 
-  @facets [:brand, :size, :season, :gender, :age_group, :waterproof, :category_id]
-  @filter_key %{category_id: :category}
+  @facets [:brand, :size, :season, :gender, :age_group, :waterproof]
 
   @impl true
   def run(input, _opts, _context) do
     params = input.arguments.params
-
-    facets =
-      Map.new(@facets, fn facet ->
-        params = Map.drop(params, [Map.get(@filter_key, facet, facet)])
-        {facet, count(facet, params)}
-      end)
-
-    {:ok, Map.put(facets, :category_rollup, rollup(params))}
+    {:ok, FacetCache.fetch(params, fn -> compute(params) end)}
   end
 
-  defp count(:category_id, params) do
-    params
-    |> category_sets()
-    |> Enum.flat_map(fn {primary, extras} -> Enum.uniq([primary | extras]) end)
-    |> Enum.reject(&is_nil/1)
-    |> frequencies()
+  defp compute(params) do
+    values =
+      [
+        {:category_set, Map.drop(params, [:category])}
+        | Enum.map(@facets, &{&1, Map.drop(params, [&1])})
+      ]
+      |> Enum.group_by(fn {_facet, params} -> params end, fn {facet, _params} -> facet end)
+      |> Enum.map(fn {params, facets} -> aggregate(params, facets) end)
+      |> Enum.reduce(%{}, &Map.merge/2)
+
+    sets = Enum.map(values.category_set, &String.split(&1, ",", trim: true))
+
+    @facets
+    |> Map.new(&{&1, count(&1, values[&1])})
+    |> Map.put(:category_id, category_counts(sets))
+    |> Map.put(:category_rollup, rollup(sets))
   end
 
-  defp count(facet, params) do
+  defp aggregate(params, facets) do
     Item
     |> Ash.Query.for_read(:search, params)
-    |> Ash.Query.select([facet])
-    |> Ash.Query.limit(10_000)
-    |> Ash.read!(page: false)
-    |> Enum.map(&Map.fetch!(&1, facet))
-    |> Enum.reject(&(is_nil(&1) and facet != :season))
-    |> Enum.frequencies()
-    |> then(&if(facet == :gender, do: spread_unisex(&1), else: &1))
-    |> Enum.sort_by(fn {value, count} -> {-count, to_string(value)} end)
+    |> Ash.aggregate!(Enum.map(facets, &aggregate_spec/1))
+    |> Map.new(fn {facet, values} -> {facet, values || []} end)
   end
 
-  defp rollup(params) do
+  defp aggregate_spec(facet), do: {facet, :list, field: facet, include_nil?: true}
+
+  # Only season keeps `nil` (items without a season).
+  defp count(:season, values), do: values |> Enum.frequencies() |> sorted()
+
+  defp count(:gender, values),
+    do: values |> Enum.reject(&is_nil/1) |> Enum.frequencies() |> spread_unisex() |> sorted()
+
+  defp count(_facet, values),
+    do: values |> Enum.reject(&is_nil/1) |> Enum.frequencies() |> sorted()
+
+  defp category_counts(sets), do: sets |> Enum.flat_map(&Enum.uniq/1) |> frequencies()
+
+  defp rollup(sets) do
     by_id = Map.new(Category.list_all!(), &{&1.id, &1})
 
-    params
-    |> Map.drop([:category])
-    |> category_sets()
-    |> Enum.flat_map(fn {primary, extras} ->
-      [primary | extras]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.flat_map(&with_ancestors(&1, by_id))
-      |> Enum.uniq()
+    sets
+    |> Enum.flat_map(fn ids ->
+      ids |> Enum.flat_map(&with_ancestors(&1, by_id)) |> Enum.uniq()
     end)
     |> frequencies()
-  end
-
-  # `[{primary_id, [extra_id]}]` of every item matching `params`.
-  defp category_sets(params) do
-    Item
-    |> Ash.Query.for_read(:search, Map.drop(params, [:category]))
-    |> Ash.Query.select([:category_id])
-    |> Ash.Query.load(item_categories: [:category_id])
-    |> Ash.Query.limit(10_000)
-    |> Ash.read!(page: false)
-    |> Enum.map(fn item ->
-      {item.category_id, Enum.map(item.item_categories, & &1.category_id)}
-    end)
   end
 
   defp with_ancestors(id, by_id) do
@@ -87,25 +83,21 @@ defmodule Kirbs.Resources.Item.Actions.Facets do
     end
   end
 
-  defp frequencies(ids) do
-    ids
-    |> Enum.frequencies()
-    |> Enum.sort_by(fn {value, count} -> {-count, to_string(value)} end)
-  end
+  defp frequencies(ids), do: ids |> Enum.frequencies() |> sorted()
+
+  defp sorted(counts),
+    do: Enum.sort_by(counts, fn {value, count} -> {-count, to_string(value)} end)
 
   # Unisex items also match the boy and girl filters, so they count towards both.
   defp spread_unisex(counts) do
-    counts = Map.new(counts)
-
     case Map.get(counts, :unisex, 0) do
       0 ->
-        Map.to_list(counts)
+        counts
 
       unisex ->
         counts
         |> Map.update(:boy, unisex, &(&1 + unisex))
         |> Map.update(:girl, unisex, &(&1 + unisex))
-        |> Map.to_list()
     end
   end
 end

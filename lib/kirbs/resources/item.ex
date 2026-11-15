@@ -581,6 +581,18 @@ defmodule Kirbs.Resources.Item do
               ) do
       argument :q, :string, allow_nil?: false
     end
+
+    # Every category the item is in (primary first, then extras), comma-separated. Used by the
+    # facets action to count categories in a single SQL aggregate.
+    calculate :category_set,
+              :string,
+              expr(
+                fragment(
+                  "concat_ws(',', (?)::text, (SELECT string_agg(ic.category_id::text, ',') FROM item_categories ic WHERE ic.item_id = ?))",
+                  category_id,
+                  id
+                )
+              )
   end
 
   aggregates do

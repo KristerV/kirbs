@@ -4,6 +4,7 @@ config :kirbs, :pickup_points_provider, Kirbs.Shipping.PickupPoints.Static
 config :kirbs, :rates_fetcher, Kirbs.StubRatesFetcher
 config :kirbs, token_signing_secret: "/VHDrBw1lZOfNa3S/rUjuXeLdVqnV3v8"
 config :bcrypt_elixir, log_rounds: 1
+config :kirbs, :facet_cache_ttl_ms, 0
 
 config :kirbs, :montonio,
   access_key: "test_access_key",
